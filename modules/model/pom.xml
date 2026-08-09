@@ -5,4 +5,7 @@
   <parent><groupId>io.softwareintelligence</groupId><artifactId>software-intelligence</artifactId><version>0.1.0-SNAPSHOT</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>model</artifactId>
   <name>Canonical repository model</name>
+  <dependencies>
+    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
+  </dependencies>
 </project>

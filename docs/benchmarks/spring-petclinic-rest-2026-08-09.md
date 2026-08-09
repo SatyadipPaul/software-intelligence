@@ -4,6 +4,9 @@ Run date: 2026-08-09
 Repository: `spring-petclinic/spring-petclinic-rest`  
 Repository commit: `698bd83`
 
+> The tables below are the schema `0.1` run. See [Schema 0.2 re-baseline](#schema-02-re-baseline)
+> for current counts; graph identity changed between the two.
+
 ## Build-aware method
 
 This application generates REST interfaces from `openapi.yml`. The benchmark therefore ran Maven `generate-sources` first, then generated the dependency classpath, then ran the local analyzer. No Docker or application startup was used.
@@ -49,6 +52,27 @@ The installed Maven plugin was then run directly against the same checkout. It p
 | `ClinicService` transitive impact | 0 additional nodes at depth 3 |
 
 The impact report selected the real source interface (`type:org.springframework.samples.petclinic.service.ClinicService`) rather than a provisional external placeholder and listed controller methods with file/line evidence.
+
+## Schema 0.2 re-baseline
+
+Same repository commit (`698bd83`), same generated sources, same classpath file.
+
+| Measurement | Schema 0.1 | Schema 0.2 |
+| --- | ---: | ---: |
+| Graph nodes | 2,121 | 2,185 |
+| Graph edges | 8,315 | 8,793 |
+| `JDT_BINDING` edges | 5,068 | 5,612 |
+| Explicitly unresolved edges | 71 | 2 |
+| Resolution rate | 98.62% | 99.96% |
+| `DEPENDS_ON` edges | 874 | 824 |
+| REST endpoints | 38 | 38 |
+| Controllers / services / repository components / entities | 10 / 2 / 21 / 8 | 10 / 2 / 21 / 8 |
+
+`CREATES` is new at 393 edges. Wall time was 6.7 s, single-run and including JVM startup; as above it
+is recorded rather than compared against the 0.1 measurement.
+
+The endpoint surface and every framework count are identical across the two schemas, which is the
+check that mattered here: identity and resolution changed, the operational model did not.
 
 ## Finding
 

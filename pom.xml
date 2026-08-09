@@ -7,10 +7,29 @@
   <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Software Intelligence</name>
+  <description>Evidence-first, Java-first repository intelligence: a deterministic, provenance-bearing software model.</description>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+
+  <licenses>
+    <license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0.txt</url><distribution>repo</distribution></license>
+  </licenses>
+  <developers>
+    <developer><id>satyadippaul</id><name>Satyadip Paul</name></developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/SatyadipPaul/software-intelligence.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/SatyadipPaul/software-intelligence.git</developerConnection>
+    <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  </scm>
 
   <modules>
     <module>modules/model</module>
     <module>modules/analyzer-java</module>
+    <module>modules/framework-spring</module>
+    <module>modules/pipeline</module>
+    <module>modules/architecture</module>
+    <module>modules/query-engine</module>
+    <module>modules/evaluation</module>
     <module>apps/cli</module>
     <module>apps/maven-plugin</module>
   </modules>
@@ -52,4 +71,32 @@
       </plugin>
     </plugins>
   </build>
+
+  <!--
+    Opt-in only. Central requires sources, javadoc, and signatures; this profile produces them but
+    nothing here publishes on its own. Releasing is a deliberate act with the maintainer's own
+    credentials: mvn -Prelease deploy.
+  -->
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><version>3.3.1</version>
+            <executions><execution><id>attach-sources</id><goals><goal>jar-no-fork</goal></goals></execution></executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId><artifactId>maven-javadoc-plugin</artifactId><version>3.8.0</version>
+            <executions><execution><id>attach-javadocs</id><goals><goal>jar</goal></goals></execution></executions>
+            <configuration><doclint>none</doclint></configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId><artifactId>maven-gpg-plugin</artifactId><version>3.2.4</version>
+            <executions><execution><id>sign-artifacts</id><phase>verify</phase><goals><goal>sign</goal></goals></execution></executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

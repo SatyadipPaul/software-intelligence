@@ -3,6 +3,7 @@ package io.softwareintelligence.maven;
 import io.softwareintelligence.analyzer.java.JavaRepositoryAnalyzer;
 import io.softwareintelligence.model.CodeGraph;
 import io.softwareintelligence.model.GraphJsonWriter;
+import io.softwareintelligence.model.Json;
 import io.softwareintelligence.model.GraphQueries;
 import io.softwareintelligence.model.ImpactReport;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
@@ -45,9 +46,13 @@ public final class ImpactCheckMojo extends AbstractMojo {
         }
         try {
             CodeGraph graph = new JavaRepositoryAnalyzer().analyze(project.getBasedir().toPath(), classpath(), false);
-            var subjectOptional = GraphQueries.findSymbol(graph, symbol);
-            if (subjectOptional.isEmpty()) throw new MojoFailureException("No symbol matched: " + symbol);
-            var subject = subjectOptional.get();
+            var match = GraphQueries.resolveSymbol(graph, symbol);
+            if (match.isEmpty()) throw new MojoFailureException("No symbol matched: " + symbol);
+            var subject = match.get().node();
+            if (match.get().ambiguous()) {
+                getLog().warn("repo-intel: " + (match.get().alternatives().size() + 1) + " symbols matched '" + symbol
+                        + "'; using " + subject.id());
+            }
             ImpactReport report = GraphQueries.impact(graph, subject, depth);
             Path directory = outputDirectory.toPath().toAbsolutePath();
             Files.createDirectories(directory);
@@ -92,11 +97,9 @@ public final class ImpactCheckMojo extends AbstractMojo {
             var path = paths.get(i);
             var edge = path.evidence().get(path.evidence().size() - 1);
             json.append("{\"ruleId\":\"repo-intel-impact\",\"level\":\"warning\",\"message\":{\"text\":\"")
-                    .append(quote(path.target().name() + " is impacted by " + report.subject().name())).append("\"},\"locations\":[{\"physicalLocation\":{\"artifactLocation\":{\"uri\":\"")
-                    .append(quote(edge.provenance().file())).append("\"},\"region\":{\"startLine\":").append(Math.max(1, edge.provenance().line())).append("}}}]}" );
+                    .append(Json.quote(path.target().name() + " is impacted by " + report.subject().name())).append("\"},\"locations\":[{\"physicalLocation\":{\"artifactLocation\":{\"uri\":\"")
+                    .append(Json.quote(edge.provenance().file())).append("\"},\"region\":{\"startLine\":").append(Math.max(1, edge.provenance().line())).append("}}}]}" );
         }
         return json.append("]}]}\n").toString();
     }
-
-    private static String quote(String value) { return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r"); }
 }

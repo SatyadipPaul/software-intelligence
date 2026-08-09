@@ -23,6 +23,21 @@ The impact command walks only evidence-bearing incoming relationships. For the f
 
 `context` emits a minimum-sufficient packet containing the subject, callers, endpoints, dependencies, and only the evidence edges needed to support those relationships. This is the handoff format for future reasoning or review clients.
 
+## Graph identity
+
+The export is schema `0.3`. Identity is designed so that the same commit produces the same graph on any machine:
+
+```text
+repo:<repository-directory-name>          the local path is an attribute, never part of the id
+file:<repository-relative-path>
+type:<erased.qualified.Name>              a generic type and calls into it share one id
+type:<Owner>#<method>(<erased,params>)    overloads are separate symbols
+type:<Owner>.field:<name>
+endpoint:<VERB>:<path>   table:<name>   topic:<name>
+```
+
+Source files are analyzed in sorted path order and attribute keys are written in sorted order, so two runs of the same source are byte-identical. When a symbol query matches more than one node the command prints every match to stderr and picks the lowest id rather than an arbitrary one.
+
 To inspect any Java repository:
 
 ```powershell
@@ -32,13 +47,37 @@ java -jar apps/cli/target/repo-intel.jar inspect C:\path\to\repository --output 
 ## Repository layout
 
 ```text
-apps/cli/                  Runnable `repo-intel` command-line interface
-modules/model/             Canonical graph schema and provenance model
-modules/analyzer-java/     Deterministic Java source analysis using Eclipse JDT
-fixtures/sample-commerce/  Small checkout flow for local smoke testing
-docs/architecture.md       Product architecture and invariants
-docs/roadmap.md            Sequenced implementation roadmap and exit criteria
+apps/cli/                    Runnable `repo-intel` command-line interface
+apps/maven-plugin/           Build-integrated analyze / impact-check goals
+modules/model/               Canonical schema, provenance, queries, snapshots
+modules/analyzer-java/       Deterministic Java analysis using Eclipse JDT
+modules/framework-spring/    Spring, JPA, Kafka, Security, and HTTP-client interpretation
+modules/architecture/        Modules, centrality, communities, workflows, capabilities, risk
+modules/query-engine/        BM25 retrieval, query planning, budgets, answer verification
+modules/evaluation/          Grounded question format, harness, and scoring
+modules/pipeline/            Layer composition and build classpath discovery
+evaluation/*.questions.tsv   Grounded question sets with verified answers
+fixtures/sample-commerce/    Small checkout flow for local smoke testing
+docs/architecture.md         Product architecture and invariants
+docs/roadmap.md              Sequenced implementation roadmap and exit criteria
 ```
+
+## Commands
+
+```text
+repo-intel inspect <repo> -o graph.json        canonical graph export
+repo-intel impact <repo> <symbol> --risk       source-backed blast radius, with an explained score
+repo-intel context <repo> <symbol> -o ctx.json minimum-sufficient evidence packet
+repo-intel architecture <repo>                 modules, centrality, communities, workflows, capabilities
+repo-intel ask <repo> "<question>"             retrieval + traversal, every claim verified or withheld
+repo-intel snapshot <repo> -o snap.json        durable snapshot for later comparison
+repo-intel diff <repo> snap.json               what changed, and the risk of each changed symbol
+repo-intel evaluate <repo> questions.tsv       score against a grounded question set
+repo-intel enrichment-plan <repo>              rank symbols worth model tokens, within a budget
+```
+
+Every command takes `--classpath`, `--discover-classpath`, `--no-framework`, `--no-architecture`,
+and `--no-tests`, so any layer above deterministic Java analysis can be switched off.
 
 ## Design principles
 
@@ -50,7 +89,9 @@ docs/roadmap.md            Sequenced implementation roadmap and exit criteria
 
 ## Current coverage and boundary
 
-Implemented deterministic facts include Java files/packages/types/methods/fields/imports/inheritance, Spring controllers/services/repositories/entities/configuration, HTTP mapping methods, transactions, Kafka listeners, and entity tables. When a Maven/Gradle classpath is supplied, JDT resolves cross-file and library method bindings as `JDT_BINDING`; without a classpath, declared in-repository field calls use `INTRA_REPOSITORY_SYMBOL`. Remaining relationships are explicitly `JDT_AST_UNRESOLVED`.
+Implemented deterministic facts include Java files, packages, classes, interfaces, enums, records, annotation types, anonymous classes, methods, fields, imports, inheritance, calls, constructor calls, and method references; plus Spring controllers/services/repositories/entities/configuration, HTTP mapping methods, transactions, Kafka listeners, and entity tables. Record components are recorded as fields with their implicit accessors.
+
+When a Maven/Gradle classpath is supplied, JDT resolves cross-file and library method bindings as `JDT_BINDING`; without a classpath, in-batch source and JDK bindings still resolve, and calls proven only through a declared in-repository field type use `INTRA_REPOSITORY_SYMBOL`. A name and arity that match more than one overload stay unresolved rather than being guessed. Remaining relationships are explicitly `JDT_AST_UNRESOLVED`.
 
 For a Maven project, generate a classpath and pass it to the analyzer:
 
@@ -82,6 +123,30 @@ mvn repo-intel:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNod
 
 The plugin does not require Docker, a hosted graph, or source-code upload.
 
-The next semantic increment is Maven/Gradle classpath-aware JDT binding resolution. The project will not label that capability as complete until it is implemented and benchmarked.
+## Layers above the deterministic graph
+
+Spring interpretation resolves an injected interface to the components that implement it, promotes
+security annotations and configuration placeholders to first-class nodes, links `@Query` statements
+to the tables they name, and records Kafka producers and HTTP clients. Architecture analysis derives
+modules and their coupling, PageRank and degree centrality, communities (connected components or
+k-core, behind one pluggable interface), end-to-end workflows from every entry point, and business
+capabilities grouped by the route and topic names the application already uses.
+
+Everything above the Java layer adds claims and never rewrites deterministic evidence, and each
+addition carries its own resolver name and confidence, so a graph can always be filtered back down
+to what the compiler proved.
+
+## Answers and budgets
+
+`ask` retrieves with BM25 over the graph's own symbol vocabulary, classifies the question, plans a
+traversal, compresses the packet to a token budget, and then verifies every claim against the graph
+before printing it. A claim with no citation, a citation that does not exist, or a citation that
+does not involve the symbol under discussion is labelled and withheld rather than shown. That gate
+is where a model-generated answer would also have to pass; no model ships with the product and none
+is required.
+
+`enrichment-plan` ranks the symbols where model tokens would buy the most — central, ambiguous,
+operationally exposed, not already well described — stops at a token budget, and prints why each
+symbol was chosen. It calls nothing.
 
 See [architecture](docs/architecture.md) and the [roadmap](docs/roadmap.md) for the implementation path.

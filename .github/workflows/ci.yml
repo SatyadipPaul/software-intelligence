@@ -15,4 +15,45 @@ jobs:
           java-version: '25'
           cache: maven
       - run: mvn -B verify
-      - run: java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o sample-commerce.graph.json
+
+      - name: Graph export is stable across runs
+        run: |
+          java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o first.graph.json
+          java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o second.graph.json
+          diff first.graph.json second.graph.json
+
+      - name: Impact keeps its source-backed answer for the fixture
+        run: |
+          java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3 --risk | tee impact.txt
+          grep -q 'POST /payments/authorize' impact.txt
+          grep -q 'confidence 1.00' impact.txt
+          grep -q 'RISK' impact.txt
+
+      - name: Grounded question set still passes
+        run: java -jar apps/cli/target/repo-intel.jar evaluate fixtures/sample-commerce evaluation/sample-commerce.questions.tsv --fail-under 1.0
+
+      - name: A snapshot round-trips and an unchanged tree diffs empty
+        run: |
+          java -jar apps/cli/target/repo-intel.jar snapshot fixtures/sample-commerce -o baseline.snapshot.json
+          java -jar apps/cli/target/repo-intel.jar diff fixtures/sample-commerce baseline.snapshot.json | tee diff.txt
+          grep -q '+0/-0 nodes, +0/-0 edges, 0 re-resolved' diff.txt
+
+      - name: An answer cites its evidence and withholds the rest
+        run: |
+          java -jar apps/cli/target/repo-intel.jar ask fixtures/sample-commerce "what breaks if PaymentService changes?" | tee ask.txt
+          grep -q 'SUPPORTED CLAIMS' ask.txt
+          grep -q 'evidence:' ask.txt
+
+      - name: Context packet stays smaller than the full graph
+        run: |
+          java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
+          python3 - <<'PY'
+          import json
+          graph = json.load(open('first.graph.json'))
+          packet = json.load(open('context.json'))
+          assert graph['version'] == packet['version'], 'writers disagree on schema version'
+          assert packet['evidence'], 'context packet carries no evidence'
+          assert len(packet['evidence']) < len(graph['edges']), 'context packet is not a reduction'
+          for edge in packet['evidence']:
+              assert edge['file'] and edge['line'] > 0, edge
+          PY

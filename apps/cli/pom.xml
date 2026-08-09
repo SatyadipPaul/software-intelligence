@@ -7,6 +7,11 @@
   <name>Repository intelligence CLI</name>
   <dependencies>
     <dependency><groupId>io.softwareintelligence</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.softwareintelligence</groupId><artifactId>framework-spring</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.softwareintelligence</groupId><artifactId>architecture</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.softwareintelligence</groupId><artifactId>pipeline</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.softwareintelligence</groupId><artifactId>query-engine</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.softwareintelligence</groupId><artifactId>evaluation</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>4.7.6</version></dependency>
   </dependencies>
   <build>
