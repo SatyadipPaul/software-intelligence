@@ -103,6 +103,10 @@ The plugin uses Maven's resolved project classpath and excludes test sources by 
 
 The direct production callers were `VetController.findPaginated` and `VetController.showResourcesVetList`; the transitive impacts included `showVetList`, `GET /vets`, and `GET /vets.html`.
 
+## Minimum-sufficient context packet
+
+The new context query was run against `VetRepository` with the same classpath. It emitted 13 caller nodes, 2 endpoint nodes, 1 dependency node, and 20 evidence edges. This packet is deliberately smaller than the 867-node repository graph and is suitable as a grounded input to a later reasoning layer.
+
 ## Reproducibility
 
 The cloned source and generated graph are local benchmark artifacts under `work/benchmarks` and are intentionally not committed to the product repository. Re-run this benchmark against the pinned commit before and after each semantic-resolution change.

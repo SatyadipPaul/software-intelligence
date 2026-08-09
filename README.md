@@ -14,11 +14,14 @@ Prerequisites: JDK 25 and Maven 3.9+.
 mvn -q verify
 java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
 java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
+java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
 ```
 
 The second command writes a graph containing nodes and edges with `resolver`, `confidence`, `file`, `line`, and `column` evidence.
 
 The impact command walks only evidence-bearing incoming relationships. For the fixture it proves that removing `PaymentService` affects its controller call site and the `POST /payments/authorize` endpoint.
+
+`context` emits a minimum-sufficient packet containing the subject, callers, endpoints, dependencies, and only the evidence edges needed to support those relationships. This is the handoff format for future reasoning or review clients.
 
 To inspect any Java repository:
 

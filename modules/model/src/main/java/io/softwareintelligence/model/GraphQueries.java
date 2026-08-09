@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.LinkedHashMap;
 
 /** Graph-only analyses: no LLM inference and no relationship without recorded evidence. */
 public final class GraphQueries {
@@ -55,6 +56,26 @@ public final class GraphQueries {
 
     public static Collection<GraphEdge> outgoing(CodeGraph graph, String from) {
         return graph.edges().stream().filter(edge -> edge.from().equals(from)).toList();
+    }
+
+    /** Builds the minimum useful context around a symbol without returning the full repository graph. */
+    public static ContextPacket context(CodeGraph graph, GraphNode subject, int depth) {
+        Map<String, GraphNode> nodes = graph.nodes().stream().collect(java.util.stream.Collectors.toMap(GraphNode::id, node -> node, (left, right) -> left, LinkedHashMap::new));
+        ImpactReport impact = impact(graph, subject, depth);
+        List<ImpactReport.ImpactPath> allImpact = new ArrayList<>();
+        allImpact.addAll(impact.direct());
+        allImpact.addAll(impact.transitive());
+        List<GraphNode> callers = allImpact.stream().map(ImpactReport.ImpactPath::target)
+                .filter(node -> node.kind() == EntityKind.METHOD || node.kind() == EntityKind.TYPE).distinct().toList();
+        List<GraphNode> endpoints = allImpact.stream().map(ImpactReport.ImpactPath::target)
+                .filter(node -> node.kind() == EntityKind.ENDPOINT).distinct().toList();
+        List<GraphNode> dependencies = graph.edges().stream()
+                .filter(edge -> edge.from().equals(subject.id()) && (edge.kind() == RelationKind.DEPENDS_ON || edge.kind() == RelationKind.PERSISTS || edge.kind() == RelationKind.PARTICIPATES_IN))
+                .map(edge -> nodes.get(edge.to())).filter(java.util.Objects::nonNull).distinct().toList();
+        Map<String, GraphEdge> evidence = new LinkedHashMap<>();
+        allImpact.stream().flatMap(path -> path.evidence().stream()).forEach(edge -> evidence.put(edge.from() + "|" + edge.to() + "|" + edge.kind(), edge));
+        graph.edges().stream().filter(edge -> edge.from().equals(subject.id())).forEach(edge -> evidence.put(edge.from() + "|" + edge.to() + "|" + edge.kind(), edge));
+        return new ContextPacket(subject, callers, endpoints, dependencies, List.copyOf(evidence.values()));
     }
 
     private record PathState(String nodeId, List<GraphEdge> edges) { }
