@@ -10,6 +10,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.ArrayInitializer;
 import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
@@ -18,10 +19,15 @@ import org.eclipse.jdt.core.dom.FileASTRequestor;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.MemberValuePair;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.NormalAnnotation;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.SingleMemberAnnotation;
+import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import java.io.IOException;
@@ -266,7 +272,8 @@ public final class JavaRepositoryAnalyzer {
                 case "PutMapping" -> "PUT";
                 case "DeleteMapping" -> "DELETE";
                 case "PatchMapping" -> "PATCH";
-                default -> "REQUEST";
+                default -> annotationArgument(declaration.modifiers(), mapping, "method")
+                        .map(value -> value.substring(value.lastIndexOf('.') + 1)).orElse("REQUEST");
             };
             String path = joinPaths(typePaths.peek(), annotationArgument(declaration.modifiers(), mapping).orElse("/"));
             String endpointId = "endpoint:" + verb + ":" + path;
@@ -314,12 +321,34 @@ public final class JavaRepositoryAnalyzer {
         }
 
         private static java.util.Optional<String> annotationArgument(List<?> modifiers, String targetName) {
+            return annotationArgument(modifiers, targetName, "value");
+        }
+
+        private static java.util.Optional<String> annotationArgument(List<?> modifiers, String targetName, String memberName) {
             return modifiers.stream().filter(Annotation.class::isInstance).map(Annotation.class::cast)
                     .filter(annotation -> annotation.getTypeName().getFullyQualifiedName().equals(targetName)).findFirst()
-                    .flatMap(annotation -> {
-                        java.util.regex.Matcher value = java.util.regex.Pattern.compile("\\\"([^\\\"]+)\\\"").matcher(annotation.toString());
-                        return value.find() ? java.util.Optional.of(value.group(1)) : java.util.Optional.empty();
-                    });
+                    .flatMap(annotation -> annotationMember(annotation, memberName));
+        }
+
+        private static java.util.Optional<String> annotationMember(Annotation annotation, String memberName) {
+            Expression value = null;
+            if (annotation instanceof SingleMemberAnnotation single && memberName.equals("value")) value = single.getValue();
+            if (annotation instanceof NormalAnnotation normal) {
+                for (Object member : normal.values()) {
+                    if (member instanceof MemberValuePair pair && pair.getName().getIdentifier().equals(memberName)) {
+                        value = pair.getValue();
+                        break;
+                    }
+                }
+            }
+            if (value == null) return java.util.Optional.empty();
+            if (value instanceof ArrayInitializer array && !array.expressions().isEmpty()) value = (Expression) array.expressions().get(0);
+            if (value instanceof StringLiteral literal) return java.util.Optional.of(literal.getLiteralValue());
+            Object constant = value.resolveConstantExpressionValue();
+            if (constant instanceof String text) return java.util.Optional.of(text);
+            String text = value.toString();
+            if (memberName.equals("method") && text.contains(".")) return java.util.Optional.of(text);
+            return java.util.Optional.empty();
         }
 
         private static String joinPaths(String base, String method) {

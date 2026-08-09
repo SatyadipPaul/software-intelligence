@@ -44,6 +44,6 @@ public final class AnalyzeMojo extends AbstractMojo {
 
     private List<Path> classpath() throws DependencyResolutionRequiredException {
         List<String> elements = includeTests ? project.getTestClasspathElements() : project.getCompileClasspathElements();
-        return elements.stream().map(Path::of).toList();
+        return elements.stream().map(Path::of).map(Path::toAbsolutePath).filter(Files::exists).toList();
     }
 }

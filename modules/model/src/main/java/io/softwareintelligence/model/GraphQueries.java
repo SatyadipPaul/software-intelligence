@@ -16,7 +16,15 @@ public final class GraphQueries {
     private GraphQueries() { }
 
     public static Optional<GraphNode> findSymbol(CodeGraph graph, String query) {
-        return graph.nodes().stream().filter(node -> node.id().equals(query) || node.name().equals(query) || node.id().endsWith(query)).findFirst();
+        Optional<GraphNode> exactId = graph.nodes().stream().filter(node -> node.id().equals(query)).findFirst();
+        if (exactId.isPresent()) return exactId;
+        Optional<GraphNode> exactSourceName = graph.nodes().stream().filter(node -> node.name().equals(query) && node.kind() != EntityKind.EXTERNAL_SYMBOL).findFirst();
+        if (exactSourceName.isPresent()) return exactSourceName;
+        Optional<GraphNode> sourceSuffix = graph.nodes().stream().filter(node -> node.kind() != EntityKind.EXTERNAL_SYMBOL && node.id().endsWith(query)).findFirst();
+        if (sourceSuffix.isPresent()) return sourceSuffix;
+        Optional<GraphNode> exactName = graph.nodes().stream().filter(node -> node.name().equals(query)).findFirst();
+        if (exactName.isPresent()) return exactName;
+        return graph.nodes().stream().filter(node -> node.id().endsWith(query)).findFirst();
     }
 
     /** Traverses incoming references: answers "what is affected if this symbol disappears?". */

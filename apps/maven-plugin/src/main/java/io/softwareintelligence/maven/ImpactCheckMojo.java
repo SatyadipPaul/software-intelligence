@@ -65,7 +65,7 @@ public final class ImpactCheckMojo extends AbstractMojo {
     }
 
     private List<Path> classpath() throws DependencyResolutionRequiredException {
-        return project.getCompileClasspathElements().stream().map(Path::of).toList();
+        return project.getCompileClasspathElements().stream().map(Path::of).map(Path::toAbsolutePath).filter(Files::exists).toList();
     }
 
     private static String format(ImpactReport report) {
