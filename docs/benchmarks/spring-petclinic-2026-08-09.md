@@ -103,6 +103,8 @@ The plugin uses Maven's resolved project classpath and excludes test sources by 
 
 The direct production callers were `VetController.findPaginated` and `VetController.showResourcesVetList`; the transitive impacts included `showVetList`, `GET /vets`, and `GET /vets.html`.
 
+The plugin also emitted `target/repo-intel/impact-report.sarif`, with one source location per impacted node for CI code-scanning ingestion.
+
 ## Minimum-sufficient context packet
 
 The new context query was run against `VetRepository` with the same classpath. It emitted 13 caller nodes, 2 endpoint nodes, 1 dependency node, and 20 evidence edges. This packet is deliberately smaller than the 867-node repository graph and is suitable as a grounded input to a later reasoning layer.

@@ -53,6 +53,7 @@ public final class ImpactCheckMojo extends AbstractMojo {
             Files.createDirectories(directory);
             Files.writeString(directory.resolve("impact-graph.json"), GraphJsonWriter.write(graph));
             Files.writeString(directory.resolve("impact-report.txt"), format(report));
+            Files.writeString(directory.resolve("impact-report.sarif"), sarif(report));
             int impacted = report.direct().size() + report.transitive().size();
             getLog().info("repo-intel: " + subject.name() + " impacts " + impacted + " evidence-backed nodes");
             if (maxImpactedNodes >= 0 && impacted > maxImpactedNodes) {
@@ -81,4 +82,21 @@ public final class ImpactCheckMojo extends AbstractMojo {
                 .append(edge.provenance().file()).append(':').append(edge.provenance().line()).append(" confidence=")
                 .append(edge.provenance().confidence()).append('\n');
     }
+
+    private static String sarif(ImpactReport report) {
+        StringBuilder json = new StringBuilder("{\"version\":\"2.1.0\",\"$schema\":\"https://json.schemastore.org/sarif-2.1.0.json\",\"runs\":[{\"tool\":{\"driver\":{\"name\":\"repo-intel\"}},\"results\":[");
+        List<ImpactReport.ImpactPath> paths = new java.util.ArrayList<>(report.direct());
+        paths.addAll(report.transitive());
+        for (int i = 0; i < paths.size(); i++) {
+            if (i > 0) json.append(',');
+            var path = paths.get(i);
+            var edge = path.evidence().get(path.evidence().size() - 1);
+            json.append("{\"ruleId\":\"repo-intel-impact\",\"level\":\"warning\",\"message\":{\"text\":\"")
+                    .append(quote(path.target().name() + " is impacted by " + report.subject().name())).append("\"},\"locations\":[{\"physicalLocation\":{\"artifactLocation\":{\"uri\":\"")
+                    .append(quote(edge.provenance().file())).append("\"},\"region\":{\"startLine\":").append(Math.max(1, edge.provenance().line())).append("}}}]}" );
+        }
+        return json.append("]}]}\n").toString();
+    }
+
+    private static String quote(String value) { return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r"); }
 }

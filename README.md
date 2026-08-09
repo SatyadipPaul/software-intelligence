@@ -74,7 +74,7 @@ The local-first Maven plugin is built in `apps/maven-plugin`. Install the curren
 </plugin>
 ```
 
-It writes `target/repo-intel/repo-graph.json` using the Maven project's resolved compile classpath. For an explicit impact gate:
+It writes `target/repo-intel/repo-graph.json` using the Maven project's resolved compile classpath. The impact goal additionally writes text, graph JSON, and SARIF reports. For an explicit impact gate:
 
 ```powershell
 mvn repo-intel:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
