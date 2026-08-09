@@ -47,15 +47,16 @@ That classpath was passed to the CLI using `--classpath`. JDT then resolved the 
 
 | Measurement | Result |
 | --- | ---: |
-| Indexing and JSON export | 2.92 seconds |
-| Graph nodes | 834 |
-| Graph edges | 2,402 |
-| `JDT_BINDING` edges | 1,474 |
+| Indexing and JSON export | 7.28 seconds |
+| Graph nodes | 867 |
+| Graph edges | 2,580 |
+| `JDT_BINDING` edges | 1,652 |
 | `INTRA_REPOSITORY_SYMBOL` edges | 0 |
+| `DEPENDS_ON` architecture edges | 178 |
 | Explicitly unresolved edges | 17 |
-| Resolution rate | 98.86% |
+| Resolution rate | 98.98% |
 
-The extra 1.84 seconds is the cost of compiler-grade bindings and is the appropriate tradeoff for high-confidence impact analysis.
+The extra time is the cost of compiler-grade bindings and architecture dependency extraction; it remains fully local and produces high-confidence impact evidence.
 
 ## Verified impact examples
 
@@ -91,10 +92,11 @@ The plugin uses Maven's resolved project classpath and excludes test sources by 
 
 | Measurement | Result |
 | --- | ---: |
-| Plugin analysis wall time | 6.02 seconds |
-| Production nodes | 356 |
-| Production edges | 636 |
-| `JDT_BINDING` edges | 211 |
+| Plugin analysis wall time | 14.42 seconds |
+| Production nodes | 380 |
+| Production edges | 753 |
+| `JDT_BINDING` edges | 328 |
+| `DEPENDS_ON` architecture edges | 117 |
 | Explicitly unresolved edges | 16 |
 | `VetRepository` direct impacts | 2 |
 | `VetRepository` transitive impacts | 3 |

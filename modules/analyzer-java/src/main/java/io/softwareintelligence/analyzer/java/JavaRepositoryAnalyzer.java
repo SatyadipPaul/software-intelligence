@@ -21,6 +21,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
+import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import java.io.IOException;
@@ -158,7 +159,7 @@ public final class JavaRepositoryAnalyzer {
             String name = qualified(declaration.getName().getIdentifier());
             String id = "type:" + name;
             List<String> annotations = annotationNames(declaration.modifiers());
-            graph.node(id, declaration.isInterface() ? EntityKind.INTERFACE : frameworkKind(annotations), name,
+            graph.node(id, declaration.isInterface() ? interfaceKind(declaration) : frameworkKind(annotations), name,
                     Map.of("annotations", String.join(",", annotations)), p(declaration.getStartPosition(), false));
             graph.edge(types.isEmpty() ? fileId : types.peek(), id, RelationKind.DECLARES, Map.of(), p(declaration.getStartPosition(), false));
             if (declaration.getSuperclassType() != null) relateType(id, declaration.getSuperclassType().toString(), RelationKind.EXTENDS, declaration.getStartPosition());
@@ -194,6 +195,7 @@ public final class JavaRepositoryAnalyzer {
                 String id = types.peek() + ".field:" + field;
                 graph.node(id, EntityKind.FIELD, field, Map.of("declaredType", declaration.getType().toString()), p(declaration.getStartPosition(), false));
                 graph.edge(types.peek(), id, RelationKind.DECLARES, Map.of(), p(declaration.getStartPosition(), false));
+                dependency(types.peek(), declaration.getType().resolveBinding(), declaration.getStartPosition());
             }
             return true;
         }
@@ -205,6 +207,9 @@ public final class JavaRepositoryAnalyzer {
             List<String> annotations = annotationNames(declaration.modifiers());
             graph.node(methodId, EntityKind.METHOD, name, Map.of("arity", Integer.toString(declaration.parameters().size()), "annotations", String.join(",", annotations)), p(declaration.getStartPosition(), false));
             graph.edge(types.peek(), methodId, RelationKind.DECLARES, Map.of(), p(declaration.getStartPosition(), false));
+            for (Object parameter : declaration.parameters()) {
+                if (parameter instanceof SingleVariableDeclaration variable) dependency(types.peek(), variable.getType().resolveBinding(), variable.getStartPosition());
+            }
             endpoint(declaration, annotations, methodId);
             kafkaListener(declaration, annotations, methodId);
             if (annotations.contains("Transactional")) {
@@ -286,6 +291,23 @@ public final class JavaRepositoryAnalyzer {
             return EntityKind.TYPE;
         }
 
+        private static EntityKind interfaceKind(TypeDeclaration declaration) {
+            boolean repository = declaration.superInterfaceTypes().stream()
+                    .anyMatch(value -> value.toString().endsWith("Repository") || value.toString().contains("Repository<"));
+            return repository ? EntityKind.REPOSITORY_COMPONENT : EntityKind.INTERFACE;
+        }
+
+        private void dependency(String ownerId, ITypeBinding binding, int position) {
+            if (binding == null || binding.isRecovered()) return;
+            ITypeBinding resolved = binding.getErasure();
+            String qualified = resolved.getQualifiedName();
+            if (qualified == null || qualified.isBlank() || qualified.equals("<null>")) return;
+            String targetId = "type:" + qualified;
+            graph.node(targetId, EntityKind.EXTERNAL_SYMBOL, qualified, Map.of("reason", "classpath-type"), p(position, false));
+            graph.edge(ownerId, targetId, RelationKind.DEPENDS_ON, Map.of("resolution", "JDT_BINDING", "bindingKey", resolved.getKey()),
+                    new Provenance("JDT_BINDING", 1.0, file, unit.getLineNumber(position), unit.getColumnNumber(position) + 1));
+        }
+
         private static List<String> annotationNames(List<?> modifiers) {
             return modifiers.stream().filter(Annotation.class::isInstance)
                     .map(Annotation.class::cast).map(annotation -> annotation.getTypeName().getFullyQualifiedName()).toList();
@@ -312,10 +334,9 @@ public final class JavaRepositoryAnalyzer {
 
     private static final class GraphBuilder {
         private final CodeGraph graph = new CodeGraph();
-        private final Set<String> nodeIds = new HashSet<>();
         CodeGraph graph() { return graph; }
         void node(String id, EntityKind kind, String name, Map<String, String> attributes, Provenance provenance) {
-            if (nodeIds.add(id)) graph.addNode(new GraphNode(id, kind, name, attributes, provenance));
+            graph.upsertNode(new GraphNode(id, kind, name, attributes, provenance));
         }
         void edge(String from, String to, RelationKind kind, Map<String, String> attributes, Provenance provenance) {
             graph.addEdge(new GraphEdge(from, to, kind, attributes, provenance));
