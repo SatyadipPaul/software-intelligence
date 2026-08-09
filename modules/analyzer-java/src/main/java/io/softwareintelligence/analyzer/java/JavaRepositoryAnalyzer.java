@@ -82,6 +82,7 @@ public final class JavaRepositoryAnalyzer {
         private final String fileId;
         private final GraphBuilder graph;
         private final Deque<String> types = new ArrayDeque<>();
+        private final Deque<String> typePaths = new ArrayDeque<>();
         private final Deque<String> methods = new ArrayDeque<>();
         private String packageName = "";
 
@@ -124,10 +125,11 @@ public final class JavaRepositoryAnalyzer {
                 graph.node(tableId, EntityKind.DATABASE_TABLE, table, Map.of("inferred", Boolean.toString(!annotations.contains("Table"))), p(declaration.getStartPosition(), false));
                 graph.edge(id, tableId, RelationKind.PERSISTS, Map.of(), p(declaration.getStartPosition(), false));
             }
+            typePaths.push(annotationArgument(declaration.modifiers(), "RequestMapping").orElse(""));
             return true;
         }
 
-        @Override public void endVisit(TypeDeclaration declaration) { types.pop(); }
+        @Override public void endVisit(TypeDeclaration declaration) { types.pop(); typePaths.pop(); }
 
         @Override public boolean visit(EnumDeclaration declaration) {
             String name = qualified(declaration.getName().getIdentifier());
@@ -135,10 +137,11 @@ public final class JavaRepositoryAnalyzer {
             graph.node(id, EntityKind.TYPE, name, Map.of("type", "enum"), p(declaration.getStartPosition(), false));
             graph.edge(types.isEmpty() ? fileId : types.peek(), id, RelationKind.DECLARES, Map.of(), p(declaration.getStartPosition(), false));
             types.push(id);
+            typePaths.push("");
             return true;
         }
 
-        @Override public void endVisit(EnumDeclaration declaration) { types.pop(); }
+        @Override public void endVisit(EnumDeclaration declaration) { types.pop(); typePaths.pop(); }
 
         @Override public boolean visit(FieldDeclaration declaration) {
             if (!types.isEmpty()) {
@@ -204,7 +207,7 @@ public final class JavaRepositoryAnalyzer {
                 case "PatchMapping" -> "PATCH";
                 default -> "REQUEST";
             };
-            String path = annotationArgument(declaration.modifiers(), mapping).orElse("/");
+            String path = joinPaths(typePaths.peek(), annotationArgument(declaration.modifiers(), mapping).orElse("/"));
             String endpointId = "endpoint:" + verb + ":" + path;
             graph.node(endpointId, EntityKind.ENDPOINT, verb + " " + path, Map.of("httpMethod", verb, "path", path), p(declaration.getStartPosition(), false));
             graph.edge(endpointId, methodId, RelationKind.EXPOSES, Map.of(), p(declaration.getStartPosition(), false));
@@ -239,6 +242,15 @@ public final class JavaRepositoryAnalyzer {
                         java.util.regex.Matcher value = java.util.regex.Pattern.compile("\\\"([^\\\"]+)\\\"").matcher(annotation.toString());
                         return value.find() ? java.util.Optional.of(value.group(1)) : java.util.Optional.empty();
                     });
+        }
+
+        private static String joinPaths(String base, String method) {
+            String left = base == null ? "" : base.trim();
+            String right = method == null ? "" : method.trim();
+            if (left.isEmpty()) return right.isEmpty() ? "/" : right;
+            if (right.isEmpty() || right.equals("/")) return left;
+            return (left.endsWith("/") ? left.substring(0, left.length() - 1) : left)
+                    + (right.startsWith("/") ? right : "/" + right);
         }
     }
 

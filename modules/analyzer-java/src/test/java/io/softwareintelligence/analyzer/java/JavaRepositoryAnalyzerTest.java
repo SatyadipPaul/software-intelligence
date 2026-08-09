@@ -24,7 +24,8 @@ class JavaRepositoryAnalyzerTest {
                 package demo;
                 import org.springframework.web.bind.annotation.RestController;
                 import org.springframework.web.bind.annotation.PostMapping;
-                @RestController public class PaymentController {
+                import org.springframework.web.bind.annotation.RequestMapping;
+                @RestController @RequestMapping("/api") public class PaymentController {
                   private PaymentService payments = new PaymentService();
                   @PostMapping(\"/payments/authorize\") public String authorize() { return payments.authorize(); }
                 }
@@ -33,13 +34,13 @@ class JavaRepositoryAnalyzerTest {
         CodeGraph graph = new JavaRepositoryAnalyzer().analyze(repository);
 
         assertEquals(EntityKind.SERVICE, graph.nodes().stream().filter(node -> node.id().equals("type:demo.PaymentService")).findFirst().orElseThrow().kind());
-        assertTrue(graph.edges().stream().anyMatch(edge -> edge.kind() == RelationKind.EXPOSES && edge.from().equals("endpoint:POST:/payments/authorize")));
+        assertTrue(graph.edges().stream().anyMatch(edge -> edge.kind() == RelationKind.EXPOSES && edge.from().equals("endpoint:POST:/api/payments/authorize")));
         assertTrue(graph.edges().stream().anyMatch(edge -> edge.kind() == RelationKind.CALLS && edge.to().equals("type:demo.PaymentService#authorize/0") && edge.provenance().resolver().equals("INTRA_REPOSITORY_SYMBOL")));
 
         var service = GraphQueries.findSymbol(graph, "PaymentService").orElseThrow();
         var impact = GraphQueries.impact(graph, service, 3);
         assertTrue(impact.direct().stream().anyMatch(path -> path.target().id().equals("type:demo.PaymentController#authorize/0")));
-        assertTrue(impact.transitive().stream().anyMatch(path -> path.target().id().equals("endpoint:POST:/payments/authorize")));
+        assertTrue(impact.transitive().stream().anyMatch(path -> path.target().id().equals("endpoint:POST:/api/payments/authorize")));
     }
 
     private static void write(Path directory, String file, String source) throws Exception {
