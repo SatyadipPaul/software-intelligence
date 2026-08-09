@@ -21,12 +21,12 @@ java -jar apps/cli/target/repo-intel.jar impact <spring-petclinic> VetRepository
 | Measurement | Result |
 | --- | ---: |
 | Java files | 49 total / 30 main / 19 test |
-| Indexing and JSON export | 1.08 seconds |
+| Indexing and JSON export, syntax-only | 1.08 seconds |
 | Graph nodes | 1,268 |
 | Graph edges | 2,424 |
-| Resolved in-repository call edges | 22 |
-| Explicitly unresolved call/type edges | 1,491 |
-| Resolution rate over resolved/unresolved edges | 1.45% |
+| Resolved in-repository call edges, syntax-only | 22 |
+| Explicitly unresolved call/type edges, syntax-only | 1,491 |
+| Resolution rate, syntax-only | 1.45% |
 | HTTP endpoints detected | 17 |
 | Controllers detected | 6 |
 | JPA entities detected | 6 |
@@ -35,9 +35,31 @@ java -jar apps/cli/target/repo-intel.jar impact <spring-petclinic> VetRepository
 
 The repository's own first Maven compile on the same local JDK took 84.24 seconds, including dependency resolution. Our source indexing completed in about 1.3% of that elapsed time. This is an operational comparison, not a claim that the analyzer replaces compilation.
 
+## Classpath-aware run
+
+The repository classpath was generated locally with:
+
+```powershell
+mvn dependency:build-classpath -Dmdep.outputFile=target/repo-intel.classpath -Dmdep.includeScope=test
+```
+
+That classpath was passed to the CLI using `--classpath`. JDT then resolved the complete source batch and its dependencies:
+
+| Measurement | Result |
+| --- | ---: |
+| Indexing and JSON export | 2.92 seconds |
+| Graph nodes | 834 |
+| Graph edges | 2,402 |
+| `JDT_BINDING` edges | 1,474 |
+| `INTRA_REPOSITORY_SYMBOL` edges | 0 |
+| Explicitly unresolved edges | 17 |
+| Resolution rate | 98.86% |
+
+The extra 1.84 seconds is the cost of compiler-grade bindings and is the appropriate tradeoff for high-confidence impact analysis.
+
 ## Verified impact examples
 
-`VetRepository` produced four direct callers, including `VetController.findPaginated`, with source ranges and resolver confidence 0.98. `VetController` produced two exposed routes. The analyzer also composes class-level mappings, for example:
+With classpath resolution, `VetRepository` produced seven direct callers and three transitive impacts, including `VetController.findPaginated`, both exposed routes, and test callers. Every call carried resolver confidence 1.00. `VetController` produced two exposed routes. The analyzer also composes class-level mappings, for example:
 
 ```text
 @RequestMapping("/owners/{ownerId}")
@@ -54,9 +76,31 @@ What is already effective:
 - Evidence-backed Spring route, transaction, entity, table, and impact facts.
 - In-repository resolution for calls whose receiver type is declared in source.
 
-The highest-value gap is now clear: Petclinic's interface/repository and framework wiring create many calls that require classpath-aware symbol resolution. The current 1.45% resolution rate is a measurement, not something to hide. The next milestone is Maven/Gradle classpath-aware JDT bindings, followed by interface dispatch and Spring dependency-injection resolution.
+The highest-value remaining gap is Spring dependency-injection semantics: the compiler can resolve a field's declared interface and methods, but it does not prove which runtime bean implementation Spring selects. The next milestone is interface dispatch normalization, bean wiring, and Maven/Gradle classpath discovery inside the Maven plugin.
+
+## Maven plugin run
+
+The plugin was installed to the local Maven repository and invoked against the same checkout without editing Petclinic's POM:
+
+```powershell
+mvn io.softwareintelligence:repo-intel-maven-plugin:0.1.0-SNAPSHOT:analyze
+mvn io.softwareintelligence:repo-intel-maven-plugin:0.1.0-SNAPSHOT:impact-check '-DrepoIntel.symbol=VetRepository'
+```
+
+The plugin uses Maven's resolved project classpath and excludes test sources by default:
+
+| Measurement | Result |
+| --- | ---: |
+| Plugin analysis wall time | 6.02 seconds |
+| Production nodes | 356 |
+| Production edges | 636 |
+| `JDT_BINDING` edges | 211 |
+| Explicitly unresolved edges | 16 |
+| `VetRepository` direct impacts | 2 |
+| `VetRepository` transitive impacts | 3 |
+
+The direct production callers were `VetController.findPaginated` and `VetController.showResourcesVetList`; the transitive impacts included `showVetList`, `GET /vets`, and `GET /vets.html`.
 
 ## Reproducibility
 
 The cloned source and generated graph are local benchmark artifacts under `work/benchmarks` and are intentionally not committed to the product repository. Re-run this benchmark against the pinned commit before and after each semantic-resolution change.
-

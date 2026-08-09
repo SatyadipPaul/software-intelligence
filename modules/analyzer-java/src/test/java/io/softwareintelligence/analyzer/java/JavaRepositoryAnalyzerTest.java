@@ -35,7 +35,8 @@ class JavaRepositoryAnalyzerTest {
 
         assertEquals(EntityKind.SERVICE, graph.nodes().stream().filter(node -> node.id().equals("type:demo.PaymentService")).findFirst().orElseThrow().kind());
         assertTrue(graph.edges().stream().anyMatch(edge -> edge.kind() == RelationKind.EXPOSES && edge.from().equals("endpoint:POST:/api/payments/authorize")));
-        assertTrue(graph.edges().stream().anyMatch(edge -> edge.kind() == RelationKind.CALLS && edge.to().equals("type:demo.PaymentService#authorize/0") && edge.provenance().resolver().equals("INTRA_REPOSITORY_SYMBOL")));
+        assertTrue(graph.edges().stream().anyMatch(edge -> edge.kind() == RelationKind.CALLS && edge.to().equals("type:demo.PaymentService#authorize/0")
+                && (edge.provenance().resolver().equals("JDT_BINDING") || edge.provenance().resolver().equals("INTRA_REPOSITORY_SYMBOL"))));
 
         var service = GraphQueries.findSymbol(graph, "PaymentService").orElseThrow();
         var impact = GraphQueries.impact(graph, service, 3);

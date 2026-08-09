@@ -8,6 +8,9 @@ import io.softwareintelligence.model.ImpactReport;
 import picocli.CommandLine;
 
 import java.nio.file.Path;
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 @CommandLine.Command(name = "impact", description = "Show source-backed direct and transitive impact for a Java symbol.")
@@ -21,9 +24,12 @@ final class ImpactCommand implements Callable<Integer> {
     @CommandLine.Option(names = {"-d", "--depth"}, defaultValue = "4", description = "Maximum transitive traversal depth")
     private int depth;
 
+    @CommandLine.Option(names = "--classpath", description = "Classpath entries separated by the platform path separator")
+    private String classpath;
+
     @Override public Integer call() throws Exception {
         if (depth < 1) throw new CommandLine.ParameterException(new CommandLine(this), "--depth must be at least 1");
-        CodeGraph graph = new JavaRepositoryAnalyzer().analyze(repository);
+        CodeGraph graph = new JavaRepositoryAnalyzer().analyze(repository, classpathEntries());
         var subject = GraphQueries.findSymbol(graph, symbol).orElseThrow(() -> new CommandLine.ParameterException(new CommandLine(this), "No symbol matched: " + symbol));
         ImpactReport impact = GraphQueries.impact(graph, subject, depth);
         System.out.printf("IMPACT: %s (%s)%n", subject.name(), subject.kind());
@@ -31,6 +37,12 @@ final class ImpactCommand implements Callable<Integer> {
         print("DIRECT", impact.direct());
         print("TRANSITIVE", impact.transitive());
         return 0;
+    }
+
+    private List<Path> classpathEntries() {
+        if (classpath == null || classpath.isBlank()) return List.of();
+        return Arrays.stream(classpath.split(java.util.regex.Pattern.quote(File.pathSeparator)))
+                .filter(value -> !value.isBlank()).map(Path::of).toList();
     }
 
     private static void print(String section, java.util.List<ImpactReport.ImpactPath> paths) {

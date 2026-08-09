@@ -47,7 +47,37 @@ docs/roadmap.md            Sequenced implementation roadmap and exit criteria
 
 ## Current coverage and boundary
 
-Implemented deterministic facts include Java files/packages/types/methods/fields/imports/inheritance, call edges resolvable from declared in-repository field types, Spring controllers/services/repositories/entities/configuration, HTTP mapping methods, transactions, Kafka listeners, and entity tables. A resolved edge is marked `INTRA_REPOSITORY_SYMBOL`; relationships that need a classpath or runtime model remain explicitly `JDT_AST_UNRESOLVED`.
+Implemented deterministic facts include Java files/packages/types/methods/fields/imports/inheritance, Spring controllers/services/repositories/entities/configuration, HTTP mapping methods, transactions, Kafka listeners, and entity tables. When a Maven/Gradle classpath is supplied, JDT resolves cross-file and library method bindings as `JDT_BINDING`; without a classpath, declared in-repository field calls use `INTRA_REPOSITORY_SYMBOL`. Remaining relationships are explicitly `JDT_AST_UNRESOLVED`.
+
+For a Maven project, generate a classpath and pass it to the analyzer:
+
+```powershell
+mvn dependency:build-classpath -Dmdep.outputFile=target/repo-intel.classpath -Dmdep.includeScope=test
+java -jar repo-intel.jar inspect . --classpath (Get-Content -Raw target/repo-intel.classpath)
+```
+
+## Maven build integration
+
+The local-first Maven plugin is built in `apps/maven-plugin`. Install the current snapshot locally with `mvn install`, then add it to a project:
+
+```xml
+<plugin>
+  <groupId>io.softwareintelligence</groupId>
+  <artifactId>repo-intel-maven-plugin</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <executions>
+    <execution><phase>verify</phase><goals><goal>analyze</goal></goals></execution>
+  </executions>
+</plugin>
+```
+
+It writes `target/repo-intel/repo-graph.json` using the Maven project's resolved compile classpath. For an explicit impact gate:
+
+```powershell
+mvn repo-intel:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
+```
+
+The plugin does not require Docker, a hosted graph, or source-code upload.
 
 The next semantic increment is Maven/Gradle classpath-aware JDT binding resolution. The project will not label that capability as complete until it is implemented and benchmarked.
 

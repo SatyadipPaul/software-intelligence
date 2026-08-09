@@ -12,6 +12,7 @@
     <module>modules/model</module>
     <module>modules/analyzer-java</module>
     <module>apps/cli</module>
+    <module>apps/maven-plugin</module>
   </modules>
 
   <properties>

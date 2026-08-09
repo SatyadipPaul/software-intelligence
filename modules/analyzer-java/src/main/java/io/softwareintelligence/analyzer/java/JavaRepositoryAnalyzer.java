@@ -14,7 +14,10 @@ import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.FileASTRequestor;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.PackageDeclaration;
@@ -26,8 +29,12 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -37,37 +44,75 @@ import java.util.stream.Stream;
  */
 public final class JavaRepositoryAnalyzer {
     public CodeGraph analyze(Path repository) throws IOException {
+        return analyze(repository, List.of(), true);
+    }
+
+    /**
+     * Analyze with optional Maven/Gradle classpath entries. When entries are provided JDT
+     * resolves bindings across the whole source batch; when absent, the same deterministic
+     * syntax pass still runs with only the running JDK boot classpath.
+     */
+    public CodeGraph analyze(Path repository, List<Path> classpathEntries) throws IOException {
+        return analyze(repository, classpathEntries, true);
+    }
+
+    public CodeGraph analyze(Path repository, List<Path> classpathEntries, boolean includeTests) throws IOException {
         Path root = repository.toAbsolutePath().normalize();
         GraphBuilder graph = new GraphBuilder();
         graph.node("repo:" + root, EntityKind.REPOSITORY, root.getFileName().toString(), Map.of(), new Provenance("FILESYSTEM", 1.0, "", 0, 0));
+        List<Path> sourceFiles;
         try (Stream<Path> files = Files.walk(root)) {
-            files.filter(path -> path.toString().endsWith(".java")).forEach(path -> parse(root, path, graph));
+            sourceFiles = files.filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> includeTests || !isTestSource(path))
+                    .map(Path::toAbsolutePath).map(Path::normalize).toList();
         }
+        if (sourceFiles.isEmpty()) return graph.graph();
+        ASTParser parser = ASTParser.newParser(AST.JLS25);
+        parser.setKind(ASTParser.K_COMPILATION_UNIT);
+        parser.setResolveBindings(true);
+        parser.setBindingsRecovery(true);
+        Map<String, String> compilerOptions = JavaCore.getOptions();
+        JavaCore.setComplianceOptions(JavaCore.VERSION_25, compilerOptions);
+        parser.setCompilerOptions(compilerOptions);
+        List<Path> sourceRoots = sourceRoots(root, sourceFiles);
+        String[] classpath = classpathEntries.isEmpty() ? null : classpathEntries.stream().map(path -> path.toAbsolutePath().normalize().toString()).toArray(String[]::new);
+        parser.setEnvironment(classpath, sourceRoots.stream().map(Path::toString).toArray(String[]::new), null, true);
+        String[] paths = sourceFiles.stream().map(Path::toString).toArray(String[]::new);
+        parser.createASTs(paths, null, new String[0], new FileASTRequestor() {
+            @Override public void acceptAST(String sourceFilePath, CompilationUnit unit) {
+                Path sourcePath = Path.of(sourceFilePath).toAbsolutePath().normalize();
+                String relative = root.relativize(sourcePath).toString().replace('\\', '/');
+                String fileId = "file:" + relative;
+                graph.node(fileId, EntityKind.FILE, relative, Map.of(), provenance(unit, 0, relative, false));
+                graph.edge("repo:" + root, fileId, RelationKind.CONTAINS, Map.of(), provenance(unit, 0, relative, false));
+                unit.accept(new Collector(unit, relative, fileId, graph));
+            }
+        }, null);
         new IntraRepositoryResolver().resolve(graph.graph());
         return graph.graph();
     }
 
-    private void parse(Path root, Path path, GraphBuilder graph) {
-        try {
-            String source = Files.readString(path);
-            String relative = root.relativize(path.toAbsolutePath()).toString().replace('\\', '/');
-            String fileId = "file:" + relative;
-            ASTParser parser = ASTParser.newParser(AST.JLS25);
-            parser.setKind(ASTParser.K_COMPILATION_UNIT);
-            parser.setSource(source.toCharArray());
-            Map<String, String> compilerOptions = JavaCore.getOptions();
-            JavaCore.setComplianceOptions(JavaCore.VERSION_25, compilerOptions);
-            parser.setCompilerOptions(compilerOptions);
-            parser.setUnitName(path.getFileName().toString());
-            parser.setResolveBindings(false);
-            parser.setBindingsRecovery(true);
-            CompilationUnit unit = (CompilationUnit) parser.createAST(null);
-            graph.node(fileId, EntityKind.FILE, relative, Map.of(), provenance(unit, 0, relative, false));
-            graph.edge("repo:" + root, fileId, RelationKind.CONTAINS, Map.of(), provenance(unit, 0, relative, false));
-            unit.accept(new Collector(unit, relative, fileId, graph));
-        } catch (IOException failure) {
-            throw new IllegalStateException("Could not analyze " + path, failure);
+    private static List<Path> sourceRoots(Path root, List<Path> sourceFiles) {
+        Set<Path> roots = new LinkedHashSet<>();
+        for (Path file : sourceFiles) {
+            Path cursor = file.getParent();
+            boolean foundJavaRoot = false;
+            while (cursor != null && cursor.startsWith(root)) {
+                if (cursor.getFileName() != null && cursor.getFileName().toString().equals("java")) {
+                    roots.add(cursor);
+                    foundJavaRoot = true;
+                    break;
+                }
+                cursor = cursor.getParent();
+            }
+            if (!foundJavaRoot) roots.add(root);
         }
+        return List.copyOf(roots);
+    }
+
+    private static boolean isTestSource(Path path) {
+        String normalized = path.toString().replace('\\', '/');
+        return normalized.contains("/src/test/") || normalized.contains("/src/it/") || normalized.contains("/test/");
     }
 
     private static Provenance provenance(CompilationUnit unit, int offset, String file, boolean unresolved) {
@@ -175,6 +220,17 @@ public final class JavaRepositoryAnalyzer {
 
         @Override public boolean visit(MethodInvocation invocation) {
             if (methods.isEmpty()) return true;
+            IMethodBinding binding = invocation.resolveMethodBinding();
+            if (binding != null && !binding.isRecovered() && binding.getDeclaringClass() != null) {
+                IMethodBinding declaration = binding.getMethodDeclaration();
+                ITypeBinding declaringType = declaration.getDeclaringClass();
+                String methodName = declaration.isConstructor() ? "<init>" : declaration.getName();
+                String targetId = "type:" + declaringType.getQualifiedName() + "#" + methodName + "/" + declaration.getParameterTypes().length;
+                graph.node(targetId, EntityKind.METHOD, methodName, Map.of("bindingKey", declaration.getKey(), "resolved", "true"), p(invocation.getStartPosition(), false));
+                graph.edge(methods.peek(), targetId, RelationKind.CALLS, Map.of("resolution", "JDT_BINDING", "bindingKey", declaration.getKey()),
+                        new Provenance("JDT_BINDING", 1.0, file, unit.getLineNumber(invocation.getStartPosition()), unit.getColumnNumber(invocation.getStartPosition()) + 1));
+                return true;
+            }
             String receiver = invocation.getExpression() == null ? "" : invocation.getExpression() + ".";
             String target = receiver + invocation.getName().getIdentifier() + "/" + invocation.arguments().size();
             String targetId = "external:call:" + target;

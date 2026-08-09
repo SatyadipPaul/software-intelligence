@@ -9,6 +9,9 @@ import picocli.CommandLine;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 @CommandLine.Command(name = "inspect", description = "Analyze a Java repository and write a canonical graph JSON file.")
@@ -19,13 +22,22 @@ final class InspectCommand implements Callable<Integer> {
     @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "repo-graph.json", description = "Output JSON file")
     private Path output;
 
+    @CommandLine.Option(names = "--classpath", description = "Classpath entries separated by the platform path separator")
+    private String classpath;
+
     @Override public Integer call() throws IOException {
-        CodeGraph graph = new JavaRepositoryAnalyzer().analyze(repository);
+        CodeGraph graph = new JavaRepositoryAnalyzer().analyze(repository, classpathEntries());
         Path destination = output.toAbsolutePath();
         if (destination.getParent() != null) Files.createDirectories(destination.getParent());
         Files.writeString(destination, JsonGraphWriter.write(graph));
         System.out.printf("Wrote %d nodes and %d edges to %s%n", graph.nodes().size(), graph.edges().size(), destination);
         return 0;
+    }
+
+    private List<Path> classpathEntries() {
+        if (classpath == null || classpath.isBlank()) return List.of();
+        return Arrays.stream(classpath.split(java.util.regex.Pattern.quote(File.pathSeparator)))
+                .filter(value -> !value.isBlank()).map(Path::of).toList();
     }
 
     private static final class JsonGraphWriter {

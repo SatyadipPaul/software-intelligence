@@ -9,14 +9,17 @@
 
 **Exit criterion:** a source relationship always links back to a file location and confidence level.
 
-## Milestone 1 — compiler-grade Java semantics
+## Milestone 1 — compiler-grade Java semantics (in progress)
 
 - Build Maven/Gradle classpaths.
-- Resolve JDT bindings for overloads, implementations, overrides, fields, constructors, and exceptions.
+- Resolve JDT bindings for cross-file calls, overloads, implementations, fields, constructors, and library types when a Maven/Gradle classpath is supplied.
 - Import SCIP data when available; reconcile it into canonical identities.
+- Maven plugin classpath discovery and local `analyze`/`impact-check` goals.
 - Add schema versioning and graph snapshots.
 
-**Exit criterion:** resolved edges have exact target symbols; unresolved edges remain separately queryable.
+**Current result:** Spring Petclinic improved from 1.45% to 98.86% resolved call/type edges with its Maven classpath.
+
+**Remaining exit work:** interface dispatch normalization, overrides/exceptions, Gradle classpath discovery, and Spring bean wiring.
 
 ## Milestone 2 — framework and operational model
 

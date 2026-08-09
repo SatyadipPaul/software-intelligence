@@ -10,6 +10,8 @@ import io.softwareintelligence.model.RelationKind;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Resolves calls whose receiver and target are provable from source declared in the same repository. */
 final class IntraRepositoryResolver {
@@ -17,6 +19,7 @@ final class IntraRepositoryResolver {
         Map<String, String> typesBySimpleName = new HashMap<>();
         Map<String, String> fieldsByOwnerAndName = new HashMap<>();
         Map<String, String> methods = new HashMap<>();
+        Set<String> resolvedCalls = new HashSet<>();
         for (GraphNode node : graph.nodes()) {
             if (isType(node)) typesBySimpleName.putIfAbsent(simpleName(node.name()), node.id());
             if (node.kind() == EntityKind.FIELD) {
@@ -25,6 +28,8 @@ final class IntraRepositoryResolver {
             }
             if (node.kind() == EntityKind.METHOD) methods.put(node.id(), node.id());
         }
+        graph.edges().stream().filter(edge -> edge.kind() == RelationKind.CALLS && !edge.to().startsWith("external:"))
+                .forEach(edge -> resolvedCalls.add(edge.from() + "|" + edge.to()));
 
         List<GraphEdge> calls = graph.edges().stream().filter(edge -> edge.kind() == RelationKind.CALLS && edge.to().startsWith("external:call:")).toList();
         for (GraphEdge call : calls) {
@@ -41,6 +46,7 @@ final class IntraRepositoryResolver {
             if (resolvedType == null) continue;
             String resolvedMethod = methods.get(resolvedType + "#" + methodAndArity);
             if (resolvedMethod == null) continue;
+            if (!resolvedCalls.add(call.from() + "|" + resolvedMethod)) continue;
             Provenance p = call.provenance();
             graph.addEdge(new GraphEdge(call.from(), resolvedMethod, RelationKind.CALLS,
                     Map.of("resolution", "field-declared-type"),
