@@ -2,6 +2,8 @@
 
 An evidence-first, Java-first repository intelligence engine. It is designed to become a verified software model—code, framework, architecture, domain, runtime, and change impact—not merely a code graph or an LLM wrapper.
 
+This is a local-first product. The analyzer, graph, evidence, reports, and cache stay on disk. Docker and hosted services are optional integrations, never prerequisites.
+
 The current 0.1 slice is executable and intentionally evidence-first. It builds a deterministic Java graph with provenance for every relationship, recognizes Java/Spring operational concepts, resolves calls proven from in-repository declarations, and runs source-backed change-impact analysis. This gives the project a trustworthy base before adding graph storage, optional LLM enrichment, or a UI.
 
 ## Quick start
@@ -38,6 +40,7 @@ docs/roadmap.md            Sequenced implementation roadmap and exit criteria
 ## Design principles
 
 - Deterministic analysis first; LLMs are optional downstream consumers.
+- Local disk first; no Docker dependency and no source upload required.
 - Every relation is source-backed, and unresolved facts stay explicitly unresolved.
 - Retrieve minimum sufficient evidence rather than entire files or communities.
 - Treat impact analysis and verified answers as product capabilities built on the same model.

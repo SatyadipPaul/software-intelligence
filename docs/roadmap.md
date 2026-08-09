@@ -5,6 +5,7 @@
 - Canonical repository IR with source provenance.
 - Java AST ingestion and CLI JSON export.
 - Fixture repository for repeatable development.
+- Local filesystem operation without Docker or external services.
 
 **Exit criterion:** a source relationship always links back to a file location and confidence level.
 
@@ -47,4 +48,3 @@
 - Generate claims linked to graph evidence; verify citations before presenting an answer.
 
 **Exit criterion:** answers identify their supporting symbols and source ranges; unsupported claims are withheld or labeled.
-

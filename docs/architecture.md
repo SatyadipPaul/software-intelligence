@@ -4,6 +4,12 @@
 
 This repository implements a software-intelligence model for Java-first engineering teams. It does not attempt to be a generic chatbot or a graph visualizer. Its foundational responsibility is to construct a deterministic, inspectable, provenance-bearing model that downstream features can trust.
 
+## Local-first invariant
+
+The analyzer, graph, evidence, reports, cache, and optional semantic enrichment all run on local disk by default. Docker, a hosted graph database, a hosted control plane, and external LLM APIs are never required for core functionality. A repository can be analyzed in an air-gapped environment with no source-code upload.
+
+Distribution targets are therefore native/local artifacts: a standalone JAR or native executable, a Maven plugin that runs inside the customer build, and later a Gradle plugin. Containers may be offered as an optional CI convenience, but the product must never depend on them.
+
 ## Layers
 
 ```text
@@ -29,7 +35,7 @@ The same analyzer recognizes Spring stereotypes, HTTP mapping methods, transacti
 
 - A relation is never emitted without source evidence.
 - Unresolved is a valid state, never silently represented as resolved.
-- Deterministic analysis works with no LLM credentials or outbound data transfer.
+- Deterministic analysis works with no LLM credentials, Docker, or outbound data transfer.
 - Enrichment can add claims but cannot overwrite deterministic evidence.
 - The graph model precedes GraphRAG; GraphRAG is one consumer.
 
