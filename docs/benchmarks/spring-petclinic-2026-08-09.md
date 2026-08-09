@@ -210,4 +210,7 @@ expectations: the `@Table` defect above, and a context packet with no forward vi
 
 ## Reproducibility
 
-The cloned source and generated graph are local benchmark artifacts under `work/benchmarks` and are intentionally not committed to the product repository. Re-run this benchmark against the pinned commit before and after each semantic-resolution change.
+The cloned source and the generated graph are local benchmark artifacts. Clone the pinned commit
+anywhere outside this repository and keep both out of version control; nothing here depends on where
+they live. Re-run this benchmark against the pinned commit before and after each semantic-resolution
+change.
