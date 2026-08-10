@@ -56,7 +56,8 @@ modules/architecture/        Modules, centrality, communities, workflows, capabi
 modules/query-engine/        BM25 retrieval, query planning, budgets, answer verification
 modules/evaluation/          Grounded question format, harness, and scoring
 modules/pipeline/            Layer composition and build classpath discovery
-evaluation/*.questions.tsv   Grounded question sets with verified answers
+modules/visualization/       Self-contained HTML view and GraphML/DOT/Cytoscape exports
+evaluation/*.questions.tsv   Grounded question sets: sample-commerce, Petclinic, jackson-databind, junit5
 fixtures/sample-commerce/    Small checkout flow for local smoke testing
 docs/architecture.md         Product architecture and invariants
 docs/roadmap.md              Sequenced implementation roadmap and exit criteria

@@ -162,6 +162,34 @@ class EnrichmentTest {
         assertTrue(packet.facts().get("declaredAt").contains("A.java:9"));
     }
 
+    @Test void a_library_symbol_this_repository_only_calls_is_not_an_enrichment_candidate() {
+        CodeGraph graph = graph();
+        // A called library method is recorded as a METHOD, not an EXTERNAL_SYMBOL, so kind alone
+        // cannot tell it from our own code. Heavily used ones would otherwise dominate the budget.
+        graph.upsertNode(new GraphNode("type:org.junit.jupiter.api.Assertions#assertEquals(java.lang.Object)",
+                EntityKind.METHOD, "assertEquals", Map.of("resolved", "true"), SOURCE));
+        for (int i = 0; i < 30; i++) {
+            graph.upsertNode(new GraphNode("type:demo.T" + i + "#t()", EntityKind.METHOD, "t", Map.of(), SOURCE));
+            graph.addEdge(new GraphEdge("type:demo.T" + i + "#t()",
+                    "type:org.junit.jupiter.api.Assertions#assertEquals(java.lang.Object)", RelationKind.CALLS, Map.of(), SOURCE));
+        }
+
+        List<EnrichmentPlanner.Candidate> ranked = EnrichmentPlanner.rank(graph);
+
+        assertTrue(ranked.stream().noneMatch(candidate -> candidate.id().contains("org.junit")),
+                "a library this repository merely calls must not be enriched: " + ranked);
+    }
+
+    @Test void a_symbol_this_repository_declares_is_a_candidate() {
+        CodeGraph graph = graph();
+        graph.upsertNode(new GraphNode("type:demo.Service#run()", EntityKind.METHOD, "run", Map.of(), SOURCE));
+        graph.addEdge(new GraphEdge("type:demo.Service", "type:demo.Service#run()", RelationKind.DECLARES, Map.of(), SOURCE));
+        graph.addEdge(new GraphEdge("type:demo.Controller", "type:demo.Service#run()", RelationKind.CALLS, Map.of(),
+                new Provenance("DISPATCH_NORMALIZED", 0.6, "A.java", 3, 1)));
+
+        assertTrue(EnrichmentPlanner.rank(graph).stream().anyMatch(candidate -> candidate.id().equals("type:demo.Service#run()")));
+    }
+
     private static EnrichmentClaims.Claim claim(String subject, EnrichmentClaims.ClaimKind kind, String value,
                                                 double confidence, VerifiedAnswer.Citation... citations) {
         return new EnrichmentClaims.Claim(subject, kind, value, List.of(citations), "haiku", confidence);

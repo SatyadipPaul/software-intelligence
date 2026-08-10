@@ -164,6 +164,21 @@ tool - `BeforeEachCallback` is declared on line 67, not 32. Worth recording as t
 hand-written ground truth: it is slow and error-prone, which is exactly why generating it from tool
 output is so tempting and so useless.
 
+## One more defect, from probing at scale
+
+**10. Enrichment planned to spend the budget on someone else's library.** Ranking candidates on the
+jackson graph put `org.junit.jupiter.api.Assertions#assertEquals` first, with 5,979 references. A
+library method called from this repository is recorded as a `METHOD`, not an `EXTERNAL_SYMBOL`, so
+kind alone cannot tell it from our own code, and the most-used foreign API wins on reference count
+every time. Candidates are now restricted to symbols this repository declares. jackson's top
+candidates became `ObjectMapper.readValue` and its own collection internals.
+
+Test coverage was the common thread through all ten: `modules/pipeline` had no tests when its
+discovery broke, `modules/evaluation` had none, and `apps/cli` had none when its graph-file
+detection silently returned empty graphs. Every module and application now has tests - 125 in
+total - and the harness itself is tested for the ability to *fail*, since a scorer that always
+returns 1.0 would make every benchmark in this document meaningless while looking perfect.
+
 ## What this run did not test
 
 Honest boundaries, since the point of this document is to stop overclaiming from a narrow sample:

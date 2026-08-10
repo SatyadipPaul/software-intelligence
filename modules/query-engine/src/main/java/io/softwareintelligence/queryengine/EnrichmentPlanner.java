@@ -52,6 +52,11 @@ public final class EnrichmentPlanner {
         for (GraphNode node : graph.nodes()) {
             if (node.kind() == EntityKind.EXTERNAL_SYMBOL || node.kind() == EntityKind.FILE
                     || node.kind() == EntityKind.PACKAGE || node.kind() == EntityKind.REPOSITORY) continue;
+            // A library method called from this repository is recorded as a METHOD, not as an
+            // EXTERNAL_SYMBOL, so kind alone does not tell them apart. Without this, the top
+            // enrichment candidate for jackson-databind is JUnit's assertEquals with 5,979
+            // references: a whole token budget spent describing someone else's library.
+            if (!isDeclaredHere(graph, node)) continue;
             List<GraphEdge> incoming = graph.incoming(node.id());
             List<GraphEdge> outgoing = graph.outgoing(node.id());
             int downstream = incoming.size();
@@ -70,6 +75,21 @@ public final class EnrichmentPlanner {
         return candidates.stream()
                 .sorted(Comparator.comparingDouble(Candidate::score).reversed().thenComparing(Candidate::id))
                 .toList();
+    }
+
+    /**
+     * True when this repository declares the symbol, rather than merely calling it.
+     *
+     * <p>Derived facts such as modules, workflows, and capabilities have no declaring edge but are
+     * this repository's own, so they qualify too.
+     */
+    private static boolean isDeclaredHere(CodeGraph graph, GraphNode node) {
+        return switch (node.kind()) {
+            case MODULE, WORKFLOW, BUSINESS_CAPABILITY, ENDPOINT, TOPIC, DATABASE_TABLE,
+                 SECURITY_GUARD, EXTERNAL_SERVICE, CONFIGURATION_PROPERTY, TRANSACTION -> true;
+            default -> graph.incoming(node.id()).stream()
+                    .anyMatch(edge -> edge.kind() == RelationKind.DECLARES || edge.kind() == RelationKind.CONTAINS);
+        };
     }
 
     /** A stable estimate of the prompt cost of describing one symbol, in tokens. */

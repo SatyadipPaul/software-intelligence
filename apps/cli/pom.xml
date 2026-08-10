@@ -14,6 +14,7 @@
     <dependency><groupId>io.softwareintelligence</groupId><artifactId>evaluation</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.softwareintelligence</groupId><artifactId>visualization</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>4.7.6</version></dependency>
+    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
   </dependencies>
   <build>
     <plugins>
