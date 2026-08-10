@@ -40,6 +40,46 @@ class QueryEngineTest {
                 index.search("payment", 5).stream().map(hit -> hit.node().id()).toList());
     }
 
+    @Test void question_words_do_not_score_as_search_terms() {
+        CodeGraph graph = paymentsGraph();
+        graph.upsertNode(new GraphNode("type:demo.Flags.field:FAIL_ON", EntityKind.FIELD, "FAIL_ON", Map.of(), SOURCE));
+        Bm25Index index = Bm25Index.over(graph);
+
+        List<Bm25Index.Hit> hits = index.search("what does PaymentService depend on?", 5);
+
+        assertEquals("type:demo.PaymentService", hits.get(0).node().id(), hits.toString());
+        assertTrue(hits.stream().noneMatch(hit -> hit.node().id().contains("FAIL_ON")),
+                "'on' must not make an unrelated constant a top result");
+    }
+
+    @Test void a_type_outranks_a_field_that_merely_mentions_its_name() {
+        CodeGraph graph = paymentsGraph();
+        graph.upsertNode(new GraphNode("type:demo.SomeTest.field:paymentService", EntityKind.FIELD, "paymentService", Map.of(), SOURCE));
+        Bm25Index index = Bm25Index.over(graph);
+
+        List<Bm25Index.Hit> hits = index.search("PaymentService", 5);
+
+        assertEquals("type:demo.PaymentService", hits.get(0).node().id(), hits.toString());
+    }
+
+    @Test void compression_keeps_the_evidence_that_touches_the_subject() {
+        CodeGraph graph = paymentsGraph();
+        // An unrelated edge sorts last by id but is equally confident; a confidence-only sort would
+        // have kept it and dropped the one the question is actually about.
+        graph.upsertNode(new GraphNode("type:zzz.Unrelated", EntityKind.TYPE, "zzz.Unrelated", Map.of(), SOURCE));
+        graph.upsertNode(new GraphNode("type:zzz.Other", EntityKind.TYPE, "zzz.Other", Map.of(), SOURCE));
+        graph.addEdge(new GraphEdge("type:zzz.Unrelated", "type:zzz.Other", RelationKind.CALLS, Map.of(), SOURCE));
+        ContextPacket packet = GraphQueries.context(graph, graph.node("type:demo.PaymentService").orElseThrow(), 3);
+
+        ContextPacket compressed = QueryPlanner.compress(packet, 20);
+
+        assertFalse(compressed.evidence().isEmpty());
+        assertTrue(compressed.evidence().stream().allMatch(edge ->
+                        edge.from().startsWith("type:demo.") || edge.to().startsWith("type:demo.")
+                                || edge.from().startsWith("endpoint:") || edge.to().startsWith("endpoint:")),
+                "surviving evidence must concern the subject: " + compressed.evidence());
+    }
+
     @Test void questions_are_classified_by_intent() {
         assertEquals(QueryPlanner.QueryKind.IMPACT, QueryPlanner.classify("what breaks if I remove PaymentService?").kind());
         assertEquals(QueryPlanner.QueryKind.ENDPOINT, QueryPlanner.classify("which REST endpoints exist?").kind());

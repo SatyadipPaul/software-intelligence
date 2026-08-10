@@ -43,7 +43,7 @@ final class VisualizeCommand implements Callable<Integer> {
     @CommandLine.Option(names = "--depth", description = "Traversal depth for --scope SYMBOL", defaultValue = "3")
     private int depth;
 
-    @CommandLine.Option(names = "--max-nodes", description = "Most nodes to draw before keeping only the highest-degree", defaultValue = "1200")
+    @CommandLine.Option(names = "--max-nodes", description = "Most nodes to draw before keeping only the highest-degree", defaultValue = "500")
     private int maxNodes;
 
     @CommandLine.Mixin private AnalysisOptions options;

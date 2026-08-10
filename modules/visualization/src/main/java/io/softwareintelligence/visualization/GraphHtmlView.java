@@ -23,8 +23,12 @@ import java.util.Map;
  * slider lets a reader see exactly how much of a picture rests on inference rather than proof.
  */
 public final class GraphHtmlView {
-    /** Above this, a force layout stops being readable and starts being a hairball. */
-    public static final int DEFAULT_MAX_NODES = 1200;
+    /**
+     * Above this, a force layout stops being readable and starts being a hairball - and, measured
+     * on jackson-databind, 1200 nodes cost 12 seconds of layout before the page would paint. A
+     * graph larger than this belongs in GraphML and a dedicated tool, which the CLI says on stderr.
+     */
+    public static final int DEFAULT_MAX_NODES = 500;
 
     private GraphHtmlView() { }
 
@@ -221,7 +225,9 @@ public final class GraphHtmlView {
             // Fixed-iteration force layout. Cheap, deterministic, and good enough at this scale;
             // anything larger belongs in the JSON export and a real graph tool.
             (function layout() {
-              const iterations = N > 600 ? 180 : 320;
+              // Repulsion is O(N^2) per iteration, so the iteration count comes down as N rises.
+              // The product is held near a fixed budget: a big graph converges less, but it opens.
+              const iterations = Math.max(60, Math.min(320, Math.floor(45000000 / Math.max(N * N, 1))));
               const k = Math.sqrt(360000 / Math.max(N, 1));
               for (let step = 0; step < iterations; step++) {
                 const temperature = 1 - step / iterations;

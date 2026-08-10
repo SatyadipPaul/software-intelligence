@@ -53,8 +53,23 @@ public final class Bm25Index {
         averageLength = terms.stream().mapToInt(counts -> counts.values().stream().mapToInt(Integer::intValue).sum()).average().orElse(1.0);
     }
 
+    /**
+     * English words that carry no signal but collide with real identifiers. Removed from queries
+     * only, never from the index: a symbol genuinely called {@code on} should still be findable by
+     * its id, and removing index terms would change what "the document contains" means.
+     */
+    private static final java.util.Set<String> QUESTION_WORDS = java.util.Set.of(
+            "what", "which", "who", "whom", "whose", "where", "when", "why", "how", "does", "do", "did",
+            "is", "are", "was", "were", "be", "been", "am", "the", "a", "an", "of", "on", "in", "to",
+            "for", "from", "by", "with", "and", "or", "not", "this", "that", "these", "those", "it",
+            "its", "as", "at", "any", "all", "can", "could", "should", "would", "will", "there", "here",
+            "me", "my", "our", "us", "you", "your", "if", "then", "than", "about", "into", "over", "use",
+            "used", "uses", "using", "get", "gets", "have", "has", "had", "list", "show", "tell");
+
     public List<Hit> search(String query, int limit) {
-        List<String> queryTerms = tokenize(query);
+        List<String> queryTerms = tokenize(query).stream()
+                .filter(term -> !QUESTION_WORDS.contains(term)).toList();
+        if (queryTerms.isEmpty()) queryTerms = tokenize(query);
         if (queryTerms.isEmpty()) return List.of();
         int count = documents.size();
         List<Hit> hits = new ArrayList<>();
@@ -69,12 +84,30 @@ public final class Bm25Index {
                 double idf = Math.log(1 + (count - containing + 0.5) / (containing + 0.5));
                 score += idf * (frequency * (K1 + 1)) / (frequency + K1 * (1 - B + B * length / averageLength));
             }
-            if (score > 0) hits.add(new Hit(documents.get(i), score));
+            if (score > 0) hits.add(new Hit(documents.get(i), score * prior(documents.get(i))));
         }
         // Ties break on id so the same query always returns the same ordering.
         return hits.stream()
                 .sorted(Comparator.comparingDouble(Hit::score).reversed().thenComparing(hit -> hit.node().id()))
                 .limit(limit).toList();
+    }
+
+    /**
+     * A weight by what kind of thing a symbol is. Retrieval answers "which symbol does this question
+     * concern", and a type is more often the answer than one of the hundreds of test fields that
+     * merely mention its name. Applied after scoring so it reorders rather than filters.
+     */
+    private static double prior(GraphNode node) {
+        return switch (node.kind()) {
+            case CONTROLLER, SERVICE, REPOSITORY_COMPONENT, ENTITY, CONFIGURATION,
+                 ENDPOINT, TOPIC, DATABASE_TABLE, BUSINESS_CAPABILITY, WORKFLOW,
+                 SECURITY_GUARD, EXTERNAL_SERVICE, CONFIGURATION_PROPERTY, MODULE -> 1.30;
+            case TYPE, INTERFACE -> 1.15;
+            case METHOD -> 1.00;
+            case FIELD -> 0.60;
+            case FILE, PACKAGE, REPOSITORY -> 0.50;
+            default -> 0.80;
+        };
     }
 
     private static String text(GraphNode node) {

@@ -40,11 +40,12 @@ public final class Modules {
         if (types.isEmpty()) return List.of();
 
         Map<String, String> sourceRootOf = sourceRoots(graph);
+        Map<String, String> packageOf = packages(graph);
         boolean multiModule = new TreeSet<>(sourceRootOf.values()).size() > 1;
         for (GraphNode type : types) {
             String name = multiModule
                     ? sourceRootOf.getOrDefault(type.id(), "<root>")
-                    : packageGroup(type.name());
+                    : packageOf.getOrDefault(type.id(), "<default>");
             moduleOfType.put(type.id(), name);
             typesByModule.computeIfAbsent(name, ignored -> new ArrayList<>()).add(type.id());
         }
@@ -97,9 +98,60 @@ public final class Modules {
         return roots;
     }
 
-    /** The package one level below the longest prefix shared by every type. */
-    private static String packageGroup(String qualifiedName) {
-        int lastDot = qualifiedName.lastIndexOf('.');
-        return lastDot < 0 ? "<default>" : qualifiedName.substring(0, lastDot);
+    /**
+     * Maps each type to the package its declaring file declares.
+     *
+     * <p>Read from the graph rather than parsed out of the qualified name: a nested type is named
+     * {@code pkg.Outer.Inner}, so trimming the last segment would make every outer class look like
+     * its own package - and, before this was fixed, its own module.
+     */
+    private static Map<String, String> packages(CodeGraph graph) {
+        Map<String, String> packageOfFile = new LinkedHashMap<>();
+        for (GraphNode node : graph.nodes()) {
+            if (node.kind() != EntityKind.FILE) continue;
+            for (GraphEdge edge : graph.outgoing(node.id())) {
+                if (edge.kind() == RelationKind.DECLARES && edge.to().startsWith("package:")) {
+                    packageOfFile.put(node.id(), edge.to().substring("package:".length()));
+                }
+            }
+        }
+        Map<String, String> packageOfType = new LinkedHashMap<>();
+        for (GraphNode node : graph.nodes()) {
+            if (!Communities.isRepositoryType(graph, node)) continue;
+            String owner = declaringFile(graph, node.id(), 0);
+            String declared = owner == null ? null : packageOfFile.get(owner);
+            packageOfType.put(node.id(), declared != null ? declared : packageFromName(node.name()));
+        }
+        return packageOfType;
+    }
+
+    /**
+     * The package part of a qualified name, for a graph that carries no package declaration - a
+     * snapshot from an older schema, or a type in the default package.
+     *
+     * <p>Uses Java's own naming convention rather than "everything before the last dot": package
+     * segments are lower case and type segments are capitalized, so {@code perf.MediaItem.Content}
+     * yields {@code perf} and not {@code perf.MediaItem}.
+     */
+    private static String packageFromName(String qualifiedName) {
+        StringBuilder packageName = new StringBuilder();
+        for (String segment : qualifiedName.split("\\.")) {
+            if (segment.isEmpty() || Character.isUpperCase(segment.charAt(0))) break;
+            if (packageName.length() > 0) packageName.append('.');
+            packageName.append(segment);
+        }
+        return packageName.length() == 0 ? "<default>" : packageName.toString();
+    }
+
+    /** Walks DECLARES upwards from a type, through any enclosing types, to the file that holds it. */
+    private static String declaringFile(CodeGraph graph, String id, int depth) {
+        if (depth > 16) return null;
+        for (GraphEdge edge : graph.incoming(id)) {
+            if (edge.kind() != RelationKind.DECLARES) continue;
+            if (edge.from().startsWith("file:")) return edge.from();
+            String enclosing = declaringFile(graph, edge.from(), depth + 1);
+            if (enclosing != null) return enclosing;
+        }
+        return null;
     }
 }

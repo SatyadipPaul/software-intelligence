@@ -59,6 +59,11 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 
 **Exit criterion:** every claimed quality improvement has a reproducible benchmark result.
 
+**Generalization:** the analyzer is now exercised on jackson-databind (Maven, no framework, extreme
+generics) and junit5 (Gradle Kotlin DSL, 27 source roots), which found four defects invisible on
+Spring Petclinic. See [the generalization benchmark](benchmarks/generalization-2026-08-10.md).
+Neither has a grounded question set yet, so answer quality outside Spring is still unmeasured.
+
 ## Milestone 5 — selective semantic enrichment and verified answers
 
 - Rank enrichment candidates using centrality, ambiguity, downstream impact, query likelihood, and token cost.

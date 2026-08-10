@@ -76,8 +76,13 @@ public final class QueryPlanner {
         packet.endpoints().forEach(node -> keep.add(node.id()));
         packet.dependencies().forEach(node -> keep.add(node.id()));
 
-        evidence.sort(Comparator.comparingDouble((GraphEdge edge) -> edge.provenance().confidence()).reversed()
-                .thenComparing(GraphEdge::from));
+        // Edges that touch the subject rank first. On a hub symbol the packet holds thousands of
+        // equal-confidence edges, and dropping from the end of a confidence-only sort leaves
+        // whichever unrelated path edge happened to sort last - an answer about the wrong symbol.
+        String subjectId = packet.subject().id();
+        evidence.sort(Comparator.comparingInt((GraphEdge edge) -> touches(edge, subjectId) ? 0 : 1)
+                .thenComparing(Comparator.comparingDouble((GraphEdge edge) -> edge.provenance().confidence()).reversed())
+                .thenComparing(GraphEdge::from).thenComparing(GraphEdge::to));
         while (estimateTokens(new ContextPacket(packet.subject(), callers, packet.endpoints(), packet.dependencies(), evidence)) > tokenBudget) {
             if (!callers.isEmpty() && callers.size() > packet.endpoints().size()) {
                 callers.remove(callers.size() - 1);
@@ -102,6 +107,18 @@ public final class QueryPlanner {
             tokens += (edge.from().length() + edge.to().length() + edge.provenance().file().length()) / 4 + 6;
         }
         return tokens;
+    }
+
+    private static boolean touches(GraphEdge edge, String subjectId) {
+        return owner(edge.from()).equals(subjectId) || owner(edge.to()).equals(subjectId)
+                || edge.from().equals(subjectId) || edge.to().equals(subjectId);
+    }
+
+    private static String owner(String id) {
+        int member = id.indexOf('#');
+        if (member > 0) return id.substring(0, member);
+        int field = id.indexOf(".field:");
+        return field > 0 ? id.substring(0, field) : id;
     }
 
     private static int length(GraphNode node) { return (node.id().length() + node.name().length()) / 4 + 3; }

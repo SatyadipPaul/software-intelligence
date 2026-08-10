@@ -67,6 +67,24 @@ class ArchitectureTest {
         assertTrue(graph.node("module:demo.web").isPresent());
     }
 
+    @Test void a_nested_type_does_not_become_its_own_module() {
+        CodeGraph graph = new CodeGraph();
+        String file = "file:src/main/java/demo/Outer.java";
+        graph.upsertNode(new GraphNode(file, EntityKind.FILE, file, Map.of(), SOURCE));
+        graph.upsertNode(new GraphNode("package:demo", EntityKind.PACKAGE, "demo", Map.of(), SOURCE));
+        graph.addEdge(edge(file, "package:demo", RelationKind.DECLARES));
+        graph.upsertNode(new GraphNode("type:demo.Outer", EntityKind.TYPE, "demo.Outer", Map.of(), SOURCE));
+        graph.addEdge(edge(file, "type:demo.Outer", RelationKind.DECLARES));
+        // A nested type is named pkg.Outer.Inner; trimming its last segment would invent a module.
+        graph.upsertNode(new GraphNode("type:demo.Outer.Inner", EntityKind.TYPE, "demo.Outer.Inner", Map.of(), SOURCE));
+        graph.addEdge(edge("type:demo.Outer", "type:demo.Outer.Inner", RelationKind.DECLARES));
+
+        List<Modules.Subsystem> subsystems = Modules.detect(graph);
+
+        assertEquals(List.of("demo"), subsystems.stream().map(Modules.Subsystem::name).toList());
+        assertEquals(2, subsystems.get(0).types().size(), "both the outer and nested type belong to package demo");
+    }
+
     @Test void a_workflow_runs_from_an_endpoint_to_the_table_it_touches() {
         CodeGraph graph = endpointToTable();
 
