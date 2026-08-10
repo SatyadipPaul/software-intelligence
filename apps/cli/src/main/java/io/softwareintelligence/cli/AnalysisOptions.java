@@ -1,6 +1,7 @@
 package io.softwareintelligence.cli;
 
 import io.softwareintelligence.model.CodeGraph;
+import io.softwareintelligence.model.GraphSnapshot;
 import io.softwareintelligence.pipeline.ClasspathDiscovery;
 import io.softwareintelligence.pipeline.RepositoryModel;
 import picocli.CommandLine;
@@ -29,7 +30,16 @@ final class AnalysisOptions {
     @CommandLine.Option(names = "--no-tests", description = "Exclude test sources")
     private boolean noTests;
 
+    /**
+     * Loads a graph from whatever the user pointed at: a `.json` graph or snapshot is read back,
+     * and anything else is analyzed as a repository.
+     *
+     * <p>This lives here rather than in each command so that every command accepts both. Someone
+     * who already has a graph should be able to query, visualize, enrich, and evaluate it without
+     * the source tree present at all.
+     */
     CodeGraph analyze(Path repository) throws IOException {
+        if (isGraphFile(repository)) return GraphSnapshot.read(repository);
         List<Path> entries = classpathEntries();
         if (entries.isEmpty() && discover) {
             ClasspathDiscovery.Discovered discovered = ClasspathDiscovery.discover(repository);
@@ -39,6 +49,12 @@ final class AnalysisOptions {
         }
         RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8);
         return new RepositoryModel().build(repository, entries, !noTests, layers);
+    }
+
+    /** A path is an existing graph when it is a JSON file, and a repository otherwise. */
+    static boolean isGraphFile(Path path) {
+        return java.nio.file.Files.isRegularFile(path)
+                && path.toString().toLowerCase(java.util.Locale.ROOT).endsWith(".json");
     }
 
     private List<Path> classpathEntries() {

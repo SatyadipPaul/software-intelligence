@@ -60,7 +60,7 @@ final class VisualizeCommand implements Callable<Integer> {
             EntityKind.ENDPOINT, EntityKind.DATABASE_TABLE, EntityKind.TOPIC, EntityKind.EXTERNAL_SERVICE);
 
     @Override public Integer call() throws Exception {
-        CodeGraph full = Files.isRegularFile(source) ? GraphSnapshot.read(source) : options.analyze(source);
+        CodeGraph full = options.analyze(source);
         CodeGraph view = switch (scope) {
             case ALL -> full;
             case OPERATIONAL -> filter(full, OPERATIONAL);
@@ -71,7 +71,7 @@ final class VisualizeCommand implements Callable<Integer> {
         if (destination.getParent() != null) Files.createDirectories(destination.getParent());
 
         if (format == Format.HTML) {
-            String title = (Files.isRegularFile(source) ? source.getFileName().toString() : source.toAbsolutePath().getFileName().toString())
+            String title = source.toAbsolutePath().getFileName().toString()
                     + " - " + scope.name().toLowerCase(java.util.Locale.ROOT) + (scope == Scope.SYMBOL ? " view of " + symbol : " view");
             GraphHtmlView.View rendered = GraphHtmlView.render(view, title, maxNodes);
             Files.writeString(destination, rendered.html());

@@ -82,6 +82,11 @@ repo-intel enrich-apply <repo> claims.json     verify claims and apply only what
 Every command takes `--classpath`, `--discover-classpath`, `--no-framework`, `--no-architecture`,
 and `--no-tests`, so any layer above deterministic Java analysis can be switched off.
 
+Every command also accepts **either a repository directory or a `.json` graph**. If you already have
+a graph, the source tree is not needed and is never read - query it, visualize it, enrich it, or
+evaluate against it from the file alone. See
+[enriching with a chat assistant](docs/enrichment-with-a-chat-assistant.md) for that workflow.
+
 ## Viewing the graph
 
 ```powershell
