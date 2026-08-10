@@ -43,8 +43,18 @@ final class AnalysisOptions {
         List<Path> entries = classpathEntries();
         if (entries.isEmpty() && discover) {
             ClasspathDiscovery.Discovered discovered = ClasspathDiscovery.discover(repository);
-            if (discovered.isEmpty()) System.err.println(discovered.advice());
-            else System.err.printf("classpath: %d entries from %s%n", discovered.entries().size(), discovered.source());
+            if (discovered.isEmpty()) {
+                System.err.println(discovered.advice());
+            } else {
+                System.err.printf("classpath: %d entries from %s%n", discovered.entries().size(), discovered.source());
+                if (discovered.partial()) {
+                    // Compiled output without third-party jars barely improves resolution. Saying
+                    // "26 entries" and stopping would overstate what the caller is about to get.
+                    System.err.println("warning: these are compiled output directories only, with no third-party "
+                            + "dependencies, so cross-library calls will stay unresolved.");
+                    System.err.println(discovered.advice());
+                }
+            }
             entries = discovered.entries();
         }
         RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8);

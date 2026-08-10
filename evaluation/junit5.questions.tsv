@@ -1,0 +1,22 @@
+# Grounded questions for junit-team/junit5 at commit de6d621.
+#
+# The third repository in the corpus and the first Gradle multi-module build. Its 27 source roots
+# make module membership a real question rather than a synonym for "the package", and its extension
+# model is interface-heavy, which exercises dispatch where jackson exercises generics.
+#
+# Ground truth read from the source, not from tool output.
+#
+# junit5 uses Isolated Projects, so a root Gradle task cannot aggregate subproject classpaths.
+# Produce one file per module and let discovery merge them (95.9% resolution, up from 87.3%):
+#   gradle --init-script repo-intel-init.gradle repoIntelClasspath   # script printed by --discover-classpath
+#   repo-intel evaluate <junit5> evaluation/junit5.questions.tsv --discover-classpath
+#
+# id <TAB> repository <TAB> question <TAB> kind <TAB> subject <TAB> expected names (|) <TAB> expected locations (|) <TAB> min confidence
+ju-001	junit5	Which interface does BeforeEachCallback extend?	LOOKUP	org.junit.jupiter.api.extension.BeforeEachCallback	Extension	extension/BeforeEachCallback.java:67	0.55
+ju-002	junit5	Which module contains the Test annotation?	STRUCTURE	org.junit.jupiter.api.Test	module:junit-jupiter-api		0.55
+ju-003	junit5	What is affected by a change to the Extension interface?	IMPACT	org.junit.jupiter.api.extension.Extension	BeforeEachCallback	extension/Extension.java:40	0.55
+ju-004	junit5	Which module declares TestEngine?	STRUCTURE	org.junit.platform.engine.TestEngine	module:junit-platform-engine		0.55
+ju-005	junit5	Who depends on ExtensionContext?	IMPACT	org.junit.jupiter.api.extension.ExtensionContext	BeforeEachCallback		0.55
+ju-006	junit5	Which module contains Assertions?	STRUCTURE	org.junit.jupiter.api.Assertions	module:junit-jupiter-api	Assertions.java:96	0.55
+ju-007	junit5	What does BeforeEachCallback depend on?	LOOKUP	org.junit.jupiter.api.extension.BeforeEachCallback	ExtensionContext		0.55
+ju-008	junit5	What is affected by a change to TestEngine?	IMPACT	org.junit.platform.engine.TestEngine	EngineDiscoveryRequest|ExecutionRequest		0.55

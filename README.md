@@ -131,6 +131,22 @@ mvn dependency:build-classpath -Dmdep.outputFile=target/repo-intel.classpath -Dm
 java -jar repo-intel.jar inspect . --classpath (Get-Content -Raw target/repo-intel.classpath)
 ```
 
+## Gradle projects
+
+Gradle has no equivalent of `dependency:build-classpath`, and on a build with Isolated Projects
+enabled a root task cannot read its subprojects' classpaths at all. Run `--discover-classpath` and
+the tool prints an init script that registers a per-project task, so nothing in your build files
+changes:
+
+```powershell
+java -jar repo-intel.jar inspect . --discover-classpath   # prints the init script if none is found
+gradle --init-script repo-intel-init.gradle repoIntelClasspath
+java -jar repo-intel.jar inspect . --discover-classpath   # now finds and merges every module's file
+```
+
+Each module writes its own `build/repo-intel.classpath`; discovery merges them. Verified on junit5
+(27 source roots, Isolated Projects), where this lifts resolution from 87.3% to 95.9%.
+
 ## Maven build integration
 
 The local-first Maven plugin is built in `apps/maven-plugin`. Install the current snapshot locally with `mvn install`, then add it to a project:

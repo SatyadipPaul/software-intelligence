@@ -121,14 +121,57 @@ A third, smaller gap: "which module contains this symbol?" was unanswerable, bec
 membership is an incoming `CONTAINS` edge and context packets only followed outgoing ones. Context
 now includes it.
 
+## Gradle classpath discovery, finally exercised
+
+junit5 was built and its classpath discovered. This is the path that had never run against a real
+repository, and it did not work:
+
+**7. The Gradle advice was wrong for modern Gradle.** The shipped snippet registered one root task
+that read `sourceSets.main` from subprojects. junit5 enables **Isolated Projects**, under which that
+is rejected outright - and it cannot be worked around with `--no-configuration-cache`, because
+Gradle refuses to disable the configuration cache while Isolated Projects is on. Even
+`gradle.allprojects { afterEvaluate { ... } }` is refused. The working shape is
+`gradle.lifecycle.beforeProject`, registering a task in each project that touches only itself. The
+advice now prints that, delivered as an init script so no file in the analyzed repository is
+modified. It was verified end to end: 21 modules wrote a classpath file each.
+
+**8. Discovery could not merge per-module classpath files, and only looked one level deep.** Under
+Isolated Projects there is no single aggregated classpath to find, so discovery has to do the
+merging. It now searches three levels - junit5 nests modules under `gradle/base/` - and merges every
+`build/repo-intel.classpath` it finds, de-duplicating shared jars.
+
+**9. A partial classpath was reported as if it were a real one.** With nothing built, discovery
+found two compiled-output directories and announced "classpath: 2 entries" - technically true, and
+misleading, because output directories contain none of the third-party jars that resolution needs.
+It now says so and repeats the advice.
+
+| junit5 | resolution | unresolved edges |
+| --- | ---: | ---: |
+| Syntax-only | 87.33% | 14,497 |
+| Discovered per-module classpath | **95.93%** | 4,709 |
+
+`modules/pipeline` had no tests at all, which is why none of this was caught. It now has seven,
+covering the merge, the depth, the partial-result warning, and both advice paths.
+
+## An eight-question junit5 set
+
+`evaluation/junit5.questions.tsv` passes 8/8. It is the first set where module membership is a real
+question rather than a synonym for the package name, since junit5 has 27 source roots. The corpus is
+now 36 questions across four repositories.
+
+One question failed on the first run because the expected line was wrong in the question, not in the
+tool - `BeforeEachCallback` is declared on line 67, not 32. Worth recording as the failure mode of
+hand-written ground truth: it is slow and error-prone, which is exactly why generating it from tool
+output is so tempting and so useless.
+
 ## What this run did not test
 
 Honest boundaries, since the point of this document is to stop overclaiming from a narrow sample:
 
-- **junit5 was not analyzed with a resolved classpath**, so its 87.3% is syntax-only and not
-  comparable to jackson's 99.74%. Gradle classpath discovery is therefore still unexercised.
-- **No question set exists for junit5.** The corpus is 28 questions across three repositories, still
-  far from the 200+ the roadmap calls for, and junit5 remains a crash-and-silence test only.
+- **junit5 reaches 95.93%, not jackson's 99.74%**, because only the modules Gradle had already
+  compiled contributed a classpath file. A full `gradle build` first would close most of that gap.
+- **The corpus is 36 questions across four repositories**, still far from the 200+ the roadmap calls
+  for, and every question was written by one author.
 - **The jackson set is ten questions written by one author in one sitting.** It covers inheritance,
   impact, module structure, and lookup; it does not cover generics resolution, annotation
   processing, or the serializer/deserializer registry indirection that is the hard part of this

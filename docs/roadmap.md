@@ -20,7 +20,8 @@
 **Current result (schema 0.2):** Spring Petclinic resolves 99.82% of call/type edges with its Maven classpath, and 41.6% with no classpath at all — the syntax-only figure rose from 1.45% because supertypes, constructors, and in-batch source bindings are now resolved rather than emitted as unresolved placeholders. Spring Petclinic REST resolves 99.96%. The Maven plugin's production-only graph of Petclinic now contains zero unresolved edges.
 
 **Done since:** interface dispatch normalization, overrides and exception flow, Spring bean wiring,
-and build classpath discovery for Maven and Gradle layouts. SCIP ingestion remains open.
+and build classpath discovery for Maven and Gradle, the latter verified against a build with
+Isolated Projects enabled. SCIP ingestion remains open.
 
 ## Milestone 2 — framework and operational model
 
@@ -52,7 +53,8 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 - Curate 200+ grounded questions across 3–5 Java repositories. **Started:** 18 questions across two
   repositories ship in `evaluation/`, keyed to source names and file:line rather than to graph ids,
   so they survive identity changes. Now 28 questions across three, including jackson-databind, which
-  has no framework at all. The harness, scoring, and CI gate exist; the corpus does not yet.
+  has no framework at all, and junit5, which is Gradle multi-module. Now 36 questions across four.
+  The harness, scoring, and CI gate exist; the corpus does not yet.
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
 - Baseline against grep/BM25/vector RAG and a deterministic graph-only path. BM25 over the symbol
   vocabulary ships and is measurable today; a vector baseline needs an embedding model, which is
