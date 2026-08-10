@@ -78,15 +78,60 @@ the page could paint, because force-directed repulsion is O(N²) per iteration. 
 the same graph now lays out in about 2 seconds. Anything larger belongs in `--format GRAPHML` and a
 dedicated tool, which the CLI states on stderr rather than silently producing something unusable.
 
+## Classpath-aware run and a grounded question set
+
+jackson-databind was then built for its classpath and re-analyzed:
+
+| Measurement | syntax-only | with classpath |
+| --- | ---: | ---: |
+| Resolution rate | 86.2% | **99.74%** |
+| Explicitly unresolved edges | 39,506 | 488 |
+
+A ten-question grounded set for jackson-databind now ships in
+`evaluation/jackson-databind.questions.tsv` and passes 10/10 with structural accuracy, evidence
+recall, and groundedness all at 1.000, median 91 ms per question. It is the first set for a
+repository with no framework at all: no endpoints, tables, or guards to lean on, so the questions
+exercise inheritance, calls, module structure, and exception flow instead.
+
+Ground truth was read from the source rather than from tool output. That distinction is the whole
+point of the exercise - a question set generated from what the tool already says is a change
+detector, not a correctness test, and would pass forever while the answers were wrong together.
+Writing it that way is what found the next two defects.
+
+## Two more defects, found by writing the question set
+
+**5. Dispatch normalization produced 83,271 edges - a quarter of the graph.** `ValueDeserializer.deserialize`
+has 166 in-repository implementations and generated 13,924 edges by itself; `java.lang.Object.toString`
+generated 8,092. "This call may reach any of 166 places" is not an answer anyone can act on, and at
+that volume it buries the edges that are. Dispatch is no longer normalized through `java.lang.Object`
+methods, and above 12 candidates the fan-out is recorded as an `implementations` count on the
+declared method instead of as edges. Dispatch edges fell to 31,116 with resolution unchanged at
+99.74%, and the 57 heavily polymorphic methods keep their counts.
+
+**6. Every declaration's provenance pointed into its Javadoc.** JDT's `getStartPosition()` includes
+the doc comment, so `ObjectMapper` - declared on line 94 - was recorded at line 36, a line of prose.
+Every consumer inherited this: SARIF locations for CI code scanning, the viewer's "declared" field,
+enrichment work packets, and any IDE jump. Declarations now carry the position of their *name*, so
+the four types checked (`ObjectMapper` 94, `BaseJsonNode` 30, `JavaType` 19, `TypeFactory` 65) match
+what `grep` reports exactly. The Spring question sets were updated accordingly: their endpoint
+expectations moved from the `@GetMapping` line to the method line, which is the line a reviewer
+would cite.
+
+A third, smaller gap: "which module contains this symbol?" was unanswerable, because module
+membership is an incoming `CONTAINS` edge and context packets only followed outgoing ones. Context
+now includes it.
+
 ## What this run did not test
 
 Honest boundaries, since the point of this document is to stop overclaiming from a narrow sample:
 
-- **Neither repository was analyzed with a resolved classpath.** Both were run syntax-only, so the
-  86–87% resolution figures are not comparable to Petclinic's 99.8% classpath-aware number.
-- **No grounded question set exists for either repository.** The corpus is still 18 questions across
-  the two Spring repositories. These runs prove the analyzer does not fall over and that its derived
-  layers stay silent when they should; they do not measure answer quality here.
-- **Gradle classpath discovery was not exercised**, because junit5 was not built first.
+- **junit5 was not analyzed with a resolved classpath**, so its 87.3% is syntax-only and not
+  comparable to jackson's 99.74%. Gradle classpath discovery is therefore still unexercised.
+- **No question set exists for junit5.** The corpus is 28 questions across three repositories, still
+  far from the 200+ the roadmap calls for, and junit5 remains a crash-and-silence test only.
+- **The jackson set is ten questions written by one author in one sitting.** It covers inheritance,
+  impact, module structure, and lookup; it does not cover generics resolution, annotation
+  processing, or the serializer/deserializer registry indirection that is the hard part of this
+  codebase.
 - Still untested: Kotlin or Scala sources in a mixed repository, a repository large enough to exceed
   memory, and generated-source builds outside the Maven `generate-sources` case already covered.

@@ -272,7 +272,9 @@ public final class JavaRepositoryAnalyzer {
             String name = declaration.fragments().isEmpty() ? "<unnamed>" : declaration.fragments().get(0).toString().split("=")[0].trim();
             Map<String, String> attributes = new java.util.LinkedHashMap<>(annotationAttributes(declaration.modifiers()));
             attributes.put("annotations", String.join(",", annotationNames(declaration.modifiers())));
-            field(types.peek(), name, declaration.getType(), declaration.getStartPosition(), Map.copyOf(attributes));
+            int at = declaration.fragments().isEmpty() ? declaration.getStartPosition()
+                    : ((org.eclipse.jdt.core.dom.VariableDeclarationFragment) declaration.fragments().get(0)).getName().getStartPosition();
+            field(types.peek(), name, declaration.getType(), at, Map.copyOf(attributes));
             return true;
         }
 
@@ -283,13 +285,14 @@ public final class JavaRepositoryAnalyzer {
             }
             String name = declaration.isConstructor() ? "<init>" : declaration.getName().getIdentifier();
             String methodId = methodId(types.peek(), name, parameterTypes(declaration));
+            int at = declaration.getName().getStartPosition();
             List<String> annotations = annotationNames(declaration.modifiers());
             Map<String, String> attributes = new java.util.LinkedHashMap<>();
             attributes.put("arity", Integer.toString(declaration.parameters().size()));
             attributes.put("annotations", String.join(",", annotations));
             attributes.putAll(annotationAttributes(declaration.modifiers()));
-            graph.declaration(methodId, EntityKind.METHOD, name, Map.copyOf(attributes), p(declaration.getStartPosition(), false));
-            graph.edge(types.peek(), methodId, RelationKind.DECLARES, Map.of(), p(declaration.getStartPosition(), false));
+            graph.declaration(methodId, EntityKind.METHOD, name, Map.copyOf(attributes), p(at, false));
+            graph.edge(types.peek(), methodId, RelationKind.DECLARES, Map.of(), p(at, false));
             for (Object parameter : declaration.parameters()) {
                 if (parameter instanceof SingleVariableDeclaration variable) {
                     dependency(types.peek(), variable.getType().resolveBinding(), variable.getStartPosition());
@@ -299,13 +302,13 @@ public final class JavaRepositoryAnalyzer {
             for (Object thrown : declaration.thrownExceptionTypes()) {
                 exception(((Type) thrown).resolveBinding(), RelationKind.THROWS, declaration.getStartPosition(), "throws-clause", methodId);
             }
-            overrides(declaration, methodId);
-            endpoint(declaration, annotations, methodId);
-            kafkaListener(declaration, annotations, methodId);
+            overrides(declaration, methodId, at);
+            endpoint(declaration, annotations, methodId, at);
+            kafkaListener(declaration, annotations, methodId, at);
             if (annotations.contains("Transactional")) {
                 String transactionId = "transaction:" + methodId;
-                graph.declaration(transactionId, EntityKind.TRANSACTION, name + " transaction", Map.of(), p(declaration.getStartPosition(), false));
-                graph.edge(methodId, transactionId, RelationKind.PARTICIPATES_IN, Map.of(), p(declaration.getStartPosition(), false));
+                graph.declaration(transactionId, EntityKind.TRANSACTION, name + " transaction", Map.of(), p(at, false));
+                graph.edge(methodId, transactionId, RelationKind.PARTICIPATES_IN, Map.of(), p(at, false));
             }
             methods.push(methodId);
             return true;
@@ -441,7 +444,7 @@ public final class JavaRepositoryAnalyzer {
         }
 
         /** Links a declaration to every supertype method it overrides or implements. */
-        private void overrides(MethodDeclaration declaration, String declaredId) {
+        private void overrides(MethodDeclaration declaration, String declaredId, int at) {
             IMethodBinding binding = declaration.resolveBinding();
             if (binding == null || binding.isConstructor() || binding.getDeclaringClass() == null) return;
             for (ITypeBinding supertype : supertypes(binding.getDeclaringClass())) {
@@ -453,10 +456,10 @@ public final class JavaRepositoryAnalyzer {
                     String targetId = methodId("type:" + owner, overridden.getName(), erasedNames(overridden.getParameterTypes()));
                     graph.reference(targetId, EntityKind.METHOD, overridden.getName(),
                             Map.of("resolved", "true", "arity", Integer.toString(overridden.getParameterTypes().length)),
-                            p(declaration.getStartPosition(), false));
+                            p(at, false));
                     graph.edge(declaredId, targetId, RelationKind.OVERRIDES,
                             Map.of("resolution", "JDT_BINDING", "declaringKind", supertype.isInterface() ? "interface" : "class"),
-                            binding(declaration.getStartPosition()));
+                            binding(at));
                 }
             }
         }
@@ -524,12 +527,16 @@ public final class JavaRepositoryAnalyzer {
         private String enterType(AbstractTypeDeclaration declaration, EntityKind kind, String flavour, List<String> annotations) {
             String name = qualified(declaration.getName().getIdentifier());
             String id = "type:" + name;
+            // A declaration's start position is the start of its Javadoc. Every consumer of this -
+            // a SARIF location, an IDE jump, an enrichment packet - wants the line the name is on,
+            // which is also the line a reader would cite.
+            int at = declaration.getName().getStartPosition();
             Map<String, String> attributes = new java.util.LinkedHashMap<>();
             attributes.put("annotations", String.join(",", annotations));
             attributes.put("type", flavour);
             attributes.putAll(annotationAttributes(declaration.modifiers()));
-            graph.declaration(id, kind, name, Map.copyOf(attributes), p(declaration.getStartPosition(), false));
-            graph.edge(types.isEmpty() ? fileId : types.peek(), id, RelationKind.DECLARES, Map.of(), p(declaration.getStartPosition(), false));
+            graph.declaration(id, kind, name, Map.copyOf(attributes), p(at, false));
+            graph.edge(types.isEmpty() ? fileId : types.peek(), id, RelationKind.DECLARES, Map.of(), p(at, false));
             types.push(id);
             if (annotations.contains("Entity")) {
                 // JPA's @Table names the table with `name`; `value` is not a member of it. Falling
@@ -539,8 +546,8 @@ public final class JavaRepositoryAnalyzer {
                         .or(() -> annotationArgument(declaration.modifiers(), "Entity", "name"))
                         .orElse(declaration.getName().getIdentifier());
                 String tableId = "table:" + table;
-                graph.declaration(tableId, EntityKind.DATABASE_TABLE, table, Map.of("inferred", Boolean.toString(!annotations.contains("Table"))), p(declaration.getStartPosition(), false));
-                graph.edge(id, tableId, RelationKind.PERSISTS, Map.of(), p(declaration.getStartPosition(), false));
+                graph.declaration(tableId, EntityKind.DATABASE_TABLE, table, Map.of("inferred", Boolean.toString(!annotations.contains("Table"))), p(at, false));
+                graph.edge(id, tableId, RelationKind.PERSISTS, Map.of(), p(at, false));
             }
             typePaths.push(annotationArgument(declaration.modifiers(), "RequestMapping").orElse(""));
             return id;
@@ -623,7 +630,7 @@ public final class JavaRepositoryAnalyzer {
             return List.copyOf(written);
         }
 
-        private void endpoint(MethodDeclaration declaration, List<String> annotations, String methodId) {
+        private void endpoint(MethodDeclaration declaration, List<String> annotations, String methodId, int at) {
             String mapping = annotations.stream().filter(name -> name.endsWith("Mapping")).findFirst().orElse(null);
             if (mapping == null) return;
             String verb = switch (mapping) {
@@ -637,16 +644,16 @@ public final class JavaRepositoryAnalyzer {
             };
             String path = joinPaths(typePaths.peek(), annotationArgument(declaration.modifiers(), mapping).orElse("/"));
             String endpointId = "endpoint:" + verb + ":" + path;
-            graph.declaration(endpointId, EntityKind.ENDPOINT, verb + " " + path, Map.of("httpMethod", verb, "path", path), p(declaration.getStartPosition(), false));
-            graph.edge(endpointId, methodId, RelationKind.EXPOSES, Map.of(), p(declaration.getStartPosition(), false));
+            graph.declaration(endpointId, EntityKind.ENDPOINT, verb + " " + path, Map.of("httpMethod", verb, "path", path), p(at, false));
+            graph.edge(endpointId, methodId, RelationKind.EXPOSES, Map.of(), p(at, false));
         }
 
-        private void kafkaListener(MethodDeclaration declaration, List<String> annotations, String methodId) {
+        private void kafkaListener(MethodDeclaration declaration, List<String> annotations, String methodId, int at) {
             if (!annotations.contains("KafkaListener")) return;
             String topic = annotationArgument(declaration.modifiers(), "KafkaListener").orElse("<dynamic-topic>");
             String topicId = "topic:" + topic;
-            graph.declaration(topicId, EntityKind.TOPIC, topic, Map.of(), p(declaration.getStartPosition(), false));
-            graph.edge(methodId, topicId, RelationKind.CONSUMES, Map.of(), p(declaration.getStartPosition(), false));
+            graph.declaration(topicId, EntityKind.TOPIC, topic, Map.of(), p(at, false));
+            graph.edge(methodId, topicId, RelationKind.CONSUMES, Map.of(), p(at, false));
         }
 
         private static EntityKind frameworkKind(List<String> annotations) {

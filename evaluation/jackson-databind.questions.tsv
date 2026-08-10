@@ -1,0 +1,30 @@
+# Grounded questions for FasterXML/jackson-databind at commit 2b72ff3.
+#
+# This is the first question set for a repository with no framework at all. Petclinic questions
+# lean on endpoints, tables, and guards; none of those exist here, so these exercise the plain
+# Java model: inheritance, calls, exception flow, and module structure.
+#
+# Ground truth was read from the source, not from tool output. A question set derived from what the
+# tool already says is a change detector, not a correctness test - it would pass forever while the
+# answers were wrong together.
+#
+# Run with the repository's Maven classpath (resolution is 99.7% with it, 86% without):
+#   mvn dependency:build-classpath -Dmdep.outputFile=target/repo-intel.classpath -Dmdep.includeScope=test
+#   repo-intel evaluate <jackson-databind> evaluation/jackson-databind.questions.tsv --classpath "$(cat target/repo-intel.classpath)"
+#
+# id <TAB> repository <TAB> question <TAB> kind <TAB> subject <TAB> expected names (|) <TAB> expected locations (|) <TAB> min confidence
+#
+# Confidence floors: 1.00 compiler binding, 0.98 in-repository symbol, 0.95 single-candidate
+# dispatch, 0.90 framework/workflow, 0.60 multi-candidate dispatch, 0.55 explicitly unresolved.
+# Library code reaches deep into JDK types whose calls stay unresolved without their sources, so
+# traversal questions here floor at 0.55 rather than pretending otherwise.
+jd-001	jackson-databind	Which type does BaseJsonNode extend?	LOOKUP	tools.jackson.databind.node.BaseJsonNode	JsonNode	node/BaseJsonNode.java:30	0.55
+jd-002	jackson-databind	What breaks if JavaType changes?	IMPACT	tools.jackson.databind.JavaType	TypeFactory|ObjectMapper	JavaType.java:19	0.55
+jd-003	jackson-databind	Which module contains ObjectMapper?	STRUCTURE	tools.jackson.databind.ObjectMapper	module:tools.jackson.databind		0.55
+jd-004	jackson-databind	Who depends on TypeFactory?	IMPACT	tools.jackson.databind.type.TypeFactory	MapperConfig|BeanProperty	type/TypeFactory.java:65	0.55
+jd-005	jackson-databind	What does ObjectMapper depend on?	LOOKUP	tools.jackson.databind.ObjectMapper	JavaType	ObjectMapper.java:94	0.55
+jd-006	jackson-databind	What is affected by a change to JsonNode?	IMPACT	tools.jackson.databind.JsonNode	BaseJsonNode	JsonNode.java:45	0.55
+jd-007	jackson-databind	Which serializers implement ValueSerializer?	IMPACT	tools.jackson.databind.ValueSerializer	BeanSerializerBase|FailingSerializer	ValueSerializer.java:56	0.55
+jd-008	jackson-databind	What does BeanSerializerBase extend?	LOOKUP	tools.jackson.databind.ser.bean.BeanSerializerBase	ValueSerializer		0.55
+jd-009	jackson-databind	Which module does TypeFactory live in?	STRUCTURE	tools.jackson.databind.type.TypeFactory	module:tools.jackson.databind.type		0.55
+jd-010	jackson-databind	What is affected by changing DeserializationContext?	IMPACT	tools.jackson.databind.DeserializationContext	ValueDeserializer		0.55

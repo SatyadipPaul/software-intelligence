@@ -51,7 +51,8 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 
 - Curate 200+ grounded questions across 3–5 Java repositories. **Started:** 18 questions across two
   repositories ship in `evaluation/`, keyed to source names and file:line rather than to graph ids,
-  so they survive identity changes. The harness, scoring, and CI gate exist; the corpus does not yet.
+  so they survive identity changes. Now 28 questions across three, including jackson-databind, which
+  has no framework at all. The harness, scoring, and CI gate exist; the corpus does not yet.
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
 - Baseline against grep/BM25/vector RAG and a deterministic graph-only path. BM25 over the symbol
   vocabulary ships and is measurable today; a vector baseline needs an embedding model, which is

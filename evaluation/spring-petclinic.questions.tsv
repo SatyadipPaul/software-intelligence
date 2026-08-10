@@ -9,11 +9,11 @@
 # 0.60 multi-candidate dispatch, 0.55 explicitly unresolved. A packet that reaches an entry point
 # carries its capability claim, so those questions floor at 0.85.
 pc-001	spring-petclinic	What breaks if VetRepository changes?	IMPACT	VetRepository	VetController.findPaginated|VetController.showResourcesVetList	vet/VetController.java:62|vet/VetController.java:70	0.85
-pc-002	spring-petclinic	Which endpoints does VetRepository ultimately serve?	ENDPOINT	VetRepository	endpoint:GET:/vets|endpoint:GET:/vets.html	vet/VetController.java:44|vet/VetController.java:65	0.85
-pc-003	spring-petclinic	Which routes does VetController expose?	ENDPOINT	VetController	endpoint:GET:/vets|endpoint:GET:/vets.html	vet/VetController.java:44|vet/VetController.java:65	0.85
+pc-002	spring-petclinic	Which endpoints does VetRepository ultimately serve?	ENDPOINT	VetRepository	endpoint:GET:/vets|endpoint:GET:/vets.html	vet/VetController.java:45|vet/VetController.java:66	0.85
+pc-003	spring-petclinic	Which routes does VetController expose?	ENDPOINT	VetController	endpoint:GET:/vets|endpoint:GET:/vets.html	vet/VetController.java:45|vet/VetController.java:66	0.85
 pc-004	spring-petclinic	Who depends on OwnerRepository?	IMPACT	OwnerRepository	OwnerController.findPaginatedForOwnersLastName	owner/OwnerController.java:136	0.85
 pc-005	spring-petclinic	Which table does the Owner entity persist to?	PERSISTENCE	org.springframework.samples.petclinic.owner.Owner	table:owners	owner/Owner.java:37	0.5
-pc-006	spring-petclinic	Which routes does PetController expose?	ENDPOINT	PetController	endpoint:GET:/owners/{ownerId}/pets/new|endpoint:POST:/owners/{ownerId}/pets/{petId}/edit	owner/PetController.java:100|owner/PetController.java:144	0.85
+pc-006	spring-petclinic	Which routes does PetController expose?	ENDPOINT	PetController	endpoint:GET:/owners/{ownerId}/pets/new|endpoint:POST:/owners/{ownerId}/pets/{petId}/edit	owner/PetController.java:101|owner/PetController.java:145	0.85
 pc-007	spring-petclinic	What does the Vet entity map to?	PERSISTENCE	org.springframework.samples.petclinic.vet.Vet	table:vets		0.5
 pc-008	spring-petclinic	Which controller serves the owner search page?	ENDPOINT	OwnerController	endpoint:GET:/owners/find		0.85
 pc-009	spring-petclinic	What is affected by a change to the Vet entity?	IMPACT	org.springframework.samples.petclinic.vet.Vet	VetControllerTests.james|ClinicServiceTests.shouldFindVets	vet/VetControllerTests.java:55	0.5

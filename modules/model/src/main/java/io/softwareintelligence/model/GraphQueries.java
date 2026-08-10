@@ -97,6 +97,12 @@ public final class GraphQueries {
         Map<String, GraphEdge> evidence = new LinkedHashMap<>();
         allImpact.stream().flatMap(path -> path.evidence().stream()).forEach(edge -> evidence.put(evidenceKey(edge), edge));
         downstream.forEach(edge -> evidence.put(evidenceKey(edge), edge));
+        // Which module or file contains this symbol is part of its context. The fact is an incoming
+        // CONTAINS edge, so without this "which module is X in?" is unanswerable from a packet even
+        // though the graph knows.
+        graph.incoming(subject.id()).stream()
+                .filter(edge -> edge.kind() == RelationKind.CONTAINS)
+                .forEach(edge -> evidence.put(evidenceKey(edge), edge));
         return new ContextPacket(subject, callers, endpoints, dependencies, List.copyOf(evidence.values()));
     }
 

@@ -10,7 +10,7 @@
 # A packet that summarizes an entry point legitimately contains capability claims, so a question
 # about one cannot demand 0.90.
 sc-001	sample-commerce	What breaks if PaymentService is removed?	IMPACT	PaymentService	PaymentController.authorize|PaymentController	PaymentController.java:12	0.85
-sc-002	sample-commerce	Which HTTP endpoint does PaymentService ultimately serve?	ENDPOINT	PaymentService	endpoint:POST:/payments/authorize	PaymentController.java:10	0.85
+sc-002	sample-commerce	Which HTTP endpoint does PaymentService ultimately serve?	ENDPOINT	PaymentService	endpoint:POST:/payments/authorize	PaymentController.java:11	0.85
 sc-003	sample-commerce	Who calls CheckoutService?	IMPACT	CheckoutService	CheckoutController.checkout|CheckoutController	CheckoutController.java:9	0.85
 sc-004	sample-commerce	What depends on OrderRepository, directly or transitively?	IMPACT	OrderRepository	CheckoutService.execute|CheckoutController.checkout	CheckoutService.java:11|CheckoutController.java:9	0.85
 sc-005	sample-commerce	Which controller exposes the payment authorization route?	ENDPOINT	endpoint:POST:/payments/authorize	PaymentController.authorize		0.85
