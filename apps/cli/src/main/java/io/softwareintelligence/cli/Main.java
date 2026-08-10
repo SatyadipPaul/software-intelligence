@@ -8,7 +8,21 @@ import picocli.CommandLine;
         description = "Build deterministic, evidence-bearing repository models.")
 public final class Main implements Runnable {
     public static void main(String[] args) {
-        System.exit(new CommandLine(new Main())
+        try {
+            System.exit(run(args));
+        } catch (OutOfMemoryError exhausted) {
+            // Not an Exception, so the handler below never sees it. Analyzing a large repository is
+            // the normal case for this tool, and "OutOfMemoryError" alone tells the reader nothing
+            // about the one-flag fix.
+            System.err.println("error: ran out of heap while analyzing. Give the JVM more memory, for example:");
+            System.err.println("  java -Xmx4g -jar repo-intel.jar ...");
+            System.err.println("Narrowing the work also helps: --no-tests, or --no-architecture.");
+            System.exit(CommandLine.ExitCode.SOFTWARE);
+        }
+    }
+
+    private static int run(String[] args) {
+        return new CommandLine(new Main())
                 // A wrong path or a truncated file is a user error, not a crash. Printing a Java
                 // stack trace for one tells the reader nothing they can act on and buries the
                 // sentence that would have.
@@ -18,7 +32,7 @@ public final class Main implements Runnable {
                     else System.err.println("(set REPO_INTEL_STACKTRACE=1 for the stack trace)");
                     return CommandLine.ExitCode.SOFTWARE;
                 })
-                .execute(args));
+                .execute(args);
     }
 
     private static String message(Throwable exception) {
