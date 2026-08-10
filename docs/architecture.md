@@ -48,12 +48,15 @@ The same analyzer recognizes Spring stereotypes, HTTP mapping methods, transacti
 - A relation is never emitted without source evidence.
 - Unresolved is a valid state, never silently represented as resolved.
 - An ambiguous resolution is reported as ambiguous; it is never silently narrowed to one arbitrary candidate.
-- The same source produces the same graph on any machine, in any parse order.
+- The same source produces the same graph on any machine, in any parse order. This extends to every
+  layer above the analyzer: any collection whose iteration order reaches the graph must be ordered
+  explicitly, because `Set.of` and `Map.of` randomize iteration per JVM run.
+- A view of the graph adds no dependency on a network: no CDN, no external script or font.
 - Deterministic analysis works with no LLM credentials, Docker, or outbound data transfer.
 - Enrichment can add claims but cannot overwrite deterministic evidence.
 - The graph model precedes GraphRAG; GraphRAG is one consumer.
 
-These are executable claims, not prose: `modules/model` and `modules/analyzer-java` each carry tests that assert them, and CI additionally diffs two exports of the same fixture.
+These are executable claims, not prose: `modules/model` and `modules/analyzer-java` each carry tests that assert them, and CI additionally diffs three exports of the same fixture, which is deliberately built to contain every layer.
 
 ## Planned module boundaries
 
@@ -67,3 +70,4 @@ These are executable claims, not prose: `modules/model` and `modules/analyzer-ja
 | `architecture` | Modules, centrality, communities, workflows, capabilities, risk | Implemented |
 | `query-engine` | Retrieval, planning, budgets, answer verification | Implemented; generation is an unimplemented interface |
 | `evaluation` | Grounded Java-repository benchmark | Harness implemented; corpus at 18 of 200+ questions |
+| `visualization` | Self-contained views and interchange formats | Implemented |

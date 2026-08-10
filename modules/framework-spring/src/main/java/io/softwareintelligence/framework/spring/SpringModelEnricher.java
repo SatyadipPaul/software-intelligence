@@ -31,7 +31,10 @@ public final class SpringModelEnricher {
 
     private static final Set<String> COMPONENT_KINDS_ANNOTATIONS =
             Set.of("Component", "Service", "Repository", "Controller", "RestController", "Configuration", "ConfigurationProperties");
-    private static final Set<String> GUARD_ANNOTATIONS = Set.of("PreAuthorize", "PostAuthorize", "Secured", "RolesAllowed", "DenyAll", "PermitAll");
+    // Declared as an ordered List, not a Set: Set.of iterates in a per-JVM randomized order, and
+    // that order would reach the graph as the order guard nodes and edges are created.
+    private static final List<String> GUARD_ANNOTATIONS =
+            List.of("DenyAll", "PermitAll", "PostAuthorize", "PreAuthorize", "RolesAllowed", "Secured");
     private static final List<String> PRODUCER_METHODS = List.of("send", "sendDefault");
     private static final Set<String> REST_CLIENT_TYPES =
             Set.of("org.springframework.web.client.RestTemplate", "org.springframework.web.reactive.function.client.WebClient",
@@ -101,12 +104,14 @@ public final class SpringModelEnricher {
 
     private void modelConfigurationProperties(CodeGraph graph) {
         for (GraphNode node : List.copyOf(graph.nodes())) {
-            node.attributes().forEach((key, value) -> {
+            // Sorted, because an immutable map's iteration order is randomized per JVM run.
+            for (String key : node.attributes().keySet().stream().sorted().toList()) {
+                String value = node.attributes().get(key);
                 if (key.equals("annotation.Value.value")) property(graph, node, unwrapPlaceholder(value), "value");
                 if (key.equals("annotation.ConfigurationProperties.value") || key.equals("annotation.ConfigurationProperties.prefix")) {
                     property(graph, node, value, "configuration-properties");
                 }
-            });
+            }
         }
     }
 
@@ -181,7 +186,7 @@ public final class SpringModelEnricher {
     private void modelSerialization(CodeGraph graph) {
         Map<String, Set<String>> serialized = new LinkedHashMap<>();
         for (GraphNode node : graph.nodes()) {
-            for (String key : node.attributes().keySet()) {
+            for (String key : node.attributes().keySet().stream().sorted().toList()) {
                 if (!key.startsWith("annotation.Json")) continue;
                 String owner = node.kind() == EntityKind.FIELD || node.kind() == EntityKind.METHOD ? declaringType(node.id()) : node.id();
                 serialized.computeIfAbsent(owner, ignored -> new LinkedHashSet<>()).add(key.substring("annotation.".length()));

@@ -12,6 +12,7 @@
     <dependency><groupId>io.softwareintelligence</groupId><artifactId>pipeline</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.softwareintelligence</groupId><artifactId>query-engine</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.softwareintelligence</groupId><artifactId>evaluation</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.softwareintelligence</groupId><artifactId>visualization</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>4.7.6</version></dependency>
   </dependencies>
   <build>

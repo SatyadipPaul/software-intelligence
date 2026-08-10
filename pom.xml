@@ -30,6 +30,7 @@
     <module>modules/architecture</module>
     <module>modules/query-engine</module>
     <module>modules/evaluation</module>
+    <module>modules/visualization</module>
     <module>apps/cli</module>
     <module>apps/maven-plugin</module>
   </modules>

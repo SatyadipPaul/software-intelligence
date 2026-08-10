@@ -16,11 +16,36 @@ jobs:
           cache: maven
       - run: mvn -B verify
 
+      # Three runs, not two: an ordering bug driven by per-JVM hash randomization can agree twice
+      # by chance. The fixture deliberately contains a security guard, a configuration property, and
+      # a module with two coupling targets, because every layer must be covered by this gate.
       - name: Graph export is stable across runs
         run: |
-          java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o first.graph.json
-          java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o second.graph.json
-          diff first.graph.json second.graph.json
+          for i in 1 2 3; do
+            java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o run$i.graph.json
+          done
+          diff run1.graph.json run2.graph.json
+          diff run2.graph.json run3.graph.json
+          cp run1.graph.json first.graph.json
+
+      - name: Every layer is present in the fixture graph
+        run: |
+          python3 - <<'PY'
+          import json
+          kinds = {n['kind'] for n in json.load(open('first.graph.json'))['nodes']}
+          for required in ['SECURITY_GUARD', 'CONFIGURATION_PROPERTY', 'MODULE', 'BUSINESS_CAPABILITY', 'WORKFLOW', 'ENDPOINT']:
+              assert required in kinds, f'{required} missing: the determinism gate would not cover its layer'
+          PY
+
+      - name: The rendered view is self-contained and reproducible
+        run: |
+          java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope OPERATIONAL -o view1.html
+          java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope OPERATIONAL -o view2.html
+          diff view1.html view2.html
+          ! grep -q '<script src' view1.html
+          ! grep -q 'cdn\.' view1.html
+          java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope ARCHITECTURE --format GRAPHML -o view.graphml
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('view.graphml')"
 
       - name: Impact keeps its source-backed answer for the fixture
         run: |

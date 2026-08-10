@@ -74,10 +74,34 @@ repo-intel snapshot <repo> -o snap.json        durable snapshot for later compar
 repo-intel diff <repo> snap.json               what changed, and the risk of each changed symbol
 repo-intel evaluate <repo> questions.tsv       score against a grounded question set
 repo-intel enrichment-plan <repo>              rank symbols worth model tokens, within a budget
+repo-intel visualize <repo> -o graph.html      self-contained interactive view, or GraphML/DOT
 ```
 
 Every command takes `--classpath`, `--discover-classpath`, `--no-framework`, `--no-architecture`,
 and `--no-tests`, so any layer above deterministic Java analysis can be switched off.
+
+## Viewing the graph
+
+```powershell
+java -jar repo-intel.jar visualize . --scope OPERATIONAL -o graph.html
+java -jar repo-intel.jar visualize . --scope SYMBOL --symbol PaymentService -o payment.html
+java -jar repo-intel.jar visualize . --scope ARCHITECTURE --format GRAPHML -o graph.graphml
+```
+
+`visualize` writes one HTML file with no external script, stylesheet, font, or CDN reference, so it
+opens from disk on an air-gapped machine. The layout is a seeded force simulation run to a fixed
+iteration count: the same graph draws the same picture every time, which is what makes two
+screenshots comparable. It accepts a repository or a snapshot written by `snapshot`.
+
+Confidence is drawn rather than hidden. An edge below 0.95 is dashed and coloured, and a slider
+hides everything under a chosen confidence, so a reader can see how much of a picture rests on
+inference instead of proof. Clicking a node shows its declaring file and line and every relationship
+with the resolver that produced it.
+
+Scope matters more than zoom: `OPERATIONAL` keeps the endpoints, services, repositories, entities,
+tables, and guards; `ARCHITECTURE` keeps modules, capabilities, and workflows; `SYMBOL` draws one
+context packet. Beyond `--max-nodes` the view keeps the highest-degree nodes and says so rather than
+truncating silently. For very large graphs use `--format GRAPHML` and open it in Gephi or yEd.
 
 ## Design principles
 

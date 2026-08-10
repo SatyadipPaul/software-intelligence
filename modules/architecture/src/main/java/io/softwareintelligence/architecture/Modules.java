@@ -60,8 +60,10 @@ public final class Modules {
 
         List<Subsystem> subsystems = new ArrayList<>();
         typesByModule.forEach((name, members) -> {
+            // A sorted, order-preserving map: Map.copyOf would randomize iteration order per JVM
+            // run, and that order reaches the emitted edges and the printed report.
             Subsystem subsystem = new Subsystem("module:" + name, name, List.copyOf(members),
-                    Map.copyOf(coupling.getOrDefault(name, Map.of())));
+                    java.util.Collections.unmodifiableMap(new TreeMap<>(coupling.getOrDefault(name, Map.of()))));
             subsystems.add(subsystem);
             record(graph, subsystem, members);
         });
