@@ -49,6 +49,24 @@ class GraphSnapshotTest {
         assertTrue(failure.getMessage().contains("schema 0.1"), failure.getMessage());
     }
 
+    @Test void a_file_that_is_not_a_graph_says_so_rather_than_blaming_the_schema(@TempDir Path directory) throws IOException {
+        Path file = Files.writeString(directory.resolve("notes.json"), "not json at all");
+
+        IOException failure = assertThrows(IOException.class, () -> GraphSnapshot.read(file));
+
+        assertTrue(failure.getMessage().contains("not a repository graph"), failure.getMessage());
+        assertFalse(failure.getMessage().contains("uses schema  but"), "an empty version is not a version mismatch");
+    }
+
+    @Test void a_truncated_graph_reports_truncation_rather_than_a_parser_crash(@TempDir Path directory) throws IOException {
+        Path file = Files.writeString(directory.resolve("half.json"),
+                "{ \"version\": \"" + GraphJsonWriter.SCHEMA_VERSION + "\", \"nodes\": [ {\"id\":");
+
+        IOException failure = assertThrows(IOException.class, () -> GraphSnapshot.read(file));
+
+        assertTrue(failure.getMessage().contains("truncated"), failure.getMessage());
+    }
+
     @Test void a_diff_reports_added_removed_and_re_resolved_relationships() {
         CodeGraph before = twoTypes();
         CodeGraph after = twoTypes();

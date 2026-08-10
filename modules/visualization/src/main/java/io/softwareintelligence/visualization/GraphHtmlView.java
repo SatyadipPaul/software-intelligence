@@ -257,6 +257,7 @@ public final class GraphHtmlView {
               }
               // Normalize to a fixed extent. Without this the layout's absolute size depends on node
               // count, so a larger graph opens zoomed so far out that no label is legible.
+              if (N === 0) return;
               let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
               for (let i = 0; i < N; i++) {
                 minX = Math.min(minX, px[i]); maxX = Math.max(maxX, px[i]);
@@ -307,6 +308,9 @@ public final class GraphHtmlView {
             }
 
             function fit() {
+              // An empty graph has an inverted bounding box; every transform derived from it is NaN
+              // and the page renders blank with no indication why.
+              if (N === 0) { scale = 1; offsetX = canvas.clientWidth / 2; offsetY = canvas.clientHeight / 2; return; }
               let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
               for (let i = 0; i < N; i++) {
                 minX = Math.min(minX, px[i]); maxX = Math.max(maxX, px[i]);
@@ -321,6 +325,13 @@ public final class GraphHtmlView {
             function draw() {
               const w = canvas.clientWidth, h = canvas.clientHeight;
               ctx.clearRect(0, 0, w, h);
+              if (N === 0) {
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = getComputedStyle(document.body).color;
+                ctx.font = '13px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('Nothing to draw: this scope selected no symbols.', 24, 32);
+                return;
+              }
               const neighbours = new Set();
               if (selected >= 0) {
                 neighbours.add(selected);

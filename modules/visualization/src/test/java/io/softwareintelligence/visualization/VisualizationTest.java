@@ -68,6 +68,16 @@ class VisualizationTest {
         assertEquals(view.totalNodes(), view.renderedNodes());
     }
 
+    @Test void an_empty_graph_renders_a_message_instead_of_a_blank_page() {
+        GraphHtmlView.View view = GraphHtmlView.render(new CodeGraph(), "empty");
+
+        assertEquals(0, view.renderedNodes());
+        // An empty graph has an inverted bounding box, so every transform derived from it is NaN
+        // and the canvas silently paints nothing at all.
+        assertTrue(view.html().contains("if (N === 0)"), "the viewer must guard the empty case");
+        assertTrue(view.html().contains("Nothing to draw"), "and say why the canvas is empty");
+    }
+
     @Test void graphml_is_well_formed_xml_carrying_resolver_and_confidence() throws Exception {
         String graphml = GraphExports.graphml(graph());
 

@@ -179,6 +179,20 @@ detection silently returned empty graphs. Every module and application now has t
 total - and the harness itself is tested for the ability to *fail*, since a scorer that always
 returns 1.0 would make every benchmark in this document meaningless while looking perfect.
 
+## Two defects from an edge-case sweep
+
+**11. A wrong or corrupt file produced a Java stack trace.** Pointing any command at a file that is
+not a graph printed a stack trace, and the message underneath it was wrong as well: "uses schema ''
+but this build writes 0.3" describes a version mismatch, when the real problem is that the file is
+not a graph. The two cases are now distinguished - not a graph, versus truncated or edited - and the
+CLI prints one clear line instead of a trace, with `REPO_INTEL_STACKTRACE=1` for when the trace is
+actually wanted.
+
+**12. An empty graph rendered a blank page.** A scope that selects nothing produces an inverted
+bounding box, so the zoom-to-fit calculation yields NaN and the canvas paints nothing at all, with
+no indication whether the tool had failed or the answer was genuinely empty. The viewer now guards
+the case and says so on the canvas.
+
 ## What this run did not test
 
 Honest boundaries, since the point of this document is to stop overclaiming from a narrow sample:

@@ -42,11 +42,22 @@ public final class GraphSnapshot {
     public static CodeGraph read(Path source) throws IOException {
         String json = Files.readString(source, StandardCharsets.UTF_8);
         String version = GraphJsonReader.version(json);
+        // Distinguished from a version mismatch on purpose: "uses schema '' but this build writes
+        // 0.3" is a confusing thing to tell someone who simply pointed at the wrong file.
+        if (version.isBlank()) {
+            throw new IOException(source + " is not a repository graph: no \"version\" field found. "
+                    + "Expected a file written by `repo-intel inspect` or `repo-intel snapshot`.");
+        }
         if (!GraphJsonWriter.SCHEMA_VERSION.equals(version)) {
             throw new IOException("snapshot " + source + " uses schema " + version
                     + " but this build writes " + GraphJsonWriter.SCHEMA_VERSION + "; re-analyze the repository");
         }
-        return GraphJsonReader.read(json);
+        try {
+            return GraphJsonReader.read(json);
+        } catch (RuntimeException malformed) {
+            throw new IOException(source + " is a repository graph but could not be read: it looks truncated"
+                    + " or edited. Re-analyze the repository to regenerate it.", malformed);
+        }
     }
 
     public static Diff diff(CodeGraph before, CodeGraph after) {
