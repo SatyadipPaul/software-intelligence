@@ -75,6 +75,8 @@ repo-intel diff <repo> snap.json               what changed, and the risk of eac
 repo-intel evaluate <repo> questions.tsv       score against a grounded question set
 repo-intel enrichment-plan <repo>              rank symbols worth model tokens, within a budget
 repo-intel visualize <repo> -o graph.html      self-contained interactive view, or GraphML/DOT
+repo-intel enrich-targets <repo> -o work.json  ranked work packets for a semantic enricher
+repo-intel enrich-apply <repo> claims.json     verify claims and apply only what evidence supports
 ```
 
 Every command takes `--classpath`, `--discover-classpath`, `--no-framework`, `--no-architecture`,
@@ -168,6 +170,33 @@ before printing it. A claim with no citation, a citation that does not exist, or
 does not involve the symbol under discussion is labelled and withheld rather than shown. That gate
 is where a model-generated answer would also have to pass; no model ships with the product and none
 is required.
+
+### Semantic enrichment without an API
+
+`enrich-targets` writes work packets: one symbol, the facts already proven about it, and the exact
+list of relationships an enricher may cite. An agent, a model, or a person answers with a claims
+file. `enrich-apply` verifies every claim against the graph and applies only what survives.
+
+The product itself calls no model and holds no credential. Enrichment is something you drive from
+outside — an agent fleet, a batch job, a reviewer — and the graph only ever sees a file.
+
+What the gate enforces:
+
+- a citation that does not exist is rejected;
+- a citation that exists but does not involve the symbol under discussion is rejected;
+- confidence is capped in code below every deterministic tier, because a model will exceed a bound
+  it was merely asked to respect;
+- a claim becomes a `claim.*` attribute and never an edge, a kind, a name, or a provenance record;
+- a DISPUTE is never applied, only surfaced for review;
+- `strip` removes every `claim.*` key, returning the graph byte-for-byte to its deterministic form.
+
+Because claims live in a pinned file, `graph + claims` is reproducible even though the enricher was
+not. Re-running an enricher produces a new file that diffs cleanly against the old one.
+
+What the gate does **not** catch: a well-cited but over-general sentence. "Audits all administrative
+access" cited against a single audit call is structurally valid and semantically overreaching. Graph
+verification bounds what a claim may reference, not how far it may generalize; that remains a
+review problem.
 
 `enrichment-plan` ranks the symbols where model tokens would buy the most — central, ambiguous,
 operationally exposed, not already well described — stops at a token budget, and prints why each

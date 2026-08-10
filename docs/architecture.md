@@ -53,7 +53,14 @@ The same analyzer recognizes Spring stereotypes, HTTP mapping methods, transacti
   explicitly, because `Set.of` and `Map.of` randomize iteration per JVM run.
 - A view of the graph adds no dependency on a network: no CDN, no external script or font.
 - Deterministic analysis works with no LLM credentials, Docker, or outbound data transfer.
-- Enrichment can add claims but cannot overwrite deterministic evidence.
+- Enrichment can add claims but cannot overwrite deterministic evidence. A claim becomes a
+  `claim.*` attribute, never a node's kind, name, or provenance, and never an edge: a model may
+  describe the graph, not extend it. Its confidence is capped in code below every deterministic
+  tier, because a model will ignore an instruction to bound itself.
+- A model that disagrees with the compiler does not win. Disagreements are recorded as disputes for
+  human review and are never applied.
+- Enrichment is pinned to a file, so an enriched graph is `deterministic graph + claims file` and
+  stays reproducible even though the process that authored the claims was not.
 - The graph model precedes GraphRAG; GraphRAG is one consumer.
 
 These are executable claims, not prose: `modules/model` and `modules/analyzer-java` each carry tests that assert them, and CI additionally diffs three exports of the same fixture, which is deliberately built to contain every layer.
