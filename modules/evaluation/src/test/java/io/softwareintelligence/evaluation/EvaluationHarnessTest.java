@@ -74,7 +74,7 @@ class EvaluationHarnessTest {
     @Test void an_unresolvable_subject_scores_zero_rather_than_throwing() {
         EvaluationHarness.Report report = new EvaluationHarness(3).run(graph(), List.of(
                 new GroundedQuestion("q", "demo", "?", GroundedQuestion.Kind.LOOKUP, "NothingLikeThis",
-                        List.of("Whatever"), List.of(), 0.9)));
+                        List.of("Whatever"), List.of(), 0.9, false)));
 
         assertEquals(0, report.passed());
         assertEquals(0.0, report.structuralAccuracy(), 1e-9);
@@ -88,6 +88,66 @@ class EvaluationHarnessTest {
         // behaviour is deliberate, so an empty question set cannot be mistaken for a passing one.
         assertEquals(1, report.passed());
         assertTrue(report.results().get(0).missing().isEmpty());
+    }
+
+    @Test void recall_alone_cannot_fail_an_answer_that_returns_everything() {
+        // The harness's own worst defect: a question expecting two symbols scored 1.000 against an
+        // answer containing 7,946. Recall is not accuracy, and the report must not imply that it is.
+        EvaluationHarness.Report report = new EvaluationHarness(3).run(graph(), List.of(question(
+                List.of("Controller.handle"), List.of(), 0.9)));
+
+        assertEquals(1.0, report.structuralAccuracy(), 1e-9);
+        assertTrue(report.results().get(0).returned() > 0, "the answer size must be reported so a dump is visible");
+        assertEquals(0, report.precisionScoredCount(), "a non-exhaustive question cannot measure precision");
+        assertTrue(EvaluationHarness.render(report).contains("not measured"),
+                "the report must say precision was not measured rather than implying accuracy");
+    }
+
+    @Test void an_exhaustive_question_scores_precision_and_fails_on_extra_symbols() {
+        GroundedQuestion exhaustive = new GroundedQuestion("q", "demo", "?", GroundedQuestion.Kind.IMPACT,
+                "type:demo.Service", List.of("Controller.handle"), List.of(), 0.9, true);
+
+        EvaluationHarness.Report report = new EvaluationHarness(3).run(graph(), List.of(exhaustive));
+
+        EvaluationHarness.Result result = report.results().get(0);
+        assertTrue(result.precisionScored());
+        assertEquals(1.0, result.structuralAccuracy(), 1e-9);
+        if (result.returned() > 1) {
+            assertTrue(result.precision() < 1.0, "extra symbols must cost precision");
+            assertFalse(result.passed(), "recall alone must not pass an exhaustive question");
+            assertFalse(result.unexpected().isEmpty(), "and the extras must be named");
+        }
+    }
+
+    @Test void an_exhaustive_question_with_an_exactly_correct_answer_passes() {
+        CodeGraph graph = graph();
+        List<String> everything = new java.util.ArrayList<>();
+        EvaluationHarness.Result probe = new EvaluationHarness(3).run(graph, List.of(question(List.of(), List.of(), 0.9)))
+                .results().get(0);
+        // Name every symbol the answer actually contains, which is what "exhaustive ground truth"
+        // means; precision must then be 1.0.
+        io.softwareintelligence.model.GraphQueries.impact(graph,
+                        graph.node("type:demo.Service").orElseThrow(), 3)
+                .direct().forEach(path -> everything.add(path.target().id()));
+        io.softwareintelligence.model.GraphQueries.impact(graph,
+                        graph.node("type:demo.Service").orElseThrow(), 3)
+                .transitive().forEach(path -> everything.add(path.target().id()));
+
+        GroundedQuestion exhaustive = new GroundedQuestion("q", "demo", "?", GroundedQuestion.Kind.IMPACT,
+                "type:demo.Service", List.copyOf(everything), List.of(), 0.9, true);
+        EvaluationHarness.Report report = new EvaluationHarness(3).run(graph, List.of(exhaustive));
+
+        assertTrue(probe.returned() >= 0);
+        assertEquals(1.0, report.results().get(0).precision(), 1e-9);
+        assertTrue(report.results().get(0).passed());
+    }
+
+    @Test void the_ninth_field_is_optional_so_older_question_sets_still_load() {
+        GroundedQuestion eightFields = GroundedQuestion.parse("id	demo	q	IMPACT	S	A		0.85");
+        GroundedQuestion nineFields = GroundedQuestion.parse("id	demo	q	IMPACT	S	A		0.85	true");
+
+        assertFalse(eightFields.exhaustive());
+        assertTrue(nineFields.exhaustive());
     }
 
     @Test void a_question_line_round_trips_through_the_file_format() {
@@ -130,7 +190,7 @@ class EvaluationHarnessTest {
 
     private static GroundedQuestion question(List<String> names, List<String> locations, double floor) {
         return new GroundedQuestion("q", "demo", "?", GroundedQuestion.Kind.IMPACT, "type:demo.Service",
-                names, locations, floor);
+                names, locations, floor, false);
     }
 
     private static CodeGraph graph() {

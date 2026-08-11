@@ -56,9 +56,13 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
   has no framework at all, and junit5, which is Gradle multi-module. Now 36 questions across four.
   The harness, scoring, and CI gate exist; the corpus does not yet.
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
-- Baseline against grep/BM25/vector RAG and a deterministic graph-only path. BM25 over the symbol
-  vocabulary ships and is measurable today; a vector baseline needs an embedding model, which is
-  deferred until one can run locally without credentials.
+  **Precision now measured** on questions that declare an exhaustive answer, and every report states
+  the answer size, because recall alone scored 1.000 against an answer of 7,946 symbols. Ranking
+  quality (precision@k, MRR) is the next missing metric, and the one that matters for large repos.
+- Baseline against grep/BM25/vector RAG and a deterministic graph-only path. **A naive text-search
+  baseline now runs on the same questions** (`evaluate --baseline`): the graph scores 1.000 recall
+  against 0.258 on the fixture, 0.000 on Petclinic, and 0.450 on jackson-databind. A vector baseline
+  still needs an embedding model that runs locally without credentials.
 
 **Exit criterion:** every claimed quality improvement has a reproducible benchmark result.
 

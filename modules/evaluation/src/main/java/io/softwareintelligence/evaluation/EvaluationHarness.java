@@ -21,17 +21,29 @@ import java.util.Set;
 /**
  * Scores the engine against a grounded question set.
  *
- * <p>Three numbers are reported per question and aggregated per run: <em>structural accuracy</em>
- * (did the expected symbols appear), <em>evidence recall</em> (did the expected source locations
- * appear in the evidence), and <em>groundedness</em> (was every returned relationship backed by a
- * source location at or above the question's confidence floor). Latency and packet size are
- * recorded so a quality gain that costs an order of magnitude is visible as such.
+ * <p>Reported per question and aggregated per run: <em>structural accuracy</em> (recall - did the
+ * expected symbols appear), <em>precision</em> (of what came back, how much belonged), <em>evidence
+ * recall</em> (did the expected source locations appear), and <em>groundedness</em> (was every
+ * returned relationship source-backed at or above the question's confidence floor).
+ *
+ * <p>Recall alone is not an accuracy measurement, and reporting it as one was this harness's own
+ * worst defect: a question expecting two symbols scored 1.000 against an answer containing 7,946.
+ * Precision needs ground truth that is complete, which is expensive, so questions declare whether
+ * their expected list is exhaustive and only those are scored on it. Every question now reports the
+ * size of the answer it was scored against, so an unscored dump is at least a visible one.
  */
 public final class EvaluationHarness {
 
-    public record Result(GroundedQuestion question, double structuralAccuracy, double evidenceRecall,
-                         double groundedness, long millis, int packetTokens, List<String> missing) {
-        public boolean passed() { return structuralAccuracy >= 1.0 && evidenceRecall >= 1.0 && groundedness >= 1.0; }
+    public record Result(GroundedQuestion question, double structuralAccuracy, double precision,
+                         double evidenceRecall, double groundedness, long millis, int packetTokens,
+                         int returned, List<String> missing, List<String> unexpected) {
+        public boolean passed() {
+            boolean recalled = structuralAccuracy >= 1.0 && evidenceRecall >= 1.0 && groundedness >= 1.0;
+            return recalled && (!question.exhaustive() || precision >= 1.0);
+        }
+
+        /** Precision is only meaningful where the expected list is the complete answer. */
+        public boolean precisionScored() { return question.exhaustive(); }
     }
 
     public record Report(List<Result> results) {
@@ -39,10 +51,25 @@ public final class EvaluationHarness {
         public double evidenceRecall() { return mean(Result::evidenceRecall); }
         public double groundedness() { return mean(Result::groundedness); }
         public long passed() { return results.stream().filter(Result::passed).count(); }
+
+        /** Averaged over the questions that can measure it, not over all of them. */
+        public double precision() {
+            List<Result> scored = results.stream().filter(Result::precisionScored).toList();
+            return scored.isEmpty() ? Double.NaN : scored.stream().mapToDouble(Result::precision).average().orElse(0);
+        }
+
+        public long precisionScoredCount() { return results.stream().filter(Result::precisionScored).count(); }
+
+        public double medianAnswerSize() {
+            List<Integer> sorted = results.stream().map(Result::returned).sorted().toList();
+            return sorted.isEmpty() ? 0 : sorted.get(sorted.size() / 2);
+        }
+
         public long medianMillis() {
             List<Long> sorted = results.stream().map(Result::millis).sorted().toList();
             return sorted.isEmpty() ? 0 : sorted.get(sorted.size() / 2);
         }
+
         private double mean(java.util.function.ToDoubleFunction<Result> field) {
             return results.isEmpty() ? 0.0 : results.stream().mapToDouble(field).average().orElse(0.0);
         }
@@ -71,30 +98,32 @@ public final class EvaluationHarness {
         long start = System.nanoTime();
         Optional<GraphNode> subject = GraphQueries.findSymbol(graph, question.subject());
         if (subject.isEmpty()) {
-            return new Result(question, 0.0, 0.0, 0.0, elapsed(start), 0, List.of("subject not found: " + question.subject()));
+            return new Result(question, 0.0, 0.0, 0.0, 0.0, elapsed(start), 0, 0,
+                    List.of("subject not found: " + question.subject()), List.of());
         }
         ImpactReport impact = GraphQueries.impact(graph, subject.get(), depth);
         ContextPacket packet = GraphQueries.context(graph, subject.get(), depth);
 
-        Set<String> returnedNames = new LinkedHashSet<>();
-        impact.direct().forEach(path -> returnedNames.add(path.target().id()));
-        impact.transitive().forEach(path -> returnedNames.add(path.target().id()));
-        packet.callers().forEach(node -> returnedNames.add(node.id()));
-        packet.endpoints().forEach(node -> returnedNames.add(node.id()));
-        packet.dependencies().forEach(node -> returnedNames.add(node.id()));
+        // The symbols an answer would name, and therefore the population precision is measured over.
+        Set<String> answer = new LinkedHashSet<>();
+        impact.direct().forEach(path -> answer.add(path.target().id()));
+        impact.transitive().forEach(path -> answer.add(path.target().id()));
+        packet.callers().forEach(node -> answer.add(node.id()));
+        packet.endpoints().forEach(node -> answer.add(node.id()));
+        packet.dependencies().forEach(node -> answer.add(node.id()));
 
         List<GraphEdge> evidence = new ArrayList<>(packet.evidence());
         impact.direct().forEach(path -> evidence.addAll(path.evidence()));
         impact.transitive().forEach(path -> evidence.addAll(path.evidence()));
         Set<String> returnedLocations = new LinkedHashSet<>();
         evidence.forEach(edge -> returnedLocations.add(edge.provenance().file() + ":" + edge.provenance().line()));
-        // A symbol the packet cites is a symbol the packet returned; an answer may name it.
-        evidence.forEach(edge -> { returnedNames.add(edge.from()); returnedNames.add(edge.to()); });
+        Set<String> cited = new LinkedHashSet<>(answer);
+        evidence.forEach(edge -> { cited.add(edge.from()); cited.add(edge.to()); });
 
         List<String> missing = new ArrayList<>();
         int nameHits = 0;
         for (String expected : question.expectedNames()) {
-            if (returnedNames.stream().anyMatch(id -> matches(id, expected))) nameHits++;
+            if (cited.stream().anyMatch(id -> matches(id, expected))) nameHits++;
             else missing.add("name: " + expected);
         }
         int locationHits = 0;
@@ -107,15 +136,57 @@ public final class EvaluationHarness {
                 .filter(edge -> edge.provenance().confidence() >= question.minimumConfidence())
                 .count();
 
+        // Precision is scored over the impact answer only. A context packet legitimately contains
+        // supporting structure that no one would call part of "the answer", and counting it as a
+        // false positive would punish the tool for being able to show its working.
+        List<String> unexpected = new ArrayList<>();
+        double precision = 1.0;
+        if (question.exhaustive()) {
+            List<String> returnedSymbols = scoredPopulation(question, impact, packet);
+            long correct = returnedSymbols.stream()
+                    .filter(id -> question.expectedNames().stream().anyMatch(expected -> matches(id, expected))).count();
+            returnedSymbols.stream()
+                    .filter(id -> question.expectedNames().stream().noneMatch(expected -> matches(id, expected)))
+                    .limit(8).forEach(id -> unexpected.add("unexpected: " + id));
+            precision = returnedSymbols.isEmpty() ? 1.0 : (double) correct / returnedSymbols.size();
+        }
+
         return new Result(question,
                 ratio(nameHits, question.expectedNames().size()),
+                precision,
                 ratio(locationHits, question.expectedLocations().size()),
                 ratio((int) grounded, evidence.size()),
-                elapsed(start), estimateTokens(packet), List.copyOf(missing));
+                elapsed(start), estimateTokens(packet), answer.size(),
+                List.copyOf(missing), List.copyOf(unexpected));
+    }
+
+    /**
+     * The set precision is measured over, which must match what the question asked.
+     *
+     * <p>"What is affected if X changes" is answered by the impact traversal; the packet's
+     * dependencies are what X <em>uses</em>, and counting {@code java.lang.String} against the
+     * precision of an impact answer measures the wrong thing - as it did the first time this was
+     * run.
+     */
+    private static List<String> scoredPopulation(GroundedQuestion question, ImpactReport impact, ContextPacket packet) {
+        Set<String> population = new LinkedHashSet<>();
+        switch (question.kind()) {
+            case IMPACT -> {
+                impact.direct().forEach(path -> population.add(path.target().id()));
+                impact.transitive().forEach(path -> population.add(path.target().id()));
+            }
+            case ENDPOINT -> packet.endpoints().forEach(node -> population.add(node.id()));
+            default -> {
+                packet.callers().forEach(node -> population.add(node.id()));
+                packet.endpoints().forEach(node -> population.add(node.id()));
+                packet.dependencies().forEach(node -> population.add(node.id()));
+            }
+        }
+        return List.copyOf(population);
     }
 
     /** An expectation names a source symbol; an id matches when it ends on that name's boundary. */
-    private static boolean matches(String id, String expected) {
+    static boolean matches(String id, String expected) {
         String normalized = expected.toLowerCase(Locale.ROOT);
         String candidate = id.toLowerCase(Locale.ROOT);
         if (candidate.equals(normalized) || candidate.endsWith("." + normalized) || candidate.endsWith(":" + normalized)) return true;
@@ -147,13 +218,23 @@ public final class EvaluationHarness {
 
     public static String render(Report report) {
         StringBuilder text = new StringBuilder(String.format(
-                "EVALUATION: %d/%d questions passed%n  structural accuracy %.3f%n  evidence recall     %.3f%n  groundedness        %.3f%n  median latency      %d ms%n",
-                report.passed(), report.results().size(), report.structuralAccuracy(), report.evidenceRecall(),
-                report.groundedness(), report.medianMillis()));
+                "EVALUATION: %d/%d questions passed%n  structural accuracy (recall) %.3f%n",
+                report.passed(), report.results().size(), report.structuralAccuracy()));
+        if (report.precisionScoredCount() > 0) {
+            text.append(String.format("  precision                    %.3f  (over %d exhaustive question(s))%n",
+                    report.precision(), report.precisionScoredCount()));
+        } else {
+            text.append("  precision                    not measured: no question declares an exhaustive answer\n");
+        }
+        text.append(String.format("  evidence recall              %.3f%n  groundedness                 %.3f%n"
+                        + "  median answer size           %.0f symbols%n  median latency               %d ms%n",
+                report.evidenceRecall(), report.groundedness(), report.medianAnswerSize(), report.medianMillis()));
         for (Result result : report.results()) {
             if (result.passed()) continue;
-            text.append("  FAILED ").append(result.question().id()).append(": ").append(result.question().question()).append('\n');
+            text.append("  FAILED ").append(result.question().id()).append(": ").append(result.question().question())
+                    .append(" (answer had ").append(result.returned()).append(" symbols)\n");
             result.missing().forEach(missing -> text.append("      missing ").append(missing).append('\n'));
+            result.unexpected().forEach(extra -> text.append("      ").append(extra).append('\n'));
         }
         return text.toString();
     }

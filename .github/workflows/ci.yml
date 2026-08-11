@@ -54,8 +54,19 @@ jobs:
           grep -q 'confidence 1.00' impact.txt
           grep -q 'RISK' impact.txt
 
-      - name: Grounded question set still passes
-        run: java -jar apps/cli/target/repo-intel.jar evaluate fixtures/sample-commerce evaluation/sample-commerce.questions.tsv --fail-under 1.0
+      # --depth 4 because the exhaustive questions enumerate the full transitive answer, and
+      # --baseline so a regression that makes the graph no better than grep is visible in the log.
+      - name: Grounded question set still passes, with precision and a baseline
+        run: |
+          java -jar apps/cli/target/repo-intel.jar evaluate fixtures/sample-commerce             evaluation/sample-commerce.questions.tsv --depth 4 --baseline --fail-under 1.0 | tee evaluation.txt
+          grep -q 'precision                    1.000' evaluation.txt
+          python3 - <<'PY'
+          import re
+          text = open('evaluation.txt').read()
+          graph, base = [float(m) for m in re.findall(r'structural accuracy \(recall\) ([0-9.]+)', text)]
+          assert graph > base, f'the graph must beat naive text search: {graph} vs {base}'
+          print(f'graph recall {graph} vs text-search baseline {base}')
+          PY
 
       - name: A snapshot round-trips and an unchanged tree diffs empty
         run: |
