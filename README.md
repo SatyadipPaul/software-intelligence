@@ -150,13 +150,13 @@ Each module writes its own `build/repo-intel.classpath`; discovery merges them. 
 
 ## Maven build integration
 
-The local-first Maven plugin is built in `apps/maven-plugin`. Install the current snapshot locally with `mvn install`, then add it to a project:
+The local-first Maven plugin is built in `apps/maven-plugin`. Install it locally with `mvn install`, or take it from Maven Central once published, then add it to a project:
 
 ```xml
 <plugin>
-  <groupId>io.softwareintelligence</groupId>
+  <groupId>io.github.satyadippaul</groupId>
   <artifactId>repo-intel-maven-plugin</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
   <executions>
     <execution><phase>verify</phase><goals><goal>analyze</goal></goals></execution>
   </executions>
@@ -166,10 +166,12 @@ The local-first Maven plugin is built in `apps/maven-plugin`. Install the curren
 It writes `target/repo-intel/repo-graph.json` using the Maven project's resolved compile classpath. The impact goal additionally writes text, graph JSON, and SARIF reports. For an explicit impact gate:
 
 ```powershell
-mvn repo-intel:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
+mvn io.github.satyadippaul:repo-intel-maven-plugin:0.1.0:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
 ```
 
 The plugin does not require Docker, a hosted graph, or source-code upload.
+
+See [publishing](docs/publishing.md) for how these artifacts reach Maven Central.
 
 ## Layers above the deterministic graph
 

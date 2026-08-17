@@ -2,14 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <parent><groupId>io.softwareintelligence</groupId><artifactId>software-intelligence</artifactId><version>0.1.0-SNAPSHOT</version><relativePath>../../pom.xml</relativePath></parent>
+  <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>repo-intel-maven-plugin</artifactId>
   <packaging>maven-plugin</packaging>
   <name>Repository Intelligence Maven Plugin</name>
   <description>Local-first, evidence-bearing Java repository analysis for Maven builds.</description>
   <properties><maven-plugin-tools.version>3.15.2</maven-plugin-tools.version><maven.api.version>3.9.12</maven.api.version></properties>
   <dependencies>
-    <dependency><groupId>io.softwareintelligence</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.satyadippaul</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>org.apache.maven</groupId><artifactId>maven-plugin-api</artifactId><version>${maven.api.version}</version><scope>provided</scope></dependency>
     <dependency><groupId>org.apache.maven</groupId><artifactId>maven-core</artifactId><version>${maven.api.version}</version><scope>provided</scope></dependency>
     <dependency><groupId>org.apache.maven.plugin-tools</groupId><artifactId>maven-plugin-annotations</artifactId><version>${maven-plugin-tools.version}</version><scope>provided</scope></dependency>

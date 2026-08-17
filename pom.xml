@@ -2,9 +2,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>io.softwareintelligence</groupId>
+  <groupId>io.github.satyadippaul</groupId>
   <artifactId>software-intelligence</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
   <packaging>pom</packaging>
   <name>Software Intelligence</name>
   <description>Evidence-first, Java-first repository intelligence: a deterministic, provenance-bearing software model.</description>
@@ -95,6 +95,19 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId><artifactId>maven-gpg-plugin</artifactId><version>3.2.4</version>
             <executions><execution><id>sign-artifacts</id><phase>verify</phase><goals><goal>sign</goal></goals></execution></executions>
+          </plugin>
+          <!--
+            Uploads to the Central Portal. autoPublish is deliberately false: the release lands in a
+            staging area for the maintainer to inspect and release by hand. A first publish that
+            goes straight to Central cannot be taken back - coordinates are immutable there.
+          -->
+          <plugin>
+            <groupId>org.sonatype.central</groupId><artifactId>central-publishing-maven-plugin</artifactId><version>0.5.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>false</autoPublish>
+            </configuration>
           </plugin>
         </plugins>
       </build>
