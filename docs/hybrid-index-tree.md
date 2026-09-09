@@ -146,9 +146,15 @@ summaries of `type`, `util`, `misc` and `deser.impl` instead of `ObjectMapper#re
 
 It produces candidates for the machinery that already exists, so a summary arrives as a
 confidence-capped `claim.summary` on the graph node the branch covers, and `IndexTreeBuilder` reads
-it back onto the card. **Whether real summaries improve descent is unmeasured** — that needs an
-enricher run, and the product ships no model. What is tested is the mechanism: a branch unreachable
-by its own vocabulary becomes reachable once a summary is pinned to it.
+it back onto the card.
+
+**Whether real summaries improve descent was then measured, and on this corpus they do not.** Twelve
+authored summaries across Petclinic and the fixture passed the verification gate and moved no
+ranking metric. The reason is headroom: both corpora already score at or near 1.000, because every
+question in them names its subject and the exact-name signal settles the descent before any card
+text is read. A summary can only matter for a question that does *not* name what it is looking for,
+and no question set contains one. The mechanism itself is proven — a branch unreachable by its own
+vocabulary becomes reachable once a summary is pinned to it — but its value is not.
 
 ### Navigation, and why a model here is safe
 

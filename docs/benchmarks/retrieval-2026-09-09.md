@@ -178,6 +178,44 @@ jackson-databind and junit5 could not be re-run this way here. jackson-databind 
 environment's proxy refuses with a 403; junit5's Gradle build fails before producing the per-module
 classpath files its question set documents. Both remain measured at no-classpath resolution.
 
+## Do branch summaries improve descent?
+
+Not measurably, on either corpus that could be tested. This is the exit criterion Phase 5 set for
+itself, so the negative result is the answer rather than a gap.
+
+The loop was run as documented, with no product change and no credentials: `enrich-targets
+--branches` wrote packets, those packets were answered with `SUMMARY` claims, and `enrich-apply`
+verified every one against the graph before applying it. All 12 claims were accepted, 0 rejected,
+0 disputed. The summaries were written from what the source does — Petclinic is a veterinary clinic,
+so its `owner` package is "pet owners and everything kept under one" — and deliberately not from the
+question set, which would be tuning to the benchmark.
+
+| | recall@1 | MRR | anchor coverage |
+| --- | --- | --- | --- |
+| Petclinic, 10 branch summaries | 1.000 → 1.000 | 1.000 → 1.000 | 0.714 → 0.714 |
+| fixture, 2 branch summaries | 0.900 → 0.900 | 0.950 → 0.950 | 0.900 → **0.933** |
+
+The single movement is one expected name in one question, which is noise at ten questions.
+
+**The reason is headroom, not the summaries.** Petclinic already scores 1.000 on every ranking
+metric before enrichment; there is nothing for a summary to win. The corpora where an opaque branch
+name should cost a descent — jackson-databind's `util`, `impl`, `misc`, `std` — also score 1.000,
+because their questions name their subject and the exact-name signal settles the descent before any
+card text is read.
+
+So the claim the design makes for summaries — that one good sentence on a high-fan-out branch steers
+every descent through it — is **still untested**, and it now has a clear precondition for being
+testable: a question that does not name its subject. "Where is authorization handled?" is that
+shape; every question in all four corpora is "what breaks if `X` changes". The mechanism is proven
+to work (a unit test shows a branch unreachable by its own vocabulary becoming reachable once a
+summary is pinned to it, and these runs confirm summaries reach the cards a navigator reads); what
+is unproven is that it matters on questions anyone has written down.
+
+One incidental finding: the fixture offers only **two** branches worth enriching at all, because a
+branch needs at least two children to present a choice. A table of contents is worth writing when
+there is a lot to organise, and the corollary is that on a small repository there is almost nothing
+to summarise.
+
 ## Cost and shape
 
 | | fixture | this repo | spring-petclinic | jackson-databind | junit5 |

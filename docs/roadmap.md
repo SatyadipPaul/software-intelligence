@@ -112,9 +112,11 @@ credentials and outbound calls, which the local-first invariant makes optional b
   how little the card already says, through the existing budget, packet and verification path. On
   jackson-databind a 2,000-token budget buys summaries of `type`, `util`, `misc` and `deser.impl` -
   the packages a descent has to guess at - where symbol ranking spends the same budget on
-  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. Whether real summaries
-  improve descent is not yet measured: that needs an enricher run, which needs credentials the
-  local-first invariant makes optional.
+  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. **Measured, and the answer
+  is no** - 12 authored summaries across Petclinic and the fixture passed the gate and moved no
+  ranking metric, because both corpora already score at or near 1.000 and leave a summary nothing to
+  win. The design's claim for summaries needs a question that does not name its subject before it
+  can be tested at all; see [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.
