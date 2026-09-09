@@ -133,6 +133,20 @@ jobs:
           fi
           grep -q 'not on the cards presented' rejected.txt
 
+      # This repository declares CodeGraph#edges(), which is exactly the shape that used to break
+      # reading a graph back: the reader found "name":"edges" before the real edges array and
+      # returned a graph with none. The fixture cannot catch it, so the gate analyzes this repo.
+      - name: A graph file answers the same as the repository it came from
+        run: |
+          java -jar apps/cli/target/repo-intel.jar inspect . -o self.graph.json
+          java -jar apps/cli/target/repo-intel.jar impact . Bm25Index --depth 2 > from-repo.txt
+          java -jar apps/cli/target/repo-intel.jar impact self.graph.json Bm25Index --depth 2 > from-file.txt
+          diff <(grep -E '^Direct:' from-repo.txt) <(grep -E '^Direct:' from-file.txt)
+          grep -qv 'Direct: 0 | Transitive: 0' from-file.txt
+          java -jar apps/cli/target/repo-intel.jar index . -o self-from-repo.tree.json
+          java -jar apps/cli/target/repo-intel.jar index self.graph.json -o self-from-file.tree.json
+          diff self-from-repo.tree.json self-from-file.tree.json
+
       - name: A snapshot round-trips and an unchanged tree diffs empty
         run: |
           java -jar apps/cli/target/repo-intel.jar snapshot fixtures/sample-commerce -o baseline.snapshot.json

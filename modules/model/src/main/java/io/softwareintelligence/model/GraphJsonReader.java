@@ -17,10 +17,10 @@ final class GraphJsonReader {
     }
 
     static String version(String json) {
-        int marker = json.indexOf("\"version\"");
-        if (marker < 0) return "";
+        int value = topLevelValue(json, "version");
+        if (value < 0) return "";
         GraphJsonReader reader = new GraphJsonReader(json);
-        reader.cursor = json.indexOf(':', marker) + 1;
+        reader.cursor = value;
         reader.skipWhitespace();
         return reader.readString();
     }
@@ -28,21 +28,55 @@ final class GraphJsonReader {
     static CodeGraph read(String json) {
         GraphJsonReader reader = new GraphJsonReader(json);
         CodeGraph graph = new CodeGraph();
-        reader.cursor = json.indexOf("\"nodes\"");
-        if (reader.cursor >= 0) {
-            reader.cursor = json.indexOf('[', reader.cursor) + 1;
+        int nodes = topLevelValue(json, "nodes");
+        if (nodes >= 0) {
+            reader.cursor = json.indexOf('[', nodes) + 1;
             reader.eachObject(object -> graph.upsertNode(new GraphNode(
                     object.get("id"), EntityKind.valueOf(object.get("kind")), object.get("name"),
                     attributes(object), provenance(object)), true));
         }
-        reader.cursor = json.indexOf("\"edges\"");
-        if (reader.cursor >= 0) {
-            reader.cursor = json.indexOf('[', reader.cursor) + 1;
+        int edges = topLevelValue(json, "edges");
+        if (edges >= 0) {
+            reader.cursor = json.indexOf('[', edges) + 1;
             reader.eachObject(object -> graph.addEdge(new GraphEdge(
                     object.get("from"), object.get("to"), RelationKind.valueOf(object.get("kind")),
                     attributes(object), provenance(object))));
         }
         return graph;
+    }
+
+    /**
+     * Finds where a top-level key's value starts, by walking the document's structure.
+     *
+     * <p>Searching the text for {@code "edges"} instead - which is what this did - finds the first
+     * place those characters appear anywhere, including inside a node's own name. Analyzing this
+     * repository produces a method called {@code edges}, whose node is written as
+     * {@code "name":"edges"} thousands of lines above the real edges array; every graph file it
+     * wrote then read back with its edges silently missing, and impact analysis on such a file
+     * answered "nothing is affected" rather than failing. Strings are skipped whole here, so their
+     * contents can never be mistaken for a key.
+     *
+     * @return the index just after the key's colon, or -1 when the document has no such top-level key
+     */
+    private static int topLevelValue(String json, String key) {
+        int depth = 0;
+        for (int i = 0; i < json.length(); i++) {
+            char character = json.charAt(i);
+            if (character == '{' || character == '[') { depth++; continue; }
+            if (character == '}' || character == ']') { depth--; continue; }
+            if (character != '"') continue;
+            int end = i + 1;
+            while (end < json.length() && json.charAt(end) != '"') {
+                if (json.charAt(end) == '\\') end++;
+                end++;
+            }
+            if (depth == 1 && end == i + 1 + key.length() && json.regionMatches(i + 1, key, 0, key.length())) {
+                int colon = json.indexOf(':', end);
+                if (colon > 0) return colon + 1;
+            }
+            i = end;
+        }
+        return -1;
     }
 
     private static Map<String, String> attributes(Map<String, String> object) {
