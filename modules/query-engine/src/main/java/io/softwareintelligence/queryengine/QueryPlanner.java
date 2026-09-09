@@ -242,12 +242,21 @@ public final class QueryPlanner {
         return false;
     }
 
-    /** The most symbol-like word in the question: a dotted name, or the longest capitalized token. */
+    /**
+     * The most symbol-like word in the question: a dotted name, or the longest capitalized token.
+     *
+     * <p>English question words are excluded, because a question starts with one and capitalizes it.
+     * "Which table does the Owner entity persist to?" yielded {@code Which} - longer than
+     * {@code Owner}, and capitalized in exactly the same way. Flat retrieval survived that by
+     * matching the question's other words; tree navigation did not, because it steers by the branch
+     * that holds the subject, and no branch holds a symbol called Which.
+     */
     static String subjectOf(String question) {
         String best = "";
         for (String word : question.split("[\\s,?()]+")) {
             String cleaned = word.replaceAll("[^A-Za-z0-9_.#/()]", "");
             if (cleaned.isBlank()) continue;
+            if (Bm25Index.QUESTION_WORDS.contains(cleaned.toLowerCase(Locale.ROOT))) continue;
             boolean symbolic = cleaned.contains(".") || cleaned.contains("#")
                     || (Character.isUpperCase(cleaned.charAt(0)) && !cleaned.equals(cleaned.toUpperCase(Locale.ROOT)));
             if (symbolic && cleaned.length() > best.length()) best = cleaned;

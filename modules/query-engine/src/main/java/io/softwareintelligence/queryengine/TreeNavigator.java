@@ -27,8 +27,20 @@ import java.util.Set;
  */
 public final class TreeNavigator {
 
-    /** One scored candidate, with the reason it scored that way. */
-    public record Scored(IndexNode node, double score, String reason) { }
+    /**
+     * One scored candidate, with the reason it scored that way.
+     *
+     * <p>{@code holdsSubject} is ranked ahead of {@code score} rather than folded into it. A branch
+     * that contains something named exactly what the question asked for is not "a bit more
+     * relevant" than one that merely uses the same words a lot — it is the branch a reader would
+     * open, and no amount of term frequency elsewhere should outvote it.
+     */
+    public record Scored(IndexNode node, double score, boolean holdsSubject, String reason) {
+        static final Comparator<Scored> BEST_FIRST =
+                Comparator.comparing(Scored::holdsSubject).reversed()
+                        .thenComparing(Comparator.comparingDouble(Scored::score).reversed())
+                        .thenComparing(scored -> scored.node().id());
+    }
 
     /** One decision: the card that was read, what it offered, and what was kept. */
     public record Step(String from, List<Scored> considered, List<String> chosen) { }
@@ -67,7 +79,26 @@ public final class TreeNavigator {
     /** How much of a parent's score a child inherits, so a good branch is worth following. */
     private static final double INHERITANCE = 0.5;
 
+    /**
+     * The card index for the tree most recently descended.
+     *
+     * <p>Building it is linear in the tree, which is nothing for one question and everything for a
+     * benchmark: on jackson-databind, rebuilding it per question was most of a 1,002 ms median
+     * against flat retrieval's 134 ms. The index is a pure function of the tree, so caching it
+     * changes no result - only how many times the same answer is computed.
+     */
+    private static IndexTree cachedTree;
+    private static CardIndex cachedCards;
+
     private TreeNavigator() { }
+
+    private static synchronized CardIndex cardsFor(IndexTree tree) {
+        if (cachedTree != tree) {
+            cachedCards = CardIndex.over(tree);
+            cachedTree = tree;
+        }
+        return cachedCards;
+    }
 
     public static Descent descend(IndexTree tree, String question, QueryPlanner.Plan plan, int beam, int maxAnchors) {
         return descend(tree, question, plan, beam, maxAnchors, DETERMINISTIC);
@@ -75,13 +106,13 @@ public final class TreeNavigator {
 
     public static Descent descend(IndexTree tree, String question, QueryPlanner.Plan plan,
                                   int beam, int maxAnchors, Chooser chooser) {
-        CardIndex cards = CardIndex.over(tree);
+        CardIndex cards = cardsFor(tree);
         List<String> terms = Bm25Index.queryTerms(question);
         String subject = plan.subject().toLowerCase(Locale.ROOT);
 
         List<Step> trace = new ArrayList<>();
         Map<String, Scored> anchors = new LinkedHashMap<>();
-        List<Scored> frontier = List.of(new Scored(tree.root(), 0.0, "descent starts at the root"));
+        List<Scored> frontier = List.of(new Scored(tree.root(), 0.0, false, "descent starts at the root"));
         Set<String> visited = new LinkedHashSet<>();
         int cardsRead = 0;
 
@@ -103,16 +134,16 @@ public final class TreeNavigator {
                 }
                 // Descending has to earn its place. When no child beats the branch itself, the
                 // branch is where the answer lives - "which module holds X" is answered by the
-                // module, not by a method three levels below it - so it is anchored as well.
-                if (ranked.isEmpty() || parent.score() >= ranked.get(0).score()) anchor(anchors, parent);
+                // module, not by a method three levels below it - so it is anchored as well. When a
+                // child holds the subject the descent always continues, whatever the text says.
+                if (ranked.isEmpty() || (!ranked.get(0).holdsSubject() && parent.score() >= ranked.get(0).score())) {
+                    anchor(anchors, parent);
+                }
             }
-            frontier = next.stream()
-                    .sorted(Comparator.comparingDouble(Scored::score).reversed().thenComparing(scored -> scored.node().id()))
-                    .limit(Math.max(1, beam)).toList();
+            frontier = next.stream().sorted(Scored.BEST_FIRST).limit(Math.max(1, beam)).toList();
         }
 
-        List<Scored> ranked = anchors.values().stream()
-                .sorted(Comparator.comparingDouble(Scored::score).reversed().thenComparing(scored -> scored.node().id()))
+        List<Scored> ranked = anchors.values().stream().sorted(Scored.BEST_FIRST)
                 .limit(Math.max(1, maxAnchors)).toList();
         return new Descent(ranked, List.copyOf(trace), cardsRead);
     }
@@ -120,7 +151,9 @@ public final class TreeNavigator {
     private static void anchor(Map<String, Scored> anchors, Scored candidate) {
         if (candidate.node().anchor().isBlank()) return;
         Scored existing = anchors.get(candidate.node().id());
-        if (existing == null || existing.score() < candidate.score()) anchors.put(candidate.node().id(), candidate);
+        if (existing == null || Scored.BEST_FIRST.compare(candidate, existing) < 0) {
+            anchors.put(candidate.node().id(), candidate);
+        }
     }
 
     /**
@@ -136,15 +169,17 @@ public final class TreeNavigator {
         for (IndexNode child : children) {
             double text = cards.score(terms, child);
             double affinity = affinity(plan.kind(), child);
-            double named = names(child, subject) ? 6.0 : 0.0;
-            double score = parent.score() * INHERITANCE + (text + named) * affinity;
+            boolean isSubject = names(child, subject);
+            boolean holds = isSubject || cards.subtreeHolds(child, subject);
+            double score = parent.score() * INHERITANCE + text * affinity;
             StringBuilder reason = new StringBuilder();
-            if (named > 0) reason.append("names the subject; ");
+            if (isSubject) reason.append("is the subject; ");
+            else if (holds) reason.append("holds the subject; ");
             reason.append(String.format(Locale.ROOT, "text %.2f x affinity %.2f", text, affinity));
             if (parent.score() > 0) reason.append(String.format(Locale.ROOT, " + %.2f inherited", parent.score() * INHERITANCE));
-            ranked.add(new Scored(child, score, reason.toString()));
+            ranked.add(new Scored(child, score, holds, reason.toString()));
         }
-        ranked.sort(Comparator.comparingDouble(Scored::score).reversed().thenComparing(scored -> scored.node().id()));
+        ranked.sort(Scored.BEST_FIRST);
         return ranked;
     }
 

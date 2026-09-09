@@ -1,10 +1,11 @@
 # A hybrid of the code graph and PageIndex RAG
 
-**Status: built.** `modules/index-tree` derives the tree, `TreeNavigator` descends it,
-`NavigationSession` lets an assistant drive that descent, and `RetrievalHarness` measures the
-result. What is *not* done is the part that needs corpora this repository does not carry: see
-[the retrieval baseline](benchmarks/retrieval-2026-09-09.md) for what has actually been measured,
-which is less than the design hoped for.
+**Status: built and measured on four repositories.** `modules/index-tree` derives the tree,
+`TreeNavigator` descends it, `NavigationSession` lets an assistant drive that descent, and
+`RetrievalHarness` measures the result. `HYBRID` is never worse than flat retrieval and better on
+two of four corpora; at scale the descent is also two to three times *cheaper* than flat ranking,
+because it reads 18 cards where ranking scores 45,000 nodes. Running the real corpora found three
+defects the fixture could not — see [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 ## The idea in one sentence
 
@@ -195,18 +196,26 @@ checked against the graph before use.
 
 ## What the measurement actually showed
 
-On the fixture, HYBRID reaches recall@1 0.900 and MRR 0.900 against flat retrieval's 0.800 and
-0.833. TREE alone ties flat retrieval: it wins one question and loses another.
+Across the fixture, spring-petclinic, jackson-databind and junit5:
 
-That is the predicted shape — the union covers each parent's failure — but it rests on a single
-question changing rank in a ten-question set, so it is weak evidence. The corpora that would settle
-it (Petclinic, jackson-databind, junit5) were not available where this was measured. **Tree
-retrieval is measured as not-a-regression; it is not yet measured as a win.** Running
-`evaluate --retrieval-only` against those three repositories is the next thing that matters.
+- **HYBRID is never worse than flat retrieval**, and better on two corpora — the fixture (MRR 0.950
+  against 0.833) and junit5 (0.938 against 0.875). On the other two flat retrieval already scores
+  1.000.
+- **TREE alone is not a safe default.** It loses one question on junit5 to exactly the wrong-branch
+  commitment this design predicted, which is why `--retrieval` still defaults to `BM25`.
+- **At scale the descent is cheaper than the ranking**: 101 ms against 273 ms on jackson-databind,
+  56 ms against 153 ms on junit5. Cards read per question barely moves between a 72-node graph
+  (11.8) and a 45,595-node one (18.2), because depth grows logarithmically while flat ranking grows
+  linearly. That crossover is the property the whole approach rests on, and it holds.
 
-The comparison did earn its keep in a different way: it found that ranking a descent's opinion above
-a symbol the question names by hand cost a question. An exact match now leads wherever the flat path
-is in play.
+Running the real corpora was also where the design was found to be wrong three times over: a branch
+card could not be searched for what it contained (jackson-databind scored **0.400** against flat
+retrieval's 1.000), term frequency could not express "is it in here", and a question word was being
+read as the subject (Petclinic fell from 1.000 to **0.800**). The benchmark records each one.
+
+What is still unmeasured is the capability this makes possible: every question in all four corpora
+has a single relevant symbol, so the multi-anchor path has no test. A question like "which endpoints
+touch the owners table" is the shape that would exercise it, and no question set has one.
 
 ## The configuration to expect to win
 

@@ -89,7 +89,7 @@ unrelated to the symbol under discussion; `EnrichmentPlanner` ranks and budgets 
 prints an audit. Generation is an interface with no implementation: shipping one would require model
 credentials and outbound calls, which the local-first invariant makes optional by definition.
 
-## Milestone 6 — retrieval that navigates structure (built, under-measured)
+## Milestone 6 — retrieval that navigates structure (built, measured on four repositories)
 
 - Derive a navigable index tree from the graph's own containment: repository, module, capability or
   package, type, member. **Done:** `modules/index-tree` and `repo-intel index`, deterministic,
@@ -108,10 +108,12 @@ credentials and outbound calls, which the local-first invariant makes optional b
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.
 
-**Status:** not met, and measured rather than assumed. On the fixture, `HYBRID` reaches recall@1
-0.900 and MRR 0.900 against flat retrieval's 0.800 and 0.833; `TREE` alone ties. That is one
-question in a ten-question set, and the three larger question sets have not been run. Tree retrieval
-is measured as not-a-regression and not yet as a win. See
+**Status:** met for `HYBRID`, not for `TREE` alone. Across all four question sets, `HYBRID` is never
+worse than flat retrieval and better on two: the fixture (MRR 0.950 against 0.833) and junit5 (0.938
+against 0.875). `TREE` alone loses a question on junit5, so `--retrieval` still defaults to `BM25`.
+At scale the descent is also the cheaper path — 101 ms against 273 ms on jackson-databind — because
+it reads 18 cards where flat ranking scores 45,595 nodes. Running the real corpora found three
+defects the fixture never could, each recorded in
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **precision@k was the wrong ask.** Each grounded question declares one relevant symbol, so

@@ -58,7 +58,7 @@ public final class Bm25Index {
      * only, never from the index: a symbol genuinely called {@code on} should still be findable by
      * its id, and removing index terms would change what "the document contains" means.
      */
-    private static final java.util.Set<String> QUESTION_WORDS = java.util.Set.of(
+    static final java.util.Set<String> QUESTION_WORDS = java.util.Set.of(
             "what", "which", "who", "whom", "whose", "where", "when", "why", "how", "does", "do", "did",
             "is", "are", "was", "were", "be", "been", "am", "the", "a", "an", "of", "on", "in", "to",
             "for", "from", "by", "with", "and", "or", "not", "this", "that", "these", "those", "it",

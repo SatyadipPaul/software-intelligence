@@ -213,6 +213,66 @@ class TreeRetrievalTest {
         assertEquals(List.of("index:module:demo", "index:capability:payments"), NavigationSession.readChoices(file));
     }
 
+    // ------------------------------------------------------------ defects the real corpora found
+
+    @Test void a_question_word_is_never_mistaken_for_the_subject() {
+        // "Which" is capitalized because a question starts with it, and it is longer than "Owner".
+        // Petclinic scored 1.000 before this and 0.800 after tree navigation started steering by the
+        // subject, because no branch holds a symbol called Which.
+        assertEquals("Owner", QueryPlanner.subjectOf("Which table does the Owner entity persist to?"));
+        assertEquals("Vet", QueryPlanner.subjectOf("What does the Vet entity map to?"));
+        assertEquals("PaymentService", QueryPlanner.subjectOf("What breaks if PaymentService changes?"));
+    }
+
+    @Test void a_branch_is_chosen_for_what_it_holds_not_for_what_it_says() {
+        // The shape that made jackson-databind score 0.400: a package whose name repeats the query's
+        // words many times, against the one package that actually contains the symbol.
+        CodeGraph graph = new CodeGraph();
+        declareType(graph, "type:demo.JsonNode", EntityKind.TYPE, "demo");
+        for (int i = 0; i < 12; i++) declareType(graph, "type:demo.node.JsonNodeHelper" + i, EntityKind.TYPE, "demo.node");
+        graph.upsertNode(new GraphNode("module:demo", EntityKind.MODULE, "demo", Map.of(), SOURCE), true);
+        graph.addEdge(new GraphEdge("module:demo", "type:demo.JsonNode", RelationKind.CONTAINS, Map.of(), SOURCE));
+        graph.upsertNode(new GraphNode("module:demo.node", EntityKind.MODULE, "demo.node", Map.of(), SOURCE), true);
+        for (int i = 0; i < 12; i++) {
+            graph.addEdge(new GraphEdge("module:demo.node", "type:demo.node.JsonNodeHelper" + i, RelationKind.CONTAINS, Map.of(), SOURCE));
+        }
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+        String question = "What is affected by a change to JsonNode?";
+
+        TreeNavigator.Descent descent = TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 3);
+
+        assertEquals("type:demo.JsonNode", descent.anchorGraphIds().get(0),
+                "the branch holding the subject must win over the one that merely repeats its words: "
+                        + descent.anchorGraphIds());
+    }
+
+    @Test void a_branch_that_holds_the_subject_outranks_a_higher_scoring_one() {
+        CodeGraph graph = commerceGraph();
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+        String question = "what breaks if OrderService changes?";
+
+        TreeNavigator.Descent descent = TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 5);
+
+        TreeNavigator.Step first = descent.trace().get(0);
+        TreeNavigator.Scored best = first.considered().get(0);
+        assertTrue(best.holdsSubject(), "the branch holding OrderService must sort first: " + best.reason());
+    }
+
+    @Test void the_card_index_is_reused_across_questions_of_one_tree() {
+        IndexTree tree = IndexTreeBuilder.derive(commerceGraph());
+        String question = "what breaks if PaymentService changes?";
+
+        // Same tree, twice: the second descent must agree exactly with the first, which is what
+        // makes caching the index safe.
+        assertEquals(TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 5).anchorGraphIds(),
+                TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 5).anchorGraphIds());
+
+        IndexTree rebuilt = IndexTreeBuilder.derive(commerceGraph());
+        assertEquals(TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 5).anchorGraphIds(),
+                TreeNavigator.descend(rebuilt, question, QueryPlanner.classify(question), 4, 5).anchorGraphIds(),
+                "a second tree instance must not be answered from the first tree's cached index");
+    }
+
     /** The same checkout slice the index-tree tests use: one capability, one module, one service. */
     private static CodeGraph commerceGraph() {
         CodeGraph graph = new CodeGraph();
