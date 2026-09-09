@@ -148,13 +148,17 @@ It produces candidates for the machinery that already exists, so a summary arriv
 confidence-capped `claim.summary` on the graph node the branch covers, and `IndexTreeBuilder` reads
 it back onto the card.
 
-**Whether real summaries improve descent was then measured, and on this corpus they do not.** Twelve
-authored summaries across Petclinic and the fixture passed the verification gate and moved no
-ranking metric. The reason is headroom: both corpora already score at or near 1.000, because every
-question in them names its subject and the exact-name signal settles the descent before any card
-text is read. A summary can only matter for a question that does *not* name what it is looking for,
-and no question set contains one. The mechanism itself is proven — a branch unreachable by its own
-vocabulary becomes reachable once a summary is pinned to it — but its value is not.
+**Whether real summaries improve descent was then measured.** Twelve authored summaries passed the
+verification gate and moved nothing on questions that name their subject — those already score 1.000
+and leave nothing to win. Seven questions that do *not* name their subject were then added, which
+dropped Petclinic retrieval from 1.000 to 0.66, and on those the summaries lift anchor recall from
+0.737 to 0.842.
+
+The mechanism is the one this design claimed: a summary carries domain vocabulary the code does not
+have. "Which table stores the clinic's clients?" is answerable only because a summary calls `Owner`
+"a client of the clinic" — the word *client* appears nowhere in Petclinic's source. The questions
+were not written blind to the summaries, though, so this establishes the mechanism and overstates
+the size of the win; questions written by someone who has not read the summaries would settle it.
 
 ### Navigation, and why a model here is safe
 

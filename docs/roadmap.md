@@ -53,7 +53,10 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 - Curate 200+ grounded questions across 3–5 Java repositories. **Started:** 18 questions across two
   repositories ship in `evaluation/`, keyed to source names and file:line rather than to graph ids,
   so they survive identity changes. Now 28 questions across three, including jackson-databind, which
-  has no framework at all, and junit5, which is Gradle multi-module. Now 38 questions across four, two of them declaring plural answers so anchor coverage has something to score.
+  has no framework at all, and junit5, which is Gradle multi-module. Now 45 questions across four: two declare plural
+  answers so anchor coverage has something to score, and seven deliberately do not name their
+  subject, which dropped Petclinic retrieval from 1.000 to 0.66 and gave the corpus the headroom it
+  had been missing.
   The harness, scoring, and CI gate exist; the corpus does not yet.
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
   **Precision now measured** on questions that declare an exhaustive answer, and every report states
@@ -112,11 +115,13 @@ credentials and outbound calls, which the local-first invariant makes optional b
   how little the card already says, through the existing budget, packet and verification path. On
   jackson-databind a 2,000-token budget buys summaries of `type`, `util`, `misc` and `deser.impl` -
   the packages a descent has to guess at - where symbol ranking spends the same budget on
-  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. **Measured, and the answer
-  is no** - 12 authored summaries across Petclinic and the fixture passed the gate and moved no
-  ranking metric, because both corpora already score at or near 1.000 and leave a summary nothing to
-  win. The design's claim for summaries needs a question that does not name its subject before it
-  can be tested at all; see [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
+  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. **Measured.** 12 authored
+  summaries moved nothing on questions that name their subject, because those already score 1.000.
+  On seven added questions that do not name their subject they lift anchor recall 0.737 to 0.842,
+  and the mechanism is the one the design claimed: "which table stores the clinic's clients" is
+  answerable only because a summary calls Owner a client of the clinic, a word absent from the
+  source. The questions were not written blind to the summaries, so that establishes the mechanism
+  and overstates the size; see [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.

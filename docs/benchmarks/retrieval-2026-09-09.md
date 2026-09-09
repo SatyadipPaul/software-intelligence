@@ -178,43 +178,55 @@ jackson-databind and junit5 could not be re-run this way here. jackson-databind 
 environment's proxy refuses with a 403; junit5's Gradle build fails before producing the per-module
 classpath files its question set documents. Both remain measured at no-classpath resolution.
 
+## A harder question set, and what it exposed
+
+Every question in the corpus named its subject — "what breaks if `VetRepository` changes" — which
+the exact-name signal settles before any card text is read. That is why Petclinic scored 1.000 on
+every ranking metric, and it flattered retrieval badly.
+
+Seven questions were added that do **not** name their subject, phrased the way someone who does not
+yet know the symbol would ask: "Which page does the application serve at its root?", "Where are the
+specialties a veterinarian holds stored?", "What checks a pet is valid before the form is accepted?"
+All 19 pass the traversal harness with the Maven classpath. Retrieval collapses:
+
+| Petclinic, 19 questions | anchor recall | recall@1 | MRR | coverage |
+| --- | --- | --- | --- | --- |
+| BM25 | 0.737 | 0.632 | **0.664** | 0.000 |
+| TREE | 0.737 | 0.632 | 0.655 | **0.625** |
+| HYBRID | 0.737 | 0.632 | 0.655 | **0.625** |
+
+From 1.000 to roughly 0.66. Five of the seven new questions are missed by every mode. The earlier
+perfect scores measured the question style, not the retrieval — and on this harder set `TREE` is
+marginally *behind* flat retrieval on MRR, by one question's rank, while still holding the whole of
+the coverage advantage.
+
 ## Do branch summaries improve descent?
 
-Not measurably, on either corpus that could be tested. This is the exit criterion Phase 5 set for
-itself, so the negative result is the answer rather than a gap.
+On the easy questions, no. On the hard ones, yes — with a caveat about who wrote what that has to
+come first.
 
-The loop was run as documented, with no product change and no credentials: `enrich-targets
---branches` wrote packets, those packets were answered with `SUMMARY` claims, and `enrich-apply`
-verified every one against the graph before applying it. All 12 claims were accepted, 0 rejected,
-0 disputed. The summaries were written from what the source does — Petclinic is a veterinary clinic,
-so its `owner` package is "pet owners and everything kept under one" — and deliberately not from the
-question set, which would be tuning to the benchmark.
+The loop ran as documented, with no product change and no credentials: `enrich-targets --branches`
+wrote packets, those were answered with `SUMMARY` claims, and `enrich-apply` verified every one
+against the graph. 12 claims applied, 0 rejected, 0 disputed.
 
-| | recall@1 | MRR | anchor coverage |
+| Petclinic, HYBRID | anchor recall | recall@1 | MRR |
 | --- | --- | --- | --- |
-| Petclinic, 10 branch summaries | 1.000 → 1.000 | 1.000 → 1.000 | 0.714 → 0.714 |
-| fixture, 2 branch summaries | 0.900 → 0.900 | 0.950 → 0.950 | 0.900 → **0.933** |
+| 10 original questions | 1.000 → 1.000 | 1.000 → 1.000 | 1.000 → 1.000 |
+| 19 questions incl. subject-free | 0.737 → **0.842** | 0.632 → 0.632 | 0.655 → **0.672** |
 
-The single movement is one expected name in one question, which is noise at ten questions.
+Two questions are recovered by the summaries alone, and the mechanism is exactly what the design
+claimed: a summary supplies domain vocabulary the code does not contain. "Which table stores the
+clinic's **clients**?" is answerable only because a summary calls `Owner` "a client of the clinic" —
+**the word "client" appears nowhere in Petclinic's Java source.** The same holds for "clinic
+**staff**" and the `vet` module.
 
-**The reason is headroom, not the summaries.** Petclinic already scores 1.000 on every ranking
-metric before enrichment; there is nothing for a summary to win. The corpora where an opaque branch
-name should cost a descent — jackson-databind's `util`, `impl`, `misc`, `std` — also score 1.000,
-because their questions name their subject and the exact-name signal settles the descent before any
-card text is read.
-
-So the claim the design makes for summaries — that one good sentence on a high-fan-out branch steers
-every descent through it — is **still untested**, and it now has a clear precondition for being
-testable: a question that does not name its subject. "Where is authorization handled?" is that
-shape; every question in all four corpora is "what breaks if `X` changes". The mechanism is proven
-to work (a unit test shows a branch unreachable by its own vocabulary becoming reachable once a
-summary is pinned to it, and these runs confirm summaries reach the cards a navigator reads); what
-is unproven is that it matters on questions anyone has written down.
-
-One incidental finding: the fixture offers only **two** branches worth enriching at all, because a
-branch needs at least two children to present a choice. A table of contents is worth writing when
-there is a lot to organise, and the corollary is that on a small repository there is almost nothing
-to summarise.
+**The caveat, which limits what this shows.** The summaries were written before these questions
+existed, so they were not tuned to them. The questions were *not* written blind to the summaries.
+Someone reaching for a phrase to describe an owner and someone reaching for a phrase to summarise
+the owner package will land on the same domain words, and that similarity is doing some of the work
+here. So this establishes the **mechanism** — a summary can carry vocabulary the code lacks, and
+retrieval will use it — and **overstates the effect size**. Questions written by someone who has not
+seen the summaries would settle it, and nothing here should be quoted as the size of the win.
 
 ## Cost and shape
 
@@ -242,10 +254,13 @@ question was most of an earlier 1,002 ms median on jackson-databind.
 
 ## What would change the conclusion
 
-**More plural questions.** Coverage is now measured over 5 questions on Petclinic and 5 on the
-fixture, and pc-011 (OwnerController's seven routes, exhaustive) was written for it. Ten questions
-is enough to show a 0.000/0.561 separation between flat and tree retrieval; it is not enough to put
-a number on how large that separation is.
+**Questions written by someone who did not write the summaries.** That is the one measurement here
+whose method is compromised, and it is cheap to fix.
+
+**More questions that do not name their subject.** Seven of them took Petclinic from 1.000 to 0.66
+and are the only reason any of the harder findings above exist. Every other repository in the corpus
+is still scored entirely on questions that name what they are looking for, so their 1.000s should be
+read as "not yet asked anything difficult" rather than as a ceiling reached.
 
 **A question no single anchor can answer.** Every plural question in the corpus is still reachable by
 traversal from one subject, because the architecture layer's capability and module nodes give the

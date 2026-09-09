@@ -25,3 +25,15 @@ pc-010	spring-petclinic	Which repository does VetController depend on?	LOOKUP	Ve
 # an OwnerRepository field and is not, because the impact of a repository reaches further.
 pc-011	spring-petclinic	Which routes does OwnerController expose?	ENDPOINT	OwnerController	endpoint:GET:/owners/new|endpoint:POST:/owners/new|endpoint:GET:/owners/find|endpoint:GET:/owners|endpoint:GET:/owners/{ownerId}/edit|endpoint:POST:/owners/{ownerId}/edit|endpoint:GET:/owners/{ownerId}	owner/OwnerController.java:73|owner/OwnerController.java:78|owner/OwnerController.java:90|owner/OwnerController.java:95|owner/OwnerController.java:140|owner/OwnerController.java:145|owner/OwnerController.java:170	0.85	true
 pc-012	spring-petclinic	Which controllers hold an OwnerRepository?	IMPACT	OwnerRepository	OwnerController|PetController|VisitController		0.55	
+#
+# pc-013 onwards deliberately do NOT name their subject. Every earlier question says "what breaks
+# if VetRepository changes", which the exact-name signal settles before any card text is read -
+# which is why retrieval saturates at 1.000 here and why branch summaries could not be shown to
+# help. These ask the way someone who does not yet know the symbol's name would ask.
+pc-013	spring-petclinic	Which page does the application serve at its root?	ENDPOINT	org.springframework.samples.petclinic.system.WelcomeController	endpoint:GET:/	system/WelcomeController.java:26	0.85	
+pc-014	spring-petclinic	Where does the application deliberately throw an exception?	LOOKUP	org.springframework.samples.petclinic.system.CrashController	endpoint:GET:/oups	system/CrashController.java:32	0.85	
+pc-015	spring-petclinic	Which table stores the clinic's clients?	PERSISTENCE	org.springframework.samples.petclinic.owner.Owner	table:owners		0.55	
+pc-016	spring-petclinic	Where are the specialties a veterinarian holds stored?	PERSISTENCE	org.springframework.samples.petclinic.vet.Specialty	table:specialties		0.55	
+pc-017	spring-petclinic	What checks a pet is valid before the form is accepted?	LOOKUP	org.springframework.samples.petclinic.owner.PetValidator	PetValidator.validate	owner/PetValidator.java:37	0.55	
+pc-018	spring-petclinic	What turns the pet type typed into a form into an entity?	LOOKUP	org.springframework.samples.petclinic.owner.PetTypeFormatter	PetTypeRepository	owner/PetTypeFormatter.java:41	0.55	
+pc-019	spring-petclinic	Which routes list the clinic staff?	ENDPOINT	org.springframework.samples.petclinic.vet.VetController	endpoint:GET:/vets|endpoint:GET:/vets.html	vet/VetController.java:45|vet/VetController.java:66	0.85	true
