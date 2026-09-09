@@ -137,6 +137,19 @@ The corollary is a scheduling insight: **enrich branch nodes, not leaf methods**
 on a high-fan-out branch steers every descent that passes through it. A summary on a leaf method is
 read once.
 
+`BranchEnrichment` ranks on exactly that, by reach (how many symbols sit below), choices (how many
+children the card presents — a branch with one child disambiguates nothing), and opacity (how little
+the name already says), with test code discounted because no question routes through it. The
+difference from ranking symbols is stark on jackson-databind: the same 2,000-token budget buys
+summaries of `type`, `util`, `misc` and `deser.impl` instead of `ObjectMapper#readValue`, three
+`Map#get` overrides, and a test utility called `a2q`.
+
+It produces candidates for the machinery that already exists, so a summary arrives as a
+confidence-capped `claim.summary` on the graph node the branch covers, and `IndexTreeBuilder` reads
+it back onto the card. **Whether real summaries improve descent is unmeasured** — that needs an
+enricher run, and the product ships no model. What is tested is the mechanism: a branch unreachable
+by its own vocabulary becomes reachable once a summary is pinned to it.
+
 ### Navigation, and why a model here is safe
 
 Beam search over cards, with a node budget. Two interchangeable navigators behind one interface:
@@ -181,7 +194,7 @@ largest blast radius in the existing code:
 | 2 — deterministic navigator | done | `TreeNavigator`, `ask --retrieval BM25\|TREE\|HYBRID` |
 | 3 — multi-anchor packets | done | `QueryPlanner.merge`, `compress(packet, anchors, budget)`, `ask --anchors` |
 | 4 — assistant navigator | done | `NavigationSession`, `repo-intel navigate`, `ask --from-session` |
-| 5 — branch summaries | **not done** | cards read `claim.summary` where one exists; nothing ranks branches for enrichment yet |
+| 5 — branch summaries | done | `BranchEnrichment`, `enrich-targets --branches`, `enrichment-plan --branches` |
 
 Two deviations from the plan above, both because the plan was wrong:
 

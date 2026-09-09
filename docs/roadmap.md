@@ -103,7 +103,13 @@ credentials and outbound calls, which the local-first invariant makes optional b
   navigate` presents one card per step and rejects any id that was not on it. A vector baseline is
   still blocked on a local embedding model; this path needs none.
 - Rank tree branches for enrichment, so a budget buys summaries where they steer the most descents.
-  **Not started.** Cards read a `claim.summary` where one exists, but nothing ranks branches yet.
+  **Done:** `enrich-targets --branches` and `enrichment-plan --branches` rank by reach, choices, and
+  how little the card already says, through the existing budget, packet and verification path. On
+  jackson-databind a 2,000-token budget buys summaries of `type`, `util`, `misc` and `deser.impl` -
+  the packages a descent has to guess at - where symbol ranking spends the same budget on
+  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. Whether real summaries
+  improve descent is not yet measured: that needs an enricher run, which needs credentials the
+  local-first invariant makes optional.
 
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.

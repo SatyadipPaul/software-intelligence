@@ -102,12 +102,23 @@ final class EnrichmentPlanCommand implements Callable<Integer> {
     @CommandLine.Option(names = "--max-tokens", defaultValue = "20000", description = "Token budget") private int maxTokens;
     @CommandLine.Option(names = "--cost-per-1k", defaultValue = "0.003", description = "Cost per thousand tokens, for the audit line")
     private double costPerThousand;
+
+    @CommandLine.Option(names = "--branches",
+            description = "Rank index-tree branches instead of symbols: a summary there is read by every descent through it")
+    private boolean branches;
+
+    @CommandLine.Option(names = "--index", description = "Use a pinned tree file rather than deriving one")
+    private java.nio.file.Path indexFile;
+
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
         CodeGraph graph = options.analyze(repository);
         EnrichmentPlanner.Budget budget = new EnrichmentPlanner.Budget(maxTokens, costPerThousand);
-        System.out.print(EnrichmentPlanner.audit(EnrichmentPlanner.plan(graph, budget), budget));
+        EnrichmentPlanner.Plan plan = branches
+                ? io.softwareintelligence.queryengine.BranchEnrichment.plan(graph, TreeOptions.load(graph, indexFile), budget)
+                : EnrichmentPlanner.plan(graph, budget);
+        System.out.print(EnrichmentPlanner.audit(plan, budget));
         return 0;
     }
 }
