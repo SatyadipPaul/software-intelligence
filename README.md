@@ -61,6 +61,7 @@ evaluation/*.questions.tsv   Grounded question sets: sample-commerce, Petclinic,
 fixtures/sample-commerce/    Small checkout flow for local smoke testing
 docs/architecture.md         Product architecture and invariants
 docs/roadmap.md              Sequenced implementation roadmap and exit criteria
+docs/hybrid-index-tree.md    Design for tree-navigated retrieval over the graph (not built)
 ```
 
 ## Commands

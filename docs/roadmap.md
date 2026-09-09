@@ -59,6 +59,8 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
   **Precision now measured** on questions that declare an exhaustive answer, and every report states
   the answer size, because recall alone scored 1.000 against an answer of 7,946 symbols. Ranking
   quality (precision@k, MRR) is the next missing metric, and the one that matters for large repos.
+  It is also the prerequisite for [the hybrid index tree](hybrid-index-tree.md), which cannot be
+  claimed to improve retrieval until the metric that would falsify it exists.
 - Baseline against grep/BM25/vector RAG and a deterministic graph-only path. **A naive text-search
   baseline now runs on the same questions** (`evaluate --baseline`): the graph scores 1.000 recall
   against 0.258 on the fixture, 0.000 on Petclinic, and 0.450 on jackson-databind. A vector baseline
@@ -84,3 +86,20 @@ every claim against the graph and withholds anything whose citation is missing, 
 unrelated to the symbol under discussion; `EnrichmentPlanner` ranks and budgets candidates and
 prints an audit. Generation is an interface with no implementation: shipping one would require model
 credentials and outbound calls, which the local-first invariant makes optional by definition.
+
+## Milestone 6 — retrieval that navigates structure (designed, not started)
+
+- Derive a navigable index tree from the graph's own containment: repository, module, capability or
+  package, type, member. Deterministic, pinned to a file, fingerprinted against the graph it came
+  from.
+- Navigate that tree to a **set** of anchors rather than narrowing to one subject, so questions with
+  plural answers stop being unanswerable by construction.
+- Keep the deterministic navigator model-free and the assistant navigator an offline file exchange,
+  as the enrichment loop already is. A vector baseline is still blocked on a local embedding model;
+  this path needs none.
+
+**Exit criterion:** tree-navigated retrieval beats flat BM25 on precision@k, MRR, and anchor recall
+across all four question sets — or is dropped, having been measured rather than assumed.
+
+**Design:** [a hybrid of the code graph and PageIndex RAG](hybrid-index-tree.md). No code exists
+yet, and the first phase is the Milestone 4 ranking metric, not the tree.
