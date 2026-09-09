@@ -254,6 +254,18 @@ file. `enrich-apply` verifies every claim against the graph and applies only wha
 The product itself calls no model and holds no credential. Enrichment is something you drive from
 outside — an agent fleet, a batch job, a reviewer — and the graph only ever sees a file.
 
+`--branches` ranks index-tree branches rather than symbols, which is usually where a budget is best
+spent: a summary on a branch is read by every descent that passes through it, while a summary on a
+leaf method is read once by whoever already found it.
+
+```powershell
+java -jar repo-intel.jar enrich-targets . --branches --max-tokens 20000 -o packets.md --format MARKDOWN
+```
+
+On jackson-databind a 2,000-token budget spent this way buys summaries of `type`, `util`, `misc` and
+`deser.impl` — the packages a descent has to guess at. The same budget spent on symbols buys
+`ObjectMapper#readValue`, three `Map#get` overrides, and a test utility.
+
 What the gate enforces:
 
 - a citation that does not exist is rejected;
