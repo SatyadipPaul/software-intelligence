@@ -28,8 +28,13 @@ contains ObjectMapper" is answered by a module, and the question sets say so in 
 names. Scoring it as a miss at first made a correct answer look like a navigator defect.
 
 **precision@k is not reported.** The roadmap asked for it, and it is the wrong metric for this
-ground truth: each question declares one relevant symbol, so precision@k cannot exceed 1/k and would
+ground truth: most questions declare one relevant symbol, so precision@k cannot exceed 1/k and would
 measure that cap rather than the ranking. Recall@k and MRR are reported instead.
+
+**Anchor coverage** is reported for the questions whose declared answer names more than one symbol:
+the share of that answer the anchor set itself reaches, scored before any traversal. Every other
+metric asks whether retrieval found *the* symbol, which is all a single-subject question can ask.
+This is the only measurement that says anything about anchoring on a set.
 
 ## Result
 
@@ -119,6 +124,60 @@ A fifth item was a measurement defect rather than a code one: the harness scored
 module *containing* the subject as a miss, which marked several correct answers wrong. See the
 scoring rule above.
 
+## Anchoring on a set
+
+Coverage is scored on anchors alone, deliberately. Traversal from one good anchor reaches the rest —
+that is what the graph is for, and the traversal harness already scores 12/12 on Petclinic with one
+anchor per question. Counting it here would measure the graph a second time instead of retrieval.
+
+Petclinic, `HYBRID`, with the Maven classpath, over the 5 questions whose answer names several
+symbols:
+
+| | anchors 1 | anchors 5 | anchors 10 | anchors 12, beam 8 | anchors 12, beam 16 |
+| --- | --- | --- | --- | --- | --- |
+| anchor coverage | 0.000 | 0.500 | 0.561 | **0.714** | 0.714 |
+| cards read | 12.3 | 12.3 | 12.3 | 24.1 | 41.3 |
+
+Two things follow. Widening the beam past 8 buys nothing but cards — 41.3 against 24.1 for the same
+0.714 — so `--beam 8` is where a plural question should sit and the default of 4 stays right for the
+single-anchor case. And a single anchor covers **none** of a plural answer, which is not a failure of
+the tool but a statement of what one anchor can be: the subject, not the answer.
+
+The separation between modes on this metric is the widest anywhere in this benchmark:
+
+| Petclinic, anchors 10 | BM25 | TREE | HYBRID |
+| --- | --- | --- | --- |
+| anchor coverage | **0.000** | 0.561 | 0.561 |
+
+Flat retrieval scores zero because its ten anchors for "Which routes does OwnerController expose?"
+are ten spellings of `OwnerController` — the type, its constructor, six of its methods, and its test
+class — and not one endpoint. The descent returns the controller and three of the seven routes. Both
+modes score 1.000 on every single-subject metric for this question; only coverage separates them,
+and it separates them completely.
+
+## Does the build classpath change the conclusion?
+
+Everything above was run with no classpath, which the analyzer resolves far less from. Petclinic was
+re-run with its real Maven classpath (170 entries) to check whether richer resolution moves the
+balance:
+
+| Petclinic, anchors 10 | anchor recall | recall@1 | MRR | coverage |
+| --- | --- | --- | --- | --- |
+| no classpath, BM25 | 1.000 | 1.000 | 1.000 | 0.000 |
+| no classpath, HYBRID | 1.000 | 1.000 | 1.000 | 0.490 |
+| with classpath, BM25 | 1.000 | 1.000 | 1.000 | 0.000 |
+| with classpath, HYBRID | 1.000 | 1.000 | 1.000 | **0.561** |
+
+The comparison between modes is unchanged; coverage improves, because more resolved edges mean more
+of the answer exists to be anchored on. The traversal harness moves from 7/12 to **12/12** with the
+classpath, and its groundedness from 0.993 to 1.000 — those failures were the missing classpath, not
+the questions.
+
+jackson-databind and junit5 could not be re-run this way here. jackson-databind is a
+`3.3.0-SNAPSHOT` whose parent POM lives in the Sonatype snapshots repository, which this
+environment's proxy refuses with a 403; junit5's Gradle build fails before producing the per-module
+classpath files its question set documents. Both remain measured at no-classpath resolution.
+
 ## Cost and shape
 
 | | fixture | this repo | spring-petclinic | jackson-databind | junit5 |
@@ -145,8 +204,17 @@ question was most of an earlier 1,002 ms median on jackson-databind.
 
 ## What would change the conclusion
 
-A question set with plural answers. Every question in all four corpora has a single relevant symbol,
-which is why anchor recall saturates at 1.000 on two of them and why precision@k cannot be reported.
-The multi-anchor path — the thing tree navigation makes possible — is therefore still unmeasured:
-"which endpoints touch the owners table" is the shape that would test it, and no question set
-contains one yet.
+**More plural questions.** Coverage is now measured over 5 questions on Petclinic and 5 on the
+fixture, and pc-011 (OwnerController's seven routes, exhaustive) was written for it. Ten questions
+is enough to show a 0.000/0.561 separation between flat and tree retrieval; it is not enough to put
+a number on how large that separation is.
+
+**A question no single anchor can answer.** Every plural question in the corpus is still reachable by
+traversal from one subject, because the architecture layer's capability and module nodes give the
+graph a place to hang a plural answer from. A question spanning two disconnected regions — "compare
+what the vet and owner subsystems persist" — would be the first that genuinely *requires* the anchor
+set, and none exists yet.
+
+**Classpaths for jackson-databind and junit5,** which this environment cannot produce. Petclinic
+shows resolution changes coverage but not the mode comparison; whether that holds on the two large
+repositories is unverified.

@@ -91,6 +91,36 @@ class RetrievalHarnessTest {
         }
     }
 
+    @Test void anchor_coverage_measures_the_set_not_the_subject() {
+        CodeGraph graph = commerceGraph();
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+        GroundedQuestion plural = new GroundedQuestion("q1", "demo", "What breaks if PaymentService changes?",
+                GroundedQuestion.Kind.IMPACT, "PaymentService",
+                List.of("PaymentService", "OrderService"), List.of(), 0.5, false);
+
+        RetrievalHarness.Report one = new RetrievalHarness(10, 1, 4).run(graph, tree, List.of(plural), RetrievalMode.HYBRID);
+        RetrievalHarness.Report many = new RetrievalHarness(10, 8, 4).run(graph, tree, List.of(plural), RetrievalMode.HYBRID);
+
+        assertEquals(1, one.pluralCount());
+        assertTrue(many.anchorCoverage() >= one.anchorCoverage(),
+                "more anchors cannot cover less of the answer: " + one.anchorCoverage() + " -> " + many.anchorCoverage());
+        assertTrue(one.anchorCoverage() <= 0.5 + 1e-9,
+                "a single anchor cannot cover a two-symbol answer: " + one.anchorCoverage());
+    }
+
+    @Test void a_single_symbol_answer_is_not_counted_as_plural() {
+        CodeGraph graph = commerceGraph();
+
+        RetrievalHarness.Report report = new RetrievalHarness(10, 5, 4).run(graph, IndexTreeBuilder.derive(graph),
+                List.of(question("q1", "What breaks if PaymentService changes?", "PaymentService")),
+                RetrievalMode.HYBRID);
+
+        assertEquals(0, report.pluralCount());
+        assertTrue(Double.isNaN(report.anchorCoverage()));
+        assertTrue(RetrievalHarness.render(report).contains("anchor coverage              not measured"),
+                RetrievalHarness.render(report));
+    }
+
     private static GroundedQuestion question(String id, String text, String subject) {
         return new GroundedQuestion(id, "demo", text, GroundedQuestion.Kind.IMPACT, subject,
                 List.of(), List.of(), 0.5, false);

@@ -226,9 +226,15 @@ card could not be searched for what it contained (jackson-databind scored **0.40
 retrieval's 1.000), term frequency could not express "is it in here", and a question word was being
 read as the subject (Petclinic fell from 1.000 to **0.800**). The benchmark records each one.
 
-What is still unmeasured is the capability this makes possible: every question in all four corpora
-has a single relevant symbol, so the multi-anchor path has no test. A question like "which endpoints
-touch the owners table" is the shape that would exercise it, and no question set has one.
+The capability this makes possible is now measured too, by anchor coverage — how much of a plural
+answer the anchor set itself reaches. On Petclinic, flat retrieval scores **0.000** and tree descent
+**0.561**, the widest separation between the modes anywhere in the benchmark: asked which routes a
+controller exposes, flat ranking returns ten spellings of the controller's own name and no endpoint
+at all. Coverage rises with the anchor budget and plateaus at beam 8.
+
+What remains unmeasured is a question no single anchor can answer. Every plural question in the
+corpus is still traversal-reachable from one subject, because the architecture layer's capability and
+module nodes give a plural answer somewhere to hang from.
 
 ## The configuration to expect to win
 

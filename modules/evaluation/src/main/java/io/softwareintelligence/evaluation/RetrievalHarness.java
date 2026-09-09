@@ -37,10 +37,13 @@ public final class RetrievalHarness {
      * @param rank 1-based position of the first anchor that reached the subject, or 0 for none
      */
     public record Result(GroundedQuestion question, int rank, int anchors, int cardsRead, long millis,
-                         List<String> returned, String subjectId) {
+                         List<String> returned, String subjectId, double coverage) {
         public boolean found() { return rank > 0; }
 
         public double reciprocalRank() { return rank == 0 ? 0.0 : 1.0 / rank; }
+
+        /** A question is plural when the answer it declares names more than one symbol. */
+        public boolean plural() { return question.expectedNames().size() > 1; }
     }
 
     public record Report(RetrievalMode mode, List<Result> results, List<GroundedQuestion> unusable) {
@@ -58,6 +61,23 @@ public final class RetrievalHarness {
         }
 
         public double meanCardsRead() { return mean(result -> result.cardsRead()); }
+
+        /**
+         * How much of a plural answer the anchor set covers.
+         *
+         * <p>Every other metric here asks whether retrieval reached <em>the</em> symbol, which is
+         * all a single-subject question can ask. This asks whether it reached <em>them</em>, and it
+         * is the only measurement that says anything about anchoring on a set rather than on one
+         * node - the capability tree navigation exists to enable, and the one that went unmeasured
+         * for as long as every metric assumed a single right answer.
+         */
+        public double anchorCoverage() {
+            List<Result> plural = results.stream().filter(Result::plural).toList();
+            return plural.isEmpty() ? Double.NaN
+                    : plural.stream().mapToDouble(Result::coverage).average().orElse(0.0);
+        }
+
+        public long pluralCount() { return results.stream().filter(Result::plural).count(); }
 
         private double mean(java.util.function.ToDoubleFunction<Result> field) {
             return results.isEmpty() ? 0.0 : results.stream().mapToDouble(field).average().orElse(0.0);
@@ -99,9 +119,23 @@ public final class RetrievalHarness {
             }
             results.add(new Result(question, rank, returned.size(),
                     answerable.descent().map(descent -> descent.cardsRead()).orElse(0),
-                    millis, returned, subject.get().id()));
+                    millis, returned, subject.get().id(), coverage(question, returned)));
         }
         return new Report(mode, List.copyOf(results), List.copyOf(unusable));
+    }
+
+    /**
+     * The share of the question's declared answer that the anchor set reaches.
+     *
+     * <p>Scored against the anchors alone, before any traversal: traversal from one good anchor can
+     * reach the rest, and counting that here would measure the graph again rather than retrieval.
+     */
+    private static double coverage(GroundedQuestion question, List<String> anchors) {
+        if (question.expectedNames().isEmpty()) return Double.NaN;
+        long covered = question.expectedNames().stream()
+                .filter(expected -> anchors.stream().anyMatch(anchor -> EvaluationHarness.matches(anchor, expected)))
+                .count();
+        return (double) covered / question.expectedNames().size();
     }
 
     /**
@@ -151,6 +185,12 @@ public final class RetrievalHarness {
         text.append(String.format(Locale.ROOT, "  recall@1                     %.3f%n", report.recallAt(1)));
         text.append(String.format(Locale.ROOT, "  recall@5                     %.3f%n", report.recallAt(5)));
         text.append(String.format(Locale.ROOT, "  mean reciprocal rank         %.3f%n", report.meanReciprocalRank()));
+        if (report.pluralCount() > 0) {
+            text.append(String.format(Locale.ROOT, "  anchor coverage              %.3f  (over %d question(s) whose answer names several symbols)%n",
+                    report.anchorCoverage(), report.pluralCount()));
+        } else {
+            text.append("  anchor coverage              not measured: no question declares an answer of more than one symbol\n");
+        }
         text.append(String.format(Locale.ROOT, "  median latency               %.0f ms%n", report.medianMillis()));
         if (report.mode().needsTree()) {
             text.append(String.format(Locale.ROOT, "  cards read per question      %.1f%n", report.meanCardsRead()));

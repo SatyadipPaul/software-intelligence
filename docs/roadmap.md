@@ -53,7 +53,7 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 - Curate 200+ grounded questions across 3–5 Java repositories. **Started:** 18 questions across two
   repositories ship in `evaluation/`, keyed to source names and file:line rather than to graph ids,
   so they survive identity changes. Now 28 questions across three, including jackson-databind, which
-  has no framework at all, and junit5, which is Gradle multi-module. Now 36 questions across four.
+  has no framework at all, and junit5, which is Gradle multi-module. Now 38 questions across four, two of them declaring plural answers so anchor coverage has something to score.
   The harness, scoring, and CI gate exist; the corpus does not yet.
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
   **Precision now measured** on questions that declare an exhaustive answer, and every report states
@@ -62,7 +62,9 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
   by `evaluate --retrieval-only`, which asks each question in words with no subject supplied and
   scores recall@k, MRR, and anchor recall over the anchors retrieval returned - the traversal
   harness above resolves the subject by name, so it never measured retrieval at all. precision@k is
-  deliberately not reported: see Milestone 6.
+  deliberately not reported: see Milestone 6. **Anchor coverage** now scores how much of a plural
+  answer the anchor set itself reaches, which is the first metric here that measures anchoring on a
+  set rather than on one symbol.
 - Baseline against grep/BM25/vector RAG and a deterministic graph-only path. **A naive text-search
   baseline now runs on the same questions** (`evaluate --baseline`): the graph scores 1.000 recall
   against 0.258 on the fixture, 0.000 on Petclinic, and 0.450 on jackson-databind. A vector baseline

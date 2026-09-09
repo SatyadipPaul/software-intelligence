@@ -18,3 +18,10 @@ pc-007	spring-petclinic	What does the Vet entity map to?	PERSISTENCE	org.springf
 pc-008	spring-petclinic	Which controller serves the owner search page?	ENDPOINT	OwnerController	endpoint:GET:/owners/find		0.85
 pc-009	spring-petclinic	What is affected by a change to the Vet entity?	IMPACT	org.springframework.samples.petclinic.vet.Vet	VetControllerTests.james|ClinicServiceTests.shouldFindVets	vet/VetControllerTests.java:55	0.5
 pc-010	spring-petclinic	Which repository does VetController depend on?	LOOKUP	VetController	VetRepository	vet/VetController.java:38	0.85
+#
+# pc-011 and pc-012 declare answers of more than one symbol, which is what `--retrieval-only`
+# scores anchor coverage over. OwnerController's seven mappings are the whole of its HTTP
+# surface at this commit, so pc-011 is exhaustive; pc-012 lists the three classes that declare
+# an OwnerRepository field and is not, because the impact of a repository reaches further.
+pc-011	spring-petclinic	Which routes does OwnerController expose?	ENDPOINT	OwnerController	endpoint:GET:/owners/new|endpoint:POST:/owners/new|endpoint:GET:/owners/find|endpoint:GET:/owners|endpoint:GET:/owners/{ownerId}/edit|endpoint:POST:/owners/{ownerId}/edit|endpoint:GET:/owners/{ownerId}	owner/OwnerController.java:73|owner/OwnerController.java:78|owner/OwnerController.java:90|owner/OwnerController.java:95|owner/OwnerController.java:140|owner/OwnerController.java:145|owner/OwnerController.java:170	0.85	true
+pc-012	spring-petclinic	Which controllers hold an OwnerRepository?	IMPACT	OwnerRepository	OwnerController|PetController|VisitController		0.55	
