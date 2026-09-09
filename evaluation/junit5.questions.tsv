@@ -20,3 +20,10 @@ ju-005	junit5	Who depends on ExtensionContext?	IMPACT	org.junit.jupiter.api.exte
 ju-006	junit5	Which module contains Assertions?	STRUCTURE	org.junit.jupiter.api.Assertions	module:junit-jupiter-api	Assertions.java:96	0.55
 ju-007	junit5	What does BeforeEachCallback depend on?	LOOKUP	org.junit.jupiter.api.extension.BeforeEachCallback	ExtensionContext		0.55
 ju-008	junit5	What is affected by a change to TestEngine?	IMPACT	org.junit.platform.engine.TestEngine	EngineDiscoveryRequest|ExecutionRequest		0.55
+#
+# ju-009 onwards deliberately do NOT name their subject, for the same reason as jd-011 onwards:
+# a question that says the symbol's name is answered by the exact-name signal alone and tests
+# nothing about retrieval.
+ju-009	junit5	Which module holds the annotation for a method that runs before every test?	STRUCTURE	org.junit.jupiter.api.BeforeEach	module:junit-jupiter-api		0.55	
+ju-010	junit5	Where do the methods that compare an expected value with an actual one live?	STRUCTURE	org.junit.jupiter.api.Assertions	module:junit-jupiter-api		0.55	
+ju-011	junit5	Which interface does an engine implement to be discovered and run by the platform?	IMPACT	org.junit.platform.engine.TestEngine	module:junit-platform-engine		0.55	

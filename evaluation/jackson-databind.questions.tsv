@@ -28,3 +28,11 @@ jd-007	jackson-databind	Which serializers implement ValueSerializer?	IMPACT	tool
 jd-008	jackson-databind	What does BeanSerializerBase extend?	LOOKUP	tools.jackson.databind.ser.bean.BeanSerializerBase	ValueSerializer		0.55
 jd-009	jackson-databind	Which module does TypeFactory live in?	STRUCTURE	tools.jackson.databind.type.TypeFactory	module:tools.jackson.databind.type		0.55
 jd-010	jackson-databind	What is affected by changing DeserializationContext?	IMPACT	tools.jackson.databind.DeserializationContext	ValueDeserializer		0.55
+#
+# jd-011 onwards deliberately do NOT name their subject. Every question above says "what breaks
+# if JavaType changes", which the exact-name signal settles before any card text is read, and
+# which is why retrieval scored 1.000 here while saying nothing about how hard retrieval is.
+# These ask the way someone who does not yet know the class's name would ask.
+jd-011	jackson-databind	What is thrown when the JSON holds a property the target object cannot accept?	LOOKUP	tools.jackson.databind.exc.UnrecognizedPropertyException	PropertyBindingException	exc/UnrecognizedPropertyException.java:15	0.55	
+jd-012	jackson-databind	Which node type stands for an explicit JSON null?	LOOKUP	tools.jackson.databind.node.NullNode	ValueNode	node/NullNode.java:16	0.55	
+jd-013	jackson-databind	Which type is the immutable builder for configuring one deserialization?	LOOKUP	tools.jackson.databind.ObjectReader	DeserializationConfig|DeserializationContexts	ObjectReader.java:68|ObjectReader.java:74	0.55	

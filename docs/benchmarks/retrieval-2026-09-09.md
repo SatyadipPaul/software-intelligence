@@ -178,6 +178,33 @@ jackson-databind and junit5 could not be re-run this way here. jackson-databind 
 environment's proxy refuses with a 403; junit5's Gradle build fails before producing the per-module
 classpath files its question set documents. Both remain measured at no-classpath resolution.
 
+## The finding that matters most: retrieval only works when the question names the symbol
+
+Thirteen questions were added across the four corpora that deliberately do **not** name their
+subject — phrased the way someone who does not yet know the class's name would ask. Every corpus
+falls, and on the two large ones every single new question is missed by every mode:
+
+| Repository | questions | BM25 MRR | TREE MRR | HYBRID MRR |
+| --- | --- | --- | --- | --- |
+| spring-petclinic | 10 → 19 | 1.000 → 0.664 | 1.000 → 0.655 | 1.000 → 0.655 |
+| jackson-databind | 10 → 13 | 1.000 → 0.769 | 1.000 → 0.769 | 1.000 → 0.769 |
+| junit5 | 8 → 11 | 0.875 → 0.636 | 0.917 → 0.667 | 0.938 → **0.682** |
+
+0 of 6 new questions answered on jackson-databind and junit5; 2 of 7 on Petclinic. The old questions
+still pass, so nothing regressed — the new ones simply ask something the retrieval layer cannot do.
+
+**What that means for everything above.** Retrieval here, flat and tree alike, is close to an
+exact-name matcher with tie-breaking. Every 1.000 in the first table was a question saying "what
+breaks if `JavaType` changes", and the exact-name signal settles those before a single card is read.
+The descent's advantages are real and hold on the harder set — `HYBRID` still leads junit5, 0.682
+against 0.636 — but they are advantages in *ranking what a name already found*, not yet in finding
+something whose name the asker does not know.
+
+It also gives branch summaries their purpose. They are the one mechanism that can answer a
+subject-free question, because they put words in the tree that the code does not contain, and on
+Petclinic they recovered two of the seven. That is the experiment worth repeating on jackson and
+junit5, where the modules are named `util`, `impl` and `misc` and there is the most to gain.
+
 ## A harder question set, and what it exposed
 
 Every question in the corpus named its subject — "what breaks if `VetRepository` changes" — which

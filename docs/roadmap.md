@@ -53,11 +53,13 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 - Curate 200+ grounded questions across 3–5 Java repositories. **Started:** 18 questions across two
   repositories ship in `evaluation/`, keyed to source names and file:line rather than to graph ids,
   so they survive identity changes. Now 28 questions across three, including jackson-databind, which
-  has no framework at all, and junit5, which is Gradle multi-module. Now 45 questions across four: two declare plural
-  answers so anchor coverage has something to score, and seven deliberately do not name their
-  subject, which dropped Petclinic retrieval from 1.000 to 0.66 and gave the corpus the headroom it
-  had been missing.
-  The harness, scoring, and CI gate exist; the corpus does not yet.
+  has no framework at all, and junit5, which is Gradle multi-module. Now 51 questions across four: two declare plural
+  answers so anchor coverage has something to score, and thirteen deliberately do not name their
+  subject. Those thirteen are the most informative thing in the corpus - they drop Petclinic from
+  1.000 to 0.66, jackson-databind from 1.000 to 0.77 and junit5 from 0.94 to 0.68, and every one of
+  the six on the two large repositories is missed by every retrieval mode. Retrieval is much closer
+  to an exact-name matcher than the earlier 1.000s suggested. The harness, scoring, and CI gate
+  exist; the corpus is still a quarter of the target.
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
   **Precision now measured** on questions that declare an exhaustive answer, and every report states
   the answer size, because recall alone scored 1.000 against an answer of 7,946 symbols. Ranking
@@ -78,10 +80,10 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 **Generalization:** the analyzer is now exercised on jackson-databind (Maven, no framework, extreme
 generics) and junit5 (Gradle Kotlin DSL, 27 source roots), which found four defects invisible on
 Spring Petclinic. See [the generalization benchmark](benchmarks/generalization-2026-08-10.md).
-Both now have grounded question sets - 10 questions for jackson-databind, 8 for junit5 - and both
-are scored for retrieval in [the retrieval baseline](benchmarks/retrieval-2026-09-09.md). Answer
-quality on them is measured only at those sizes; the 200-question target above is what would settle
-it.
+Both now have grounded question sets - 13 for jackson-databind, 11 for junit5, each including three
+that do not name their subject - and both are scored for retrieval in
+[the retrieval baseline](benchmarks/retrieval-2026-09-09.md). Answer quality on them is measured
+only at those sizes; the 200-question target above is what would settle it.
 
 ## Milestone 5 — selective semantic enrichment and verified answers
 
