@@ -1,7 +1,7 @@
 # Retrieval baseline: flat BM25 against tree navigation
 
 Date: 2026-09-09. JDK 25, single run, `fixtures/sample-commerce` (72 graph nodes, 28 tree entries,
-depth 3) and this repository (2,389 graph nodes, 1,016 tree entries, depth 4).
+depth 3) and this repository (2,405 graph nodes, 1,028 tree entries, depth 4).
 
 Reproduce with:
 
@@ -88,15 +88,17 @@ stops at module level because the question is structural — 5 cards read, no mo
 
 | | fixture | this repository |
 | --- | --- | --- |
-| graph nodes | 72 | 2,389 |
-| tree entries | 28 | 1,016 |
+| graph nodes | 72 | 2,405 |
+| tree entries | 28 | 1,028 |
 | depth | 3 | 4 |
 | grouped sibling sets | 0 | 18 |
-| derivation | under 1 s | 2.8 s wall, inside a 2.8 s analysis |
-| pinned tree file | 15 KB | 548 KB |
+| pinned tree file | 10 KB | 555 KB |
 
-Derivation is a single pass over the graph plus one SHA-256 over the canonical export, so it scales
-with the graph rather than with the question, and is done once per graph rather than per query.
+Derivation is a single pass over the graph plus one SHA-256 over the canonical export. On this
+repository, `inspect` (analysis only) takes 2,753 ms and `index` (the same analysis plus derivation)
+takes 2,835 ms, so deriving the tree costs roughly **80 ms on top of a 2.8 s analysis**. It is paid
+once per graph, not once per question: a descent then reads 12 cards on the fixture and 5 on the
+structural question above.
 
 ## What would change the conclusion
 

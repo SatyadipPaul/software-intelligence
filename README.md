@@ -53,7 +53,8 @@ modules/model/               Canonical schema, provenance, queries, snapshots
 modules/analyzer-java/       Deterministic Java analysis using Eclipse JDT
 modules/framework-spring/    Spring, JPA, Kafka, Security, and HTTP-client interpretation
 modules/architecture/        Modules, centrality, communities, workflows, capabilities, risk
-modules/query-engine/        BM25 retrieval, query planning, budgets, answer verification
+modules/index-tree/          Derived table of contents: the navigable index over the graph
+modules/query-engine/        BM25 retrieval, tree navigation, planning, budgets, verification
 modules/evaluation/          Grounded question format, harness, and scoring
 modules/pipeline/            Layer composition and build classpath discovery
 modules/visualization/       Self-contained HTML view and GraphML/DOT/Cytoscape exports
@@ -61,7 +62,7 @@ evaluation/*.questions.tsv   Grounded question sets: sample-commerce, Petclinic,
 fixtures/sample-commerce/    Small checkout flow for local smoke testing
 docs/architecture.md         Product architecture and invariants
 docs/roadmap.md              Sequenced implementation roadmap and exit criteria
-docs/hybrid-index-tree.md    Design for tree-navigated retrieval over the graph (not built)
+docs/hybrid-index-tree.md    Tree-navigated retrieval: design, and what it measured
 ```
 
 ## Commands
@@ -72,6 +73,8 @@ repo-intel impact <repo> <symbol> --risk       source-backed blast radius, with 
 repo-intel context <repo> <symbol> -o ctx.json minimum-sufficient evidence packet
 repo-intel architecture <repo>                 modules, centrality, communities, workflows, capabilities
 repo-intel ask <repo> "<question>"             retrieval + traversal, every claim verified or withheld
+repo-intel index <repo> -o tree.json           derive the navigable index tree, and pin it to a file
+repo-intel navigate <repo> "<q>" --session s   walk that tree one level at a time, for an assistant
 repo-intel snapshot <repo> -o snap.json        durable snapshot for later comparison
 repo-intel diff <repo> snap.json               what changed, and the risk of each changed symbol
 repo-intel evaluate <repo> questions.tsv       score against a grounded question set
@@ -88,6 +91,51 @@ Every command also accepts **either a repository directory or a `.json` graph**.
 a graph, the source tree is not needed and is never read - query it, visualize it, enrich it, or
 evaluate against it from the file alone. See
 [enriching with a chat assistant](docs/enrichment-with-a-chat-assistant.md) for that workflow.
+
+## Retrieval: ranking, or navigation
+
+`ask` chooses where to look in one of three ways. Everything after that point — traversal, evidence,
+verification — is identical, so the choice is about retrieval and nothing else.
+
+```powershell
+java -jar repo-intel.jar ask . "which module contains the BM25 retrieval index?" --retrieval HYBRID --anchors 3 --explain
+```
+
+- `BM25` ranks every symbol flatly. Fast, and blind to containment.
+- `TREE` derives a table of contents from the graph — capabilities and modules, down through
+  packages and types to methods — and descends it with a beam, reading one card at a time. It needs
+  no model and no network.
+- `HYBRID` takes both, because they fail differently: a descent can commit to a wrong branch at the
+  first level, and flat ranking never makes a choice it could get wrong.
+
+`--explain` prints the descent: what was on each card, what each candidate scored, and which branch
+won. A wrong answer from a similarity score is unexplainable; a wrong answer from a descent points
+at the step that lost it.
+
+`--anchors N` lets an answer rest on several symbols rather than one, which is what a question with
+a plural answer needs.
+
+Measured on the fixture, `HYBRID` reaches recall@1 0.900 against flat retrieval's 0.800; `TREE`
+alone ties. That rests on one question in a ten-question set — see
+[the retrieval baseline](docs/benchmarks/retrieval-2026-09-09.md), which says plainly what has and
+has not been shown.
+
+### Letting an assistant do the navigating
+
+The tree can be walked by a model instead of by the scorer, through a file exchange. The product
+still never calls anything:
+
+```powershell
+java -jar repo-intel.jar index . -o tree.json
+java -jar repo-intel.jar navigate . "where are payments authorized?" --session nav.json --index tree.json
+# hand the printed cards to an assistant, then pass back the ids it chose
+java -jar repo-intel.jar navigate . --session nav.json --choose index:capability:payments
+java -jar repo-intel.jar ask . "where are payments authorized?" --from-session nav.json
+```
+
+Each step presents one card per open branch and accepts only ids that appeared on it; anything else
+is rejected rather than followed. A choice is not a claim — an assistant here names a place to look
+and cannot assert anything about the code — so a bad descent costs recall and nothing else.
 
 ## Viewing the graph
 
@@ -189,8 +237,9 @@ to what the compiler proved.
 
 ## Answers and budgets
 
-`ask` retrieves with BM25 over the graph's own symbol vocabulary, classifies the question, plans a
-traversal, compresses the packet to a token budget, and then verifies every claim against the graph
+`ask` retrieves — flatly with BM25 over the graph's own symbol vocabulary, or by descending the
+index tree, or both — classifies the question, plans a traversal from every anchor it settled on,
+merges and compresses the packets to a token budget, and then verifies every claim against the graph
 before printing it. A claim with no citation, a citation that does not exist, or a citation that
 does not involve the symbol under discussion is labelled and withheld rather than shown. That gate
 is where a model-generated answer would also have to pass; no model ships with the product and none

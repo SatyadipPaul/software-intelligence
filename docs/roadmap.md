@@ -58,9 +58,11 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
   **Precision now measured** on questions that declare an exhaustive answer, and every report states
   the answer size, because recall alone scored 1.000 against an answer of 7,946 symbols. Ranking
-  quality (precision@k, MRR) is the next missing metric, and the one that matters for large repos.
-  It is also the prerequisite for [the hybrid index tree](hybrid-index-tree.md), which cannot be
-  claimed to improve retrieval until the metric that would falsify it exists.
+  quality was the next missing metric, and the one that matters for large repos. **Now measured**
+  by `evaluate --retrieval-only`, which asks each question in words with no subject supplied and
+  scores recall@k, MRR, and anchor recall over the anchors retrieval returned - the traversal
+  harness above resolves the subject by name, so it never measured retrieval at all. precision@k is
+  deliberately not reported: see Milestone 6.
 - Baseline against grep/BM25/vector RAG and a deterministic graph-only path. **A naive text-search
   baseline now runs on the same questions** (`evaluate --baseline`): the graph scores 1.000 recall
   against 0.258 on the fixture, 0.000 on Petclinic, and 0.450 on jackson-databind. A vector baseline
@@ -87,19 +89,33 @@ unrelated to the symbol under discussion; `EnrichmentPlanner` ranks and budgets 
 prints an audit. Generation is an interface with no implementation: shipping one would require model
 credentials and outbound calls, which the local-first invariant makes optional by definition.
 
-## Milestone 6 — retrieval that navigates structure (designed, not started)
+## Milestone 6 — retrieval that navigates structure (built, under-measured)
 
 - Derive a navigable index tree from the graph's own containment: repository, module, capability or
-  package, type, member. Deterministic, pinned to a file, fingerprinted against the graph it came
-  from.
+  package, type, member. **Done:** `modules/index-tree` and `repo-intel index`, deterministic,
+  fingerprinted against its graph, with oversized sibling sets grouped rather than truncated.
 - Navigate that tree to a **set** of anchors rather than narrowing to one subject, so questions with
-  plural answers stop being unanswerable by construction.
+  plural answers stop being unanswerable by construction. **Done:** `ask --retrieval TREE|HYBRID
+  --anchors N`, with per-anchor packets merged and each claim anchored on the anchor its own edge
+  touches.
 - Keep the deterministic navigator model-free and the assistant navigator an offline file exchange,
-  as the enrichment loop already is. A vector baseline is still blocked on a local embedding model;
-  this path needs none.
+  as the enrichment loop already is. **Done:** the default chooser calls nothing, and `repo-intel
+  navigate` presents one card per step and rejects any id that was not on it. A vector baseline is
+  still blocked on a local embedding model; this path needs none.
+- Rank tree branches for enrichment, so a budget buys summaries where they steer the most descents.
+  **Not started.** Cards read a `claim.summary` where one exists, but nothing ranks branches yet.
 
-**Exit criterion:** tree-navigated retrieval beats flat BM25 on precision@k, MRR, and anchor recall
+**Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.
 
-**Design:** [a hybrid of the code graph and PageIndex RAG](hybrid-index-tree.md). No code exists
-yet, and the first phase is the Milestone 4 ranking metric, not the tree.
+**Status:** not met, and measured rather than assumed. On the fixture, `HYBRID` reaches recall@1
+0.900 and MRR 0.900 against flat retrieval's 0.800 and 0.833; `TREE` alone ties. That is one
+question in a ten-question set, and the three larger question sets have not been run. Tree retrieval
+is measured as not-a-regression and not yet as a win. See
+[the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
+
+**precision@k was the wrong ask.** Each grounded question declares one relevant symbol, so
+precision@k cannot exceed 1/k and would measure that cap rather than the ranking. The harness reports
+recall@k, MRR, and anchor recall, and says in its own output why the fourth metric is absent.
+
+**Design:** [a hybrid of the code graph and PageIndex RAG](hybrid-index-tree.md).

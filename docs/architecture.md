@@ -18,7 +18,8 @@ Java repository
   -> canonical code IR (nodes, edges, provenance)
   -> framework inference (Spring, JPA, Kafka, Security, HTTP clients)
   -> architecture inference (modules, centrality, communities, workflows, capabilities)
-  -> query planner, BM25 retrieval, minimum-sufficient evidence packets, token budgets
+  -> derived index tree: a navigable table of contents over everything below it
+  -> query planner, flat or tree-navigated retrieval, minimum-sufficient evidence packets, budgets
   -> claim verification; optional LLM enrichment feeds this gate rather than bypassing it
 ```
 
@@ -62,6 +63,12 @@ The same analyzer recognizes Spring stereotypes, HTTP mapping methods, transacti
 - Enrichment is pinned to a file, so an enriched graph is `deterministic graph + claims file` and
   stays reproducible even though the process that authored the claims was not.
 - The graph model precedes GraphRAG; GraphRAG is one consumer.
+- An index over the graph is derived, never authored. A tree node is a pointer at graph nodes and
+  asserts nothing they do not already carry, so it cannot be wrong in a way the graph is not. It is
+  fingerprinted against the graph it came from, and a tree that no longer matches is refused.
+- Choosing where to look is not a claim. A navigator - the deterministic one or an assistant - picks
+  from ids it was shown and may assert nothing about the code, so a bad descent costs recall and
+  cannot put an unsupported fact into an answer.
 
 These are executable claims, not prose: `modules/model` and `modules/analyzer-java` each carry tests that assert them, and CI additionally diffs three exports of the same fixture, which is deliberately built to contain every layer.
 
@@ -75,6 +82,7 @@ These are executable claims, not prose: `modules/model` and `modules/analyzer-ja
 | `framework-spring` | Spring, JPA, Kafka, Security, HTTP clients | Implemented |
 | `pipeline` | Layer composition and classpath discovery | Implemented |
 | `architecture` | Modules, centrality, communities, workflows, capabilities, risk | Implemented |
+| `index-tree` | Derived table of contents, pinned and fingerprinted | Implemented |
 | `query-engine` | Retrieval, planning, budgets, answer verification | Implemented; generation is an unimplemented interface |
 | `evaluation` | Grounded Java-repository benchmark | Harness implemented; corpus at 18 of 200+ questions |
 | `visualization` | Self-contained views and interchange formats | Implemented |
