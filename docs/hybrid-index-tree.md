@@ -237,9 +237,9 @@ Not tree-instead-of-BM25. **The union of both.**
 Tree descent produces structurally coherent anchors and fails by committing to a wrong branch early.
 Flat BM25 produces incoherent anchors and never has that failure mode, because it never made a
 choice. Taking top-*n* from each, deduplicating, and splitting the budget covers the other's
-weakness. That is what `HYBRID` means, and it is the only mode that beat flat retrieval on the
-fixture. It is not yet the default: one question on a ten-question corpus does not earn a default,
-and `--retrieval` chooses.
+weakness. That is what `HYBRID` means, and across four repositories it is never worse than flat
+retrieval and better on two. It is not the default yet: `TREE` still loses a question on junit5, the
+gain rests on two questions across 38, and `--retrieval` chooses.
 
 Early branch commitment is worse on code than on prose, because names repeat across modules in a way
 section titles in a document do not. `OwnerController` and `OwnerRestController` in different source
@@ -258,10 +258,11 @@ roots are a realistic way to lose a descent at level one.
 
 ## Risks, and what became of them
 
-**Degenerate repository shapes — still open.** A repository with no framework gets the structural
-axis alone, which a unit test covers, and the `index` command says so in its output. But
-jackson-databind, Petclinic and junit5 have not been run: the shapes that would stress this are
-exactly the ones not yet measured.
+**Degenerate repository shapes — exercised.** jackson-databind and junit5 prove no capabilities at
+all, so both get the structural axis alone and the `index` command says so in its output. Both were
+run: jackson-databind builds 26,530 entries at depth 5 with 1,015 grouped sibling sets, junit5
+18,841 at depth 7 with 814. What is still untested is a repository whose module axis is degenerate
+too — a single-module build with one flat package.
 
 **Fan-out — handled.** Oversized sibling sets are chunked into alphabetical groups, recursively, so
 no card presents more than `--max-fanout` choices and nothing is dropped to achieve it. This

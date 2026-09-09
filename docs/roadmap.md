@@ -73,7 +73,10 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 **Generalization:** the analyzer is now exercised on jackson-databind (Maven, no framework, extreme
 generics) and junit5 (Gradle Kotlin DSL, 27 source roots), which found four defects invisible on
 Spring Petclinic. See [the generalization benchmark](benchmarks/generalization-2026-08-10.md).
-Neither has a grounded question set yet, so answer quality outside Spring is still unmeasured.
+Both now have grounded question sets - 10 questions for jackson-databind, 8 for junit5 - and both
+are scored for retrieval in [the retrieval baseline](benchmarks/retrieval-2026-09-09.md). Answer
+quality on them is measured only at those sizes; the 200-question target above is what would settle
+it.
 
 ## Milestone 5 — selective semantic enrichment and verified answers
 
