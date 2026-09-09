@@ -238,8 +238,9 @@ Tree descent produces structurally coherent anchors and fails by committing to a
 Flat BM25 produces incoherent anchors and never has that failure mode, because it never made a
 choice. Taking top-*n* from each, deduplicating, and splitting the budget covers the other's
 weakness. That is what `HYBRID` means, and across four repositories it is never worse than flat
-retrieval and better on two. It is not the default yet: `TREE` still loses a question on junit5, the
-gain rests on two questions across 38, and `--retrieval` chooses.
+retrieval and better on two, which is what earned it the default. `TREE` alone now also matches or
+beats flat retrieval everywhere, but lands ju-002 third where `HYBRID` lands it first — the flat
+hits behind a descent are what cover a wrong branch.
 
 Early branch commitment is worse on code than on prose, because names repeat across modules in a way
 section titles in a document do not. `OwnerController` and `OwnerRestController` in different source

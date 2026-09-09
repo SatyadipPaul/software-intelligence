@@ -122,7 +122,7 @@ public final class TreeNavigator {
                 if (!visited.add(parent.node().id())) continue;
                 List<IndexNode> children = tree.children(parent.node());
                 cardsRead++;
-                if (children.isEmpty() || stopsHere(parent.node(), plan, subject)) {
+                if (children.isEmpty() || stopsHere(cards, parent.node(), plan, subject)) {
                     anchor(anchors, parent);
                     continue;
                 }
@@ -169,7 +169,7 @@ public final class TreeNavigator {
         for (IndexNode child : children) {
             double text = cards.score(terms, child);
             double affinity = affinity(plan.kind(), child);
-            boolean isSubject = names(child, subject);
+            boolean isSubject = cards.isNamed(child, subject);
             boolean holds = isSubject || cards.subtreeHolds(child, subject);
             double score = parent.score() * INHERITANCE + text * affinity;
             StringBuilder reason = new StringBuilder();
@@ -188,20 +188,12 @@ public final class TreeNavigator {
      * is answered by a module, not by a method three levels below it, and descending anyway would
      * spend the beam on detail the asker did not want.
      */
-    private static boolean stopsHere(IndexNode node, QueryPlanner.Plan plan, String subject) {
+    private static boolean stopsHere(CardIndex cards, IndexNode node, QueryPlanner.Plan plan, String subject) {
         if (plan.kind() == QueryPlanner.QueryKind.STRUCTURE
                 && (node.kind() == IndexKind.MODULE || node.kind() == IndexKind.PACKAGE)) return true;
         // An exact name match is proof enough: the asker named this symbol, so its own context is
         // the answer, and its members are reachable from it anyway.
-        return names(node, subject) && (node.kind() == IndexKind.TYPE || node.kind() == IndexKind.MEMBER);
-    }
-
-    private static boolean names(IndexNode node, String subject) {
-        if (subject.isBlank()) return false;
-        String name = node.name().toLowerCase(Locale.ROOT);
-        if (name.equals(subject)) return true;
-        int dot = name.lastIndexOf('.');
-        return dot >= 0 && name.substring(dot + 1).equals(subject);
+        return cards.isNamed(node, subject) && (node.kind() == IndexKind.TYPE || node.kind() == IndexKind.MEMBER);
     }
 
     /**

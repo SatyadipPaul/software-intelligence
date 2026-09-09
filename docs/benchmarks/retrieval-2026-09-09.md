@@ -33,20 +33,20 @@ measure that cap rather than the ranking. Recall@k and MRR are reported instead.
 
 ## Result
 
-| Repository | Mode | anchor recall | recall@1 | MRR | median ms | cards read |
-| --- | --- | --- | --- | --- | --- | --- |
-| sample-commerce | BM25 | 0.900 | 0.800 | 0.833 | 1 | — |
-| sample-commerce | TREE | **1.000** | **0.900** | **0.950** | 3 | 11.8 |
-| sample-commerce | HYBRID | **1.000** | **0.900** | **0.950** | 2 | 11.8 |
-| spring-petclinic | BM25 | 1.000 | 1.000 | 1.000 | 3 | — |
-| spring-petclinic | TREE | 1.000 | 1.000 | 1.000 | 5 | 12.6 |
-| spring-petclinic | HYBRID | 1.000 | 1.000 | 1.000 | 3 | 12.6 |
-| jackson-databind | BM25 | 1.000 | 1.000 | 1.000 | 273 | — |
-| jackson-databind | TREE | 1.000 | 1.000 | 1.000 | **101** | 18.2 |
-| jackson-databind | HYBRID | 1.000 | 1.000 | 1.000 | 116 | 18.2 |
-| junit5 | BM25 | 0.875 | 0.875 | 0.875 | 153 | — |
-| junit5 | TREE | 0.875 | 0.875 | 0.875 | **56** | 17.4 |
-| junit5 | HYBRID | **1.000** | 0.875 | **0.938** | 69 | 17.4 |
+| Repository | Mode | anchor recall | recall@1 | MRR | median ms |
+| --- | --- | --- | --- | --- | --- |
+| sample-commerce | BM25 | 0.900 | 0.800 | 0.833 | 1 |
+| sample-commerce | TREE | **1.000** | **0.900** | **0.950** | 2 |
+| sample-commerce | HYBRID | **1.000** | **0.900** | **0.950** | 1 |
+| spring-petclinic | BM25 | 1.000 | 1.000 | 1.000 | 2 |
+| spring-petclinic | TREE | 1.000 | 1.000 | 1.000 | 3 |
+| spring-petclinic | HYBRID | 1.000 | 1.000 | 1.000 | 1 |
+| jackson-databind | BM25 | 1.000 | 1.000 | 1.000 | 104 |
+| jackson-databind | TREE | 1.000 | 1.000 | 1.000 | **63** |
+| jackson-databind | HYBRID | 1.000 | 1.000 | 1.000 | 77 |
+| junit5 | BM25 | 0.875 | 0.875 | 0.875 | 169 |
+| junit5 | TREE | **1.000** | 0.875 | **0.917** | **39** |
+| junit5 | HYBRID | **1.000** | 0.875 | **0.938** | 52 |
 
 Where the modes disagree, they disagree in opposite directions — which is the case for the union:
 
@@ -54,7 +54,7 @@ Where the modes disagree, they disagree in opposite directions — which is the 
 | --- | --- | --- | --- |
 | sc-005 Which controller exposes the payment authorization route? | – | 2 | 2 |
 | sc-007 Which type consumes the payment event topic? | 3 | 1 | 1 |
-| ju-002 Which module contains the Test annotation? | 1 | – | 1 |
+| ju-002 Which module contains the Test annotation? | 1 | 3 | 1 |
 | ju-003 What is affected by a change to the Extension interface? | – | 1 | 2 |
 
 Every other question is rank 1 in all three modes.
@@ -64,10 +64,13 @@ Every other question is rank 1 in all three modes.
 **HYBRID is never worse than flat retrieval, and better on two of four corpora.** It wins the
 fixture (MRR 0.950 against 0.833) and junit5 (0.938 against 0.875), and ties on Petclinic and
 jackson-databind, where flat retrieval already scores 1.000 and there is nothing left to win.
+**`--retrieval` therefore defaults to `HYBRID`.**
 
-**TREE alone is not a safe default.** It ties or beats flat retrieval on three corpora and loses one
-question on junit5 (ju-002), which is precisely the wrong-branch commitment the design predicted.
-`--retrieval` therefore defaults to `BM25`, and `HYBRID` is the mode to reach for.
+**TREE alone now also matches or beats flat retrieval everywhere**, after the name-collision defect
+below was fixed: on junit5 it went from missing ju-002 outright to anchor recall 1.000 and MRR 0.917,
+against flat retrieval's 0.875. It stays behind `HYBRID` on rank — ju-002 lands third rather than
+first — which is the wrong-branch commitment the design predicted, and exactly what the flat hits
+behind a descent are there to cover.
 
 **At scale the descent is cheaper than the ranking.** On jackson-databind flat BM25 takes 273 ms per
 question because it scores all 45,595 graph nodes; the descent takes 101 ms because it reads 18
@@ -103,7 +106,16 @@ navigation did not, because it steers by the branch holding the subject and no b
 called Which. **This dropped Petclinic from 1.000 to 0.800** before it was found. It is a
 pre-existing defect in shared code that the tree merely exposed, and fixing it helps both modes.
 
-A fourth item was a measurement defect rather than a code one: the harness scored an anchor on the
+**4. A method named like the subject stood in for the type.** Exact-name matching indexed every node
+in one list, so "the Test annotation" matched junit5's **408 methods called `test()`** as readily as
+its 2 types called `Test`. The signal was 99.5% noise, "holds the subject" was true almost
+everywhere, and the descent fell back to term frequency — which in a testing framework sends it to
+whichever module says "test" most often. Declarations and members are now indexed separately and a
+name resolves against declarations first, falling back to members only when no declaration anywhere
+carries it, so a question about `PaymentService.authorize` still reaches its method. This is what
+took `TREE` on junit5 from a miss to anchor recall 1.000, and it is why `HYBRID` is now the default.
+
+A fifth item was a measurement defect rather than a code one: the harness scored an anchor on the
 module *containing* the subject as a miss, which marked several correct answers wrong. See the
 scoring rule above.
 

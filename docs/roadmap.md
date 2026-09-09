@@ -117,12 +117,13 @@ credentials and outbound calls, which the local-first invariant makes optional b
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.
 
-**Status:** met for `HYBRID`, not for `TREE` alone. Across all four question sets, `HYBRID` is never
-worse than flat retrieval and better on two: the fixture (MRR 0.950 against 0.833) and junit5 (0.938
-against 0.875). `TREE` alone loses a question on junit5, so `--retrieval` still defaults to `BM25`.
-At scale the descent is also the cheaper path — 101 ms against 273 ms on jackson-databind — because
-it reads 18 cards where flat ranking scores 45,595 nodes. Running the real corpora found three
-defects the fixture never could, each recorded in
+**Status:** met. Across all four question sets, `HYBRID` is never worse than flat retrieval and
+better on two: the fixture (MRR 0.950 against 0.833) and junit5 (0.938 against 0.875). `TREE` alone
+now also matches or beats flat retrieval everywhere. **`--retrieval` defaults to `HYBRID`**, and CI
+fails if either mode regresses against flat retrieval on the fixture. At scale the descent is the
+cheaper path — 63 ms against 104 ms on jackson-databind, 39 against 169 on junit5 — because it reads
+18 cards where flat ranking scores 45,595 nodes. Running the real corpora found four defects the
+fixture never could, each recorded in
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **precision@k was the wrong ask.** Each grounded question declares one relevant symbol, so

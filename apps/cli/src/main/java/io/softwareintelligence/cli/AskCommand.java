@@ -33,8 +33,8 @@ final class AskCommand implements Callable<Integer> {
     @CommandLine.Option(names = "--retrieve", description = "How many symbols BM25 retrieval returns", defaultValue = "10")
     private int retrieve;
 
-    @CommandLine.Option(names = "--retrieval", defaultValue = "BM25",
-            description = "Where anchors come from: ${COMPLETION-CANDIDATES}")
+    @CommandLine.Option(names = "--retrieval", defaultValue = "HYBRID",
+            description = "Where anchors come from: ${COMPLETION-CANDIDATES} (default HYBRID)")
     private RetrievalMode retrieval;
 
     @CommandLine.Option(names = "--anchors", description = "How many anchors the answer may rest on", defaultValue = "1")

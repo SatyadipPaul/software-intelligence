@@ -106,7 +106,7 @@ java -jar repo-intel.jar ask . "which module contains the BM25 retrieval index?"
   packages and types to methods — and descends it with a beam, reading one card at a time. It needs
   no model and no network.
 - `HYBRID` takes both, because they fail differently: a descent can commit to a wrong branch at the
-  first level, and flat ranking never makes a choice it could get wrong.
+  first level, and flat ranking never makes a choice it could get wrong. **This is the default.**
 
 `--explain` prints the descent: what was on each card, what each candidate scored, and which branch
 won. A wrong answer from a similarity score is unexplainable; a wrong answer from a descent points
@@ -116,11 +116,11 @@ at the step that lost it.
 a plural answer needs.
 
 Measured on four repositories — the fixture, spring-petclinic, jackson-databind and junit5 —
-`HYBRID` is never worse than flat retrieval and better on two, and at scale the descent is also the
-cheaper path: 101 ms against 273 ms on jackson-databind, because it reads 18 cards where flat
-ranking scores 45,595 nodes. `TREE` alone still loses a question on junit5, which is why `BM25`
-remains the default. See [the retrieval baseline](docs/benchmarks/retrieval-2026-09-09.md), which
-also records the three defects running the real corpora found.
+`HYBRID` is never worse than flat retrieval and better on two, which is why it is the default. At
+scale the descent is also the cheaper path: 63 ms against 104 ms on jackson-databind, because it
+reads 18 cards where flat ranking scores 45,595 nodes. See
+[the retrieval baseline](docs/benchmarks/retrieval-2026-09-09.md), which also records the four
+defects running the real corpora found.
 
 ### Letting an assistant do the navigating
 

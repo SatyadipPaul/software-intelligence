@@ -273,6 +273,44 @@ class TreeRetrievalTest {
                 "a second tree instance must not be answered from the first tree's cached index");
     }
 
+    @Test void a_method_named_like_the_subject_does_not_stand_in_for_the_type() {
+        // junit5 has two types called Test and 408 methods called test(). Indexing both in one list
+        // made "holds the subject" true almost everywhere and sent the descent to whichever module
+        // said "test" most often, which is how it lost the question outright.
+        CodeGraph graph = new CodeGraph();
+        declareType(graph, "type:demo.api.Check", EntityKind.TYPE, "demo.api");
+        graph.upsertNode(new GraphNode("module:demo.api", EntityKind.MODULE, "demo.api", Map.of(), SOURCE), true);
+        graph.addEdge(new GraphEdge("module:demo.api", "type:demo.api.Check", RelationKind.CONTAINS, Map.of(), SOURCE));
+
+        graph.upsertNode(new GraphNode("module:demo.noise", EntityKind.MODULE, "demo.noise", Map.of(), SOURCE), true);
+        for (int i = 0; i < 20; i++) {
+            String owner = "type:demo.noise.Runner" + i;
+            declareType(graph, owner, EntityKind.TYPE, "demo.noise");
+            graph.addEdge(new GraphEdge("module:demo.noise", owner, RelationKind.CONTAINS, Map.of(), SOURCE));
+            declareMethod(graph, owner, owner + "#check()", "check");
+        }
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+        String question = "Which module contains the Check type?";
+
+        TreeNavigator.Descent descent = TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 3);
+
+        assertEquals("module:demo.api", descent.anchorGraphIds().get(0),
+                "twenty methods called check() must not outvote the one type called Check: "
+                        + descent.anchorGraphIds());
+    }
+
+    @Test void a_member_is_still_found_when_no_type_carries_the_name() {
+        // The other half of the rule: falling back to members is what keeps a question about
+        // PaymentService.authorize able to reach the method.
+        IndexTree tree = IndexTreeBuilder.derive(commerceGraph());
+        String question = "what calls PaymentService.authorize?";
+
+        TreeNavigator.Descent descent = TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 5);
+
+        assertTrue(descent.anchorGraphIds().stream().anyMatch(id -> id.contains("authorize")),
+                descent.anchorGraphIds().toString());
+    }
+
     /** The same checkout slice the index-tree tests use: one capability, one module, one service. */
     private static CodeGraph commerceGraph() {
         CodeGraph graph = new CodeGraph();

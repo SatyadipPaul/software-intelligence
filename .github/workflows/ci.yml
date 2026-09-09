@@ -119,7 +119,7 @@ jobs:
                             [float(v) for v in re.findall(r'mean reciprocal rank\s+([0-9.]+)', text)]))
           print(scores)
           assert scores['HYBRID'] >= scores['BM25'], f"hybrid retrieval regressed against flat: {scores}"
-          assert scores['TREE'] > 0.5, f"tree descent is not finding its subjects: {scores}"
+          assert scores['TREE'] >= scores['BM25'], f"tree descent regressed against flat: {scores}"
           PY
 
       - name: An assistant may only navigate to ids it was shown

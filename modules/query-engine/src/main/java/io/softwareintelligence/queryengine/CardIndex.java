@@ -1,6 +1,7 @@
 package io.softwareintelligence.queryengine;
 
 import io.softwareintelligence.indextree.IndexCards;
+import io.softwareintelligence.indextree.IndexKind;
 import io.softwareintelligence.indextree.IndexNode;
 import io.softwareintelligence.indextree.IndexTree;
 
@@ -51,8 +52,16 @@ final class CardIndex {
      * somewhere underneath". Term frequency cannot express that — on jackson-databind the package
      * {@code node} mentions "json" and "node" hundreds of times and does not contain
      * {@code JsonNode}, while the package that does contain it mentions them twice.
+     *
+     * <p>Declarations and members are indexed separately, and a name is looked up among declarations
+     * first. Someone who writes "the Test annotation" means the type: junit5 has two types called
+     * {@code Test} and <em>408 methods called {@code test()}</em>, so a single list made the signal
+     * 99.5% noise and sent the descent to whichever module said "test" most often. Members are still
+     * searched when a name belongs to no declaration anywhere, which is how a question about
+     * {@code PaymentService.authorize} still finds its method.
      */
     private final Map<String, int[]> namePostings = new HashMap<>();
+    private final Map<String, int[]> memberPostings = new HashMap<>();
 
     /** Prefix sums of own term counts, so a subtree's length is one subtraction. */
     private int[] lengthPrefix = new int[1];
@@ -75,10 +84,14 @@ final class CardIndex {
             }
         }
         Map<String, List<Integer>> names = new TreeMap<>();
+        Map<String, List<Integer>> members = new TreeMap<>();
         for (int i = 0; i < preorder.size(); i++) {
-            names.computeIfAbsent(simpleName(preorder.get(i).name()), ignored -> new ArrayList<>()).add(i);
+            IndexNode node = preorder.get(i);
+            Map<String, List<Integer>> into = node.kind() == IndexKind.MEMBER ? members : names;
+            into.computeIfAbsent(simpleName(node.name()), ignored -> new ArrayList<>()).add(i);
         }
         names.forEach((name, positions) -> index.namePostings.put(name, positions.stream().mapToInt(Integer::intValue).toArray()));
+        members.forEach((name, positions) -> index.memberPostings.put(name, positions.stream().mapToInt(Integer::intValue).toArray()));
 
         gathered.forEach((term, entries) -> {
             int[] positions = new int[entries.size()];
@@ -153,14 +166,33 @@ final class CardIndex {
      * surrounding sections say "object" and "mapper".
      */
     boolean subtreeHolds(IndexNode node, String name) {
-        if (name == null || name.isBlank()) return false;
-        int[] positions = namePostings.get(name.toLowerCase(java.util.Locale.ROOT));
+        int[] positions = positionsFor(name);
         if (positions == null) return false;
         Integer start = position.get(node.id());
         if (start == null) return false;
         int end = subtreeEnd.getOrDefault(node.id(), start + 1);
         int at = lowerBound(positions, start);
         return at < positions.length && positions[at] < end;
+    }
+
+    /** Whether this node is itself what the question named, under the same declarations-first rule. */
+    boolean isNamed(IndexNode node, String name) {
+        int[] positions = positionsFor(name);
+        Integer at = position.get(node.id());
+        if (positions == null || at == null) return false;
+        int found = lowerBound(positions, at);
+        return found < positions.length && positions[found] == at;
+    }
+
+    /**
+     * The nodes a name denotes: declarations if any carry it, otherwise members. Returns null when
+     * nothing in the tree is called this.
+     */
+    private int[] positionsFor(String name) {
+        if (name == null || name.isBlank()) return null;
+        String key = name.toLowerCase(java.util.Locale.ROOT);
+        int[] declarations = namePostings.get(key);
+        return declarations != null ? declarations : memberPostings.get(key);
     }
 
     /** The last dotted segment, which is how a question names a Java symbol. */
