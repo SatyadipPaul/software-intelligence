@@ -5,6 +5,7 @@ import io.softwareintelligence.indextree.IndexNode;
 import io.softwareintelligence.indextree.IndexTree;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Walks the table of contents to a set of anchors, one level at a time.
@@ -80,24 +82,25 @@ public final class TreeNavigator {
     private static final double INHERITANCE = 0.5;
 
     /**
-     * The card index for the tree most recently descended.
+     * Card indexes, kept per tree for as long as the tree itself is alive.
      *
-     * <p>Building it is linear in the tree, which is nothing for one question and everything for a
-     * benchmark: on jackson-databind, rebuilding it per question was most of a 1,002 ms median
-     * against flat retrieval's 134 ms. The index is a pure function of the tree, so caching it
-     * changes no result - only how many times the same answer is computed.
+     * <p>Building one is linear in the tree, which is nothing for a single question and everything
+     * for a benchmark: on jackson-databind, rebuilding it per question was most of a 1,002 ms median
+     * against flat retrieval's 134 ms. An index is a pure function of its tree, so caching changes
+     * no result — only how many times the same answer is computed.
+     *
+     * <p>Keys are compared by identity and held weakly, so a tree that goes out of scope takes its
+     * index with it, and two trees navigated alternately are both kept rather than evicting each
+     * other on every call. A {@code CardIndex} holds only strings and integers copied out of the
+     * tree, never a reference back to it, which is what makes the weak key work.
      */
-    private static IndexTree cachedTree;
-    private static CardIndex cachedCards;
+    private static final Map<IndexTree, CardIndex> CARDS =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     private TreeNavigator() { }
 
-    private static synchronized CardIndex cardsFor(IndexTree tree) {
-        if (cachedTree != tree) {
-            cachedCards = CardIndex.over(tree);
-            cachedTree = tree;
-        }
-        return cachedCards;
+    private static CardIndex cardsFor(IndexTree tree) {
+        return CARDS.computeIfAbsent(tree, CardIndex::over);
     }
 
     public static Descent descend(IndexTree tree, String question, QueryPlanner.Plan plan, int beam, int maxAnchors) {

@@ -265,11 +265,13 @@ roots are a realistic way to lose a descent at level one.
 
 ## Risks, and what became of them
 
-**Degenerate repository shapes — exercised.** jackson-databind and junit5 prove no capabilities at
+**Degenerate repository shapes — handled.** jackson-databind and junit5 prove no capabilities at
 all, so both get the structural axis alone and the `index` command says so in its output. Both were
 run: jackson-databind builds 26,530 entries at depth 5 with 1,015 grouped sibling sets, junit5
-18,841 at depth 7 with 814. What is still untested is a repository whose module axis is degenerate
-too — a single-module build with one flat package.
+18,841 at depth 7 with 814. The extreme case — one module, one flat package, no framework, so both
+axes collapse and only type names remain to steer by — is covered by tests: the package level is
+collapsed away rather than left as a chain of one, every type stays reachable through its groups,
+and a descent still routes to the right type among thirty look-alikes.
 
 **Fan-out — handled.** Oversized sibling sets are chunked into alphabetical groups, recursively, so
 no card presents more than `--max-fanout` choices and nothing is dropped to achieve it. This

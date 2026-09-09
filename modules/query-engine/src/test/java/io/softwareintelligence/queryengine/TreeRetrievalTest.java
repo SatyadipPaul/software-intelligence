@@ -258,6 +258,26 @@ class TreeRetrievalTest {
         assertTrue(best.holdsSubject(), "the branch holding OrderService must sort first: " + best.reason());
     }
 
+    @Test void two_trees_navigated_alternately_are_both_cached_and_both_right() {
+        // The one-entry cache this replaced would have rebuilt an index on every call here, and a
+        // cache keyed on anything but identity would have answered one tree from the other's index.
+        IndexTree first = IndexTreeBuilder.derive(commerceGraph());
+        CodeGraph other = commerceGraph();
+        declareType(other, "type:demo.Latecomer", EntityKind.TYPE, "demo");
+        other.addEdge(new GraphEdge("module:demo", "type:demo.Latecomer", RelationKind.CONTAINS, Map.of(), SOURCE));
+        IndexTree second = IndexTreeBuilder.derive(other);
+        String question = "what breaks if Latecomer changes?";
+
+        for (int round = 0; round < 3; round++) {
+            assertFalse(TreeNavigator.descend(first, question, QueryPlanner.classify(question), 4, 5)
+                            .anchorGraphIds().contains("type:demo.Latecomer"),
+                    "the first tree does not hold Latecomer and must not answer as though it did");
+            assertTrue(TreeNavigator.descend(second, question, QueryPlanner.classify(question), 4, 5)
+                            .anchorGraphIds().contains("type:demo.Latecomer"),
+                    "the second tree holds Latecomer and must find it every time");
+        }
+    }
+
     @Test void the_card_index_is_reused_across_questions_of_one_tree() {
         IndexTree tree = IndexTreeBuilder.derive(commerceGraph());
         String question = "what breaks if PaymentService changes?";
@@ -309,6 +329,30 @@ class TreeRetrievalTest {
 
         assertTrue(descent.anchorGraphIds().stream().anyMatch(id -> id.contains("authorize")),
                 descent.anchorGraphIds().toString());
+    }
+
+    @Test void a_flat_single_package_repository_still_retrieves_its_symbols() {
+        // The shape with the least for a descent to steer by: no capabilities, no package level,
+        // one module of thirty look-alike types. Tree retrieval has to hold up here or it is only
+        // an advantage on repositories that were already well organised.
+        CodeGraph graph = new CodeGraph();
+        List<String> types = new java.util.ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            String id = String.format("type:flat.Widget%02d", i);
+            declareType(graph, id, EntityKind.TYPE, "flat");
+            types.add(id);
+        }
+        graph.upsertNode(new GraphNode("module:flat", EntityKind.MODULE, "flat", Map.of(), SOURCE), true);
+        for (String type : types) graph.addEdge(new GraphEdge("module:flat", type, RelationKind.CONTAINS, Map.of(), SOURCE));
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+
+        for (String target : List.of("Widget07", "Widget23")) {
+            String question = "what breaks if " + target + " changes?";
+            TreeNavigator.Descent descent = TreeNavigator.descend(tree, question, QueryPlanner.classify(question), 4, 5);
+            assertEquals("type:flat." + target, descent.anchorGraphIds().get(0),
+                    "a flat repository still has to route through its groups to the right type: "
+                            + descent.anchorGraphIds());
+        }
     }
 
     /** The same checkout slice the index-tree tests use: one capability, one module, one service. */

@@ -166,6 +166,57 @@ class IndexTreeTest {
         assertTrue(card.contains("children ("), card);
     }
 
+    @Test void a_single_module_of_one_flat_package_still_navigates() {
+        // The degenerate shape: one source root, one package, no framework. Both axes collapse -
+        // no capabilities, and a package level that would be a chain of one - so the tree is root ->
+        // types -> members and a descent has only the type names to steer by.
+        CodeGraph graph = new CodeGraph();
+        List<String> types = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            String id = String.format("type:flat.Widget%02d", i);
+            declareType(graph, id, EntityKind.TYPE, "flat");
+            declareMethod(graph, id, id + "#run()", "run");
+            types.add(id);
+        }
+        graph.upsertNode(new GraphNode("module:flat", EntityKind.MODULE, "flat", Map.of(), SOURCE), true);
+        for (String type : types) {
+            graph.addEdge(new GraphEdge("module:flat", type, RelationKind.CONTAINS, Map.of(), SOURCE));
+        }
+
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+
+        assertTrue(tree.nodes().stream().noneMatch(node -> node.kind() == IndexKind.CAPABILITY),
+                "no framework means no capability axis");
+        assertTrue(tree.nodes().stream().noneMatch(node -> node.kind() == IndexKind.PACKAGE),
+                "one package under one module is a chain of one, and must be collapsed away");
+
+        List<String> reachable = new ArrayList<>();
+        collect(tree, tree.root(), reachable);
+        for (String type : types) {
+            assertTrue(reachable.contains("index:" + type), type + " is unreachable from the root");
+        }
+        for (IndexNode node : tree.nodes()) {
+            assertTrue(node.children().size() <= 24, node.id() + " presents " + node.children().size() + " choices");
+        }
+    }
+
+    @Test void a_repository_with_no_module_nodes_at_all_still_has_a_root_and_its_types() {
+        // --no-architecture removes the module layer entirely. Everything then hangs off one
+        // synthetic module named for the repository rather than falling out of the tree.
+        CodeGraph graph = new CodeGraph();
+        graph.upsertNode(new GraphNode("repo:flat", EntityKind.REPOSITORY, "flat", Map.of(), SOURCE), true);
+        declareType(graph, "type:flat.Alpha", EntityKind.TYPE, "flat");
+        declareType(graph, "type:flat.Beta", EntityKind.TYPE, "flat");
+
+        IndexTree tree = IndexTreeBuilder.derive(graph);
+
+        List<String> reachable = new ArrayList<>();
+        collect(tree, tree.root(), reachable);
+        assertTrue(reachable.contains("index:type:flat.Alpha"), reachable.toString());
+        assertTrue(reachable.contains("index:type:flat.Beta"), reachable.toString());
+        assertEquals("flat", tree.root().name());
+    }
+
     private static void collect(IndexTree tree, IndexNode node, List<String> into) {
         into.add(node.id());
         for (IndexNode child : tree.children(node)) collect(tree, child, into);
