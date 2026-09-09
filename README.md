@@ -78,7 +78,7 @@ repo-intel navigate <repo> "<q>" --session s   walk that tree one level at a tim
 repo-intel snapshot <repo> -o snap.json        durable snapshot for later comparison
 repo-intel diff <repo> snap.json               what changed, and the risk of each changed symbol
 repo-intel evaluate <repo> questions.tsv       score against a grounded question set
-repo-intel enrichment-plan <repo>              rank symbols worth model tokens, within a budget
+repo-intel enrichment-plan <repo>              rank symbols (or --branches) worth model tokens, in budget
 repo-intel visualize <repo> -o graph.html      self-contained interactive view, or GraphML/DOT
 repo-intel enrich-targets <repo> -o work.json  ranked work packets for a semantic enricher
 repo-intel enrich-apply <repo> claims.json     verify claims and apply only what evidence supports
@@ -115,10 +115,12 @@ at the step that lost it.
 `--anchors N` lets an answer rest on several symbols rather than one, which is what a question with
 a plural answer needs.
 
-Measured on the fixture, `HYBRID` reaches recall@1 0.900 against flat retrieval's 0.800; `TREE`
-alone ties. That rests on one question in a ten-question set — see
-[the retrieval baseline](docs/benchmarks/retrieval-2026-09-09.md), which says plainly what has and
-has not been shown.
+Measured on four repositories — the fixture, spring-petclinic, jackson-databind and junit5 —
+`HYBRID` is never worse than flat retrieval and better on two, and at scale the descent is also the
+cheaper path: 101 ms against 273 ms on jackson-databind, because it reads 18 cards where flat
+ranking scores 45,595 nodes. `TREE` alone still loses a question on junit5, which is why `BM25`
+remains the default. See [the retrieval baseline](docs/benchmarks/retrieval-2026-09-09.md), which
+also records the three defects running the real corpora found.
 
 ### Letting an assistant do the navigating
 
