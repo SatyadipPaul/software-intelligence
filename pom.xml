@@ -28,6 +28,7 @@
     <module>modules/framework-spring</module>
     <module>modules/pipeline</module>
     <module>modules/architecture</module>
+    <module>modules/index-tree</module>
     <module>modules/query-engine</module>
     <module>modules/evaluation</module>
     <module>modules/visualization</module>

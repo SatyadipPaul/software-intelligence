@@ -10,6 +10,7 @@
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>framework-spring</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>architecture</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>pipeline</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.satyadippaul</groupId><artifactId>index-tree</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>query-engine</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>evaluation</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>visualization</artifactId><version>${project.version}</version></dependency>

@@ -66,10 +66,17 @@ public final class Bm25Index {
             "me", "my", "our", "us", "you", "your", "if", "then", "than", "about", "into", "over", "use",
             "used", "uses", "using", "get", "gets", "have", "has", "had", "list", "show", "tell");
 
+    /**
+     * The terms a question actually asks about. Shared with tree navigation so a question is
+     * reduced the same way whichever retrieval path reads it.
+     */
+    static List<String> queryTerms(String query) {
+        List<String> terms = tokenize(query).stream().filter(term -> !QUESTION_WORDS.contains(term)).toList();
+        return terms.isEmpty() ? tokenize(query) : terms;
+    }
+
     public List<Hit> search(String query, int limit) {
-        List<String> queryTerms = tokenize(query).stream()
-                .filter(term -> !QUESTION_WORDS.contains(term)).toList();
-        if (queryTerms.isEmpty()) queryTerms = tokenize(query);
+        List<String> queryTerms = queryTerms(query);
         if (queryTerms.isEmpty()) return List.of();
         int count = documents.size();
         List<Hit> hits = new ArrayList<>();

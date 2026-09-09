@@ -68,6 +68,71 @@ jobs:
           print(f'graph recall {graph} vs text-search baseline {base}')
           PY
 
+      # The index tree is a derived artifact, so it inherits the graph's determinism guarantee or
+      # it is not derived - a navigator's descent can only be compared across runs if the tree is.
+      - name: Index tree is stable across runs and covers every type
+        run: |
+          for i in 1 2 3; do
+            java -jar apps/cli/target/repo-intel.jar index fixtures/sample-commerce -o tree$i.json
+          done
+          diff tree1.json tree2.json
+          diff tree2.json tree3.json
+          python3 - <<'PY'
+          import json
+          tree = json.load(open('tree1.json'))
+          graph = json.load(open('first.graph.json'))
+          nodes = {n['id']: n for n in tree['nodes']}
+          assert tree['graphFingerprint'], 'a tree with no fingerprint cannot be told from a stale one'
+          graph_ids = {n['id'] for n in graph['nodes']}
+          for node in tree['nodes']:
+              assert node['id'].startswith('index:'), node['id']
+              assert node['id'] not in graph_ids, f"tree id {node['id']} collides with a graph id"
+              for covered in node['graphIds']:
+                  assert covered in graph_ids, f"{node['id']} points at {covered}, which is not in the graph"
+          # Every type the graph declares has to be reachable from the root, or navigation loses it.
+          reachable, stack = set(), ['index:root']
+          while stack:
+              current = stack.pop()
+              if current in reachable: continue
+              reachable.add(current)
+              stack.extend(nodes[current]['children'])
+          covered = {c for r in reachable for c in nodes[r]['graphIds']}
+          # Only types this repository declares: a JDK type is in the graph because something
+          # referenced it, and the table of contents of a repository does not contain java.lang.
+          declared = {e['to'] for e in graph['edges'] if e['kind'] == 'DECLARES'}
+          missing = [i for i in graph_ids
+                     if i.startswith('type:') and '#' not in i and '.field:' not in i
+                     and i in declared and i not in covered]
+          assert not missing, f'types this repository declares are unreachable from the tree root: {missing}'
+          PY
+
+      # Both retrieval paths land on the right symbol, and the tree is not allowed to be a
+      # regression: a mode that cannot match flat retrieval has no business being in the product.
+      - name: Tree retrieval is measured against the flat baseline
+        run: |
+          java -jar apps/cli/target/repo-intel.jar evaluate fixtures/sample-commerce \
+            evaluation/sample-commerce.questions.tsv --retrieval-only BM25,TREE,HYBRID --fail-under 0 | tee retrieval.txt
+          python3 - <<'PY'
+          import re
+          text = open('retrieval.txt').read()
+          scores = dict(zip(re.findall(r'RETRIEVAL \((\w+)\)', text),
+                            [float(v) for v in re.findall(r'mean reciprocal rank\s+([0-9.]+)', text)]))
+          print(scores)
+          assert scores['HYBRID'] >= scores['BM25'], f"hybrid retrieval regressed against flat: {scores}"
+          assert scores['TREE'] > 0.5, f"tree descent is not finding its subjects: {scores}"
+          PY
+
+      - name: An assistant may only navigate to ids it was shown
+        run: |
+          java -jar apps/cli/target/repo-intel.jar navigate fixtures/sample-commerce \
+            "where are payments authorized?" --session nav.json > packet.txt
+          grep -q 'Choose only ids that appear on the cards below' packet.txt
+          if java -jar apps/cli/target/repo-intel.jar navigate fixtures/sample-commerce \
+               --session nav.json --choose index:type:com.acme.checkout.PaymentGateway 2> rejected.txt; then
+            echo 'an unpresented id was followed'; exit 1
+          fi
+          grep -q 'not on the cards presented' rejected.txt
+
       - name: A snapshot round-trips and an unchanged tree diffs empty
         run: |
           java -jar apps/cli/target/repo-intel.jar snapshot fixtures/sample-commerce -o baseline.snapshot.json
