@@ -117,13 +117,14 @@ credentials and outbound calls, which the local-first invariant makes optional b
   how little the card already says, through the existing budget, packet and verification path. On
   jackson-databind a 2,000-token budget buys summaries of `type`, `util`, `misc` and `deser.impl` -
   the packages a descent has to guess at - where symbol ranking spends the same budget on
-  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. **Measured.** 12 authored
-  summaries moved nothing on questions that name their subject, because those already score 1.000.
-  On seven added questions that do not name their subject they lift anchor recall 0.737 to 0.842,
-  and the mechanism is the one the design claimed: "which table stores the clinic's clients" is
-  answerable only because a summary calls Owner a client of the clinic, a word absent from the
-  source. The questions were not written blind to the summaries, so that establishes the mechanism
-  and overstates the size; see [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
+  `ObjectMapper#readValue`, three `Map#get` overrides and a test utility. **Measured twice, and the
+  answer is no.** Hand-written summaries appeared to lift Petclinic's anchor recall 0.737 to 0.842,
+  but the same author wrote the summaries and the questions. Repeated cleanly on jackson-databind
+  and junit5 - questions committed first, summaries extracted from each project's own
+  package-info.java javadoc - 26 summaries moved not one metric and recovered not one question. A
+  summary helps exactly when it happens to carry the words the asker uses; independent authorship
+  makes that coincidental, and it did not occur once. See
+  [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.

@@ -229,33 +229,68 @@ the coverage advantage.
 
 ## Do branch summaries improve descent?
 
-On the easy questions, no. On the hard ones, yes — with a caveat about who wrote what that has to
-come first.
+**No, once the summaries and the questions have different authors.** This was measured twice, and
+the second measurement corrects the first.
 
-The loop ran as documented, with no product change and no credentials: `enrich-targets --branches`
-wrote packets, those were answered with `SUMMARY` claims, and `enrich-apply` verified every one
-against the graph. 12 claims applied, 0 rejected, 0 disputed.
+### The compromised run, on Petclinic
 
-| Petclinic, HYBRID | anchor recall | recall@1 | MRR |
+Ten summaries written by hand, then seven subject-free questions written afterwards by the same
+author. Anchor recall rose 0.737 → 0.842, and the mechanism looked exactly like the design's claim:
+"which table stores the clinic's **clients**?" was answerable only because a summary called `Owner`
+"a client of the clinic", and the word *client* appears nowhere in Petclinic's source.
+
+The summaries predate the questions, so they were not tuned to them — but the questions were written
+by someone who had read the summaries, and two descriptions of the same package by the same author
+converge on the same words. That was flagged at the time as establishing the mechanism and
+overstating the size.
+
+### The clean run, on jackson-databind and junit5
+
+Both halves independently sourced:
+
+- the **questions** (jd-011..013, ju-009..011) were written and committed first, from the source;
+- the **summaries** were extracted mechanically from each project's own `package-info.java`
+  javadoc — prose written by the JUnit and Jackson maintainers, who have never seen these questions.
+
+26 summaries applied, 0 rejected by the verification gate.
+
+| | anchor recall | recall@1 | MRR |
 | --- | --- | --- | --- |
-| 10 original questions | 1.000 → 1.000 | 1.000 → 1.000 | 1.000 → 1.000 |
-| 19 questions incl. subject-free | 0.737 → **0.842** | 0.632 → 0.632 | 0.655 → **0.672** |
+| jackson-databind, 15 summaries | 0.769 → 0.769 | 0.769 → 0.769 | 0.769 → 0.769 |
+| junit5, 11 summaries | 0.727 → 0.727 | 0.636 → 0.636 | 0.682 → 0.682 |
 
-Two questions are recovered by the summaries alone, and the mechanism is exactly what the design
-claimed: a summary supplies domain vocabulary the code does not contain. "Which table stores the
-clinic's **clients**?" is answerable only because a summary calls `Owner` "a client of the clinic" —
-**the word "client" appears nowhere in Petclinic's Java source.** The same holds for "clinic
-**staff**" and the `vet` module.
+Not one metric moved, and not one of the six subject-free questions was recovered.
 
-**The caveat, which limits what this shows.** The summaries were written before these questions
-existed, so they were not tuned to them. The questions were *not* written blind to the summaries.
-Someone reaching for a phrase to describe an owner and someone reaching for a phrase to summarise
-the owner package will land on the same domain words, and that similarity is doing some of the work
-here. So this establishes the **mechanism** — a summary can carry vocabulary the code lacks, and
-retrieval will use it — and **overstates the effect size**. Questions written by someone who has not
-seen the summaries would settle it, and nothing here should be quoted as the size of the win.
+### Why, exactly
 
-## Cost and shape
+The summaries are not empty and they are not tautological: 91% of their content words on
+jackson-databind and 70% on junit5 are words the branch's own name, exemplars and children did not
+already carry. They reached the cards — 15 and 11 tree nodes print one. They simply never say what
+the asker said:
+
+| Question | enriched ancestors on the path | words shared with them |
+| --- | --- | --- |
+| jd-011 what is thrown when JSON holds an unacceptable property | **0** | — |
+| jd-012 which node type stands for an explicit JSON null | 1 | `node` (the branch name already had it) |
+| jd-013 which type is the immutable builder for one deserialization | 1 | none |
+| ju-009 which module holds the annotation for a method run before every test | 1 | none |
+| ju-011 which interface does an engine implement to be discovered by the platform | 1 | none |
+
+Two distinct failures. For jd-011 the budget never put a summary anywhere on the path to the answer
+— `exc` did not make the top twenty branches. For the other four a summary *was* on the path and
+shared no content word with the question: "JUnit Jupiter API for writing tests" does not contain
+*annotation*, *runs* or *before*.
+
+**The conclusion is narrower than "summaries do not work".** A summary helps exactly when it happens
+to carry the words the asker will use. When one person writes both, that is nearly guaranteed and
+the effect looks real. When they are written independently — the normal case, and the only honest
+test — the overlap is coincidental, and on two real repositories it did not occur once.
+
+That is a harder bar than "write a good summary", and it is the bar any enrichment programme here
+has to clear. Matching on terms at all may be the limit: nothing a package's author writes is
+obliged to anticipate a reader's phrasing, which is the problem an embedding is usually reached for.
+
+## Cost and shape## Cost and shape
 
 | | fixture | this repo | spring-petclinic | jackson-databind | junit5 |
 | --- | --- | --- | --- | --- | --- |

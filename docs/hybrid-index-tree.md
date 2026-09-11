@@ -148,17 +148,24 @@ It produces candidates for the machinery that already exists, so a summary arriv
 confidence-capped `claim.summary` on the graph node the branch covers, and `IndexTreeBuilder` reads
 it back onto the card.
 
-**Whether real summaries improve descent was then measured.** Twelve authored summaries passed the
-verification gate and moved nothing on questions that name their subject — those already score 1.000
-and leave nothing to win. Seven questions that do *not* name their subject were then added, which
-dropped Petclinic retrieval from 1.000 to 0.66, and on those the summaries lift anchor recall from
-0.737 to 0.842.
+**Whether real summaries improve descent was measured twice, and the answer is no.**
 
-The mechanism is the one this design claimed: a summary carries domain vocabulary the code does not
-have. "Which table stores the clinic's clients?" is answerable only because a summary calls `Owner`
-"a client of the clinic" — the word *client* appears nowhere in Petclinic's source. The questions
-were not written blind to the summaries, though, so this establishes the mechanism and overstates
-the size of the win; questions written by someone who has not read the summaries would settle it.
+The first run, on Petclinic, appeared to show a lift: anchor recall 0.737 → 0.842 on questions that
+do not name their subject, with "which table stores the clinic's clients" answerable only because a
+summary called `Owner` "a client of the clinic", a word absent from the source. But one author wrote
+both the summaries and the questions.
+
+The second run separated them. Questions for jackson-databind and junit5 were written and committed
+first; the summaries were then extracted mechanically from each project's own `package-info.java`
+javadoc, prose written by maintainers who have never seen the questions. 26 summaries, 0 rejected,
+**not one metric moved and not one question recovered**.
+
+The reason is precise. The summaries are not empty — 91% and 70% of their words are new to the
+branch — and they reach the cards. They simply never say what the asker said: "JUnit Jupiter API for
+writing tests" contains none of *annotation*, *runs*, *before*. So the claim this design makes for
+summaries survives only in a much narrower form: a summary helps exactly when it happens to carry
+the words the question will use. One author writing both nearly guarantees that; independent
+authorship makes it coincidental, and across two real repositories it did not happen once.
 
 ### Navigation, and why a model here is safe
 
