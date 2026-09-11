@@ -5,6 +5,7 @@
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>pipeline</artifactId>
   <name>Analysis pipeline composition</name>
+  <description>Composes the analysis layers and discovers Maven and Gradle build classpaths.</description>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>framework-spring</artifactId><version>${project.version}</version></dependency>

@@ -5,6 +5,7 @@
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>visualization</artifactId>
   <name>Self-contained graph views and interchange formats</name>
+  <description>Renders the code graph as one self-contained HTML file, and exports GraphML, DOT, and Cytoscape JSON.</description>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>model</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>

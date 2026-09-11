@@ -5,6 +5,7 @@
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>model</artifactId>
   <name>Canonical repository model</name>
+  <description>Canonical graph schema, provenance records, queries, and durable snapshots for the repository model.</description>
   <dependencies>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
   </dependencies>

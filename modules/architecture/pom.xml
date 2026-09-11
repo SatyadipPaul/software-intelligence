@@ -4,6 +4,8 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>architecture</artifactId>
+  <name>Architecture intelligence</name>
+  <description>Modules, centrality, communities, workflows, capabilities, and explainable change-risk scoring over the code graph.</description>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>model</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>

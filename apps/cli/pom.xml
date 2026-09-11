@@ -5,6 +5,7 @@
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>cli</artifactId>
   <name>Repository intelligence CLI</name>
+  <description>Command-line interface for inspecting, querying, visualizing, enriching, and evaluating a repository graph.</description>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>framework-spring</artifactId><version>${project.version}</version></dependency>
