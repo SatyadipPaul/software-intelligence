@@ -191,12 +191,13 @@ ones. Four of the five things measured here are established results, and one of 
 is explained by a 2020 paper. The sequence below is ordered by that reading, cheapest and
 most-unblocking first.
 
-**1. Fix the evaluation before building anything else.** Two workstreams are blocked on "get an
-enterprise-shaped repository and hold it out", and every result so far carries a contamination
-caveat because the same hand wrote the corpus and the code. CORE-Bench reports 180K queries and 106K
-broader-context relevance labels for requirement-driven repository search, externally authored. If
-its licence and format allow, adopting it removes the contamination question permanently and is
-worth more than hand-building a fifth repository. If not, Apache Fineract is the fallback.
+**1. Contamination is now a permanent caveat, not a solvable step.** Adopting an externally
+authored evaluation set was the plan, and it is not available to this project. Everything measured
+here is therefore written by the same hand that wrote the code, and that cannot be fixed by effort —
+only bounded by method. The bound that works is the one the blind javadoc run used: enrich from
+text the question author never read. Where even that is impossible, a number is reported as a
+contaminated ceiling and is never sufficient grounds to change a default. Stating this once, here,
+is worth more than repeating the caveat per experiment.
 
 **2. Finish Tier 0 with prose the repository already contains.** Javadoc was one source and it moved
 subject-free retrieval 0.180 → 0.304. Two more cost nothing and need no model: **commit messages**,
@@ -205,10 +206,16 @@ alone and reports up to 80% over a BM25 baseline — and **test method names**, 
 near-sentences (`shouldRejectPaymentWhenBalanceIsInsufficient`). Both matter most on exactly the
 enterprise profile where Javadoc is absent, which is the profile the current corpus lacks.
 
-**3. Choose an encoder under the distribution constraint.** A small general-purpose encoder is cheap
-to ship and weaker on identifiers; a code-trained one is 5–7× the parameters. The earlier "~25 MB"
-estimate in this repository was for the former and understated the trade-off. Decide on measured
-retrieval, and keep the encoder an optional artifact with the core degrading to lexical scoring.
+**3. Choose an encoder under the distribution constraint.** Every locally-runnable graph-RAG system
+has converged on the same point — 384 dimensions, 22–33M parameters — and everything larger is an
+API this project cannot use. Below that market default sit **static** embeddings, which have no
+forward pass at all: a vocabulary-to-vector table, tokenize and mean-pool, a few hundred lines of
+pure Java with no native dependency, no ONNX and no per-platform artifacts, at ~8–30 MB. That
+removes the largest open risk in this step, which was runtime feasibility rather than size. Measure
+a retrieval-tuned static model, the smallest static model, and the market default as a quality
+reference; ship one, as a separate optional artifact, with the core degrading to lexical scoring.
+See [encoder selection](encoder-selection.md) — every figure in it is unverified, because the model
+hosts are blocked here.
 
 **4. Only then, the dilution fix.** Scoring a node as its whole subtree dilutes a single good card,
 and the max-passage repair failed *because it was applied to scores*. PARADE's finding is that
@@ -220,8 +227,9 @@ calibration data.
 family, whose documented failure modes are exactly the risks already recorded here. Doc2Query--
 supplies the mitigation: filter generated text through a relevance model before indexing. That is
 this repository's existing claims gate applied to enrichment, and it is a requirement rather than an
-enhancement. Measuring it needs step 1: with externally authored queries, a model writing the
-descriptions is no longer single-author contamination.
+enhancement. Measuring it runs into step 1's permanent caveat, and the branch-summary experiment is
+the warning: the same author writing both the enrichment and the questions produced a result that
+had to be reversed.
 
 **6. Read the closest prior art and record the deltas.** RANGER builds a repository knowledge graph
 by AST parsing, LLM-assisted description generation and embedding — our three tiers, in our order —
@@ -229,9 +237,10 @@ and splits queries into code-entity and general, which is our named/subject-free
 LARGER formalises `HYBRID`'s thesis and criticises graph retrieval for fragmenting the agent loop
 with separate traversal stages, which is a fair charge against `navigate`.
 
-**Exit criterion:** plain-register retrieval, measured on an externally authored held-out set,
-improves on the Tier 0 baseline of 0.304 — or the approach is dropped, having been measured rather
-than assumed. The same standard as Milestone 6, applied to a corpus nobody here wrote.
+**Exit criterion:** plain-register retrieval improves on the Tier 0 baseline of 0.304, measured on
+all 200 questions and reported with its contamination status stated — or the approach is dropped,
+having been measured rather than assumed. The same standard as Milestone 6.
 
-**Environment note:** steps 1 and 6 need `arxiv.org` and dataset hosts, which this session's network
-policy denies. They are blocked on egress, not on effort.
+**Environment note:** step 6, and verification of every figure in
+[encoder selection](encoder-selection.md), need `arxiv.org` and the model hosts, which this
+session's network policy denies. They are blocked on egress, not on effort.
