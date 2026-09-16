@@ -96,10 +96,19 @@ public final class QueryPlanner {
      */
     public static Answerable plan(CodeGraph graph, Bm25Index index, IndexTree tree, String question,
                                   int retrievalLimit, RetrievalMode mode, int maxAnchors, int beam) {
+        return plan(graph, index, tree, null, question, retrievalLimit, mode, maxAnchors, beam);
+    }
+
+    public static Answerable plan(CodeGraph graph, Bm25Index index, IndexTree tree, DenseIndex dense,
+                                  String question, int retrievalLimit, RetrievalMode mode,
+                                  int maxAnchors, int beam) {
         Plan plan = classify(question);
         List<Bm25Index.Hit> hits = index.search(question, retrievalLimit);
         if (mode.needsTree() && tree == null) {
             throw new IllegalArgumentException("retrieval mode " + mode + " needs an index tree; build one with `repo-intel index`");
+        }
+        if (mode.needsDense() && dense == null) {
+            throw new IllegalArgumentException("retrieval mode " + mode + " needs an encoder; supply one with --embedding-model");
         }
 
         Optional<TreeNavigator.Descent> descent = mode.needsTree()
@@ -116,6 +125,14 @@ public final class QueryPlanner {
         // descent that took a wrong branch at the first level.
         descent.ifPresent(found -> found.anchorGraphIds().stream()
                 .map(graph::node).flatMap(Optional::stream).forEach(node -> add(anchors, node)));
+        // Dense sits between the named subject and the flat hits: it is the only signal that can
+        // reach a symbol the question never names, and the only one with no exact evidence behind
+        // it, so it leads the guesses and trails the proof.
+        if (mode.needsDense()) {
+            dense.search(question, Math.max(retrievalLimit, maxAnchors)).stream()
+                    .map(DenseIndex.Hit::node).filter(QueryPlanner::isAnchorable)
+                    .forEach(node -> add(anchors, node));
+        }
         if (mode.needsFlat()) {
             hits.stream().map(Bm25Index.Hit::node).filter(QueryPlanner::isAnchorable).forEach(node -> add(anchors, node));
         }

@@ -86,6 +86,15 @@ against the model cards before it influences anything.
 Note also that `potion-retrieval-32M` exists and is *retrieval-tuned*. For this project that is the
 interesting variant, not the general-purpose one, and it barely appears in the summaries.
 
+## Measured so far
+
+`all-MiniLM-L6-v2` has been run on the full corpus: subject-free retrieval 0.304 → **0.404**, and
+`DENSE_HYBRID` beats flat retrieval on all four corpora on every headline metric. Embedding costs
+~2.7 ms per node, once per graph, over the ~12% of nodes worth anchoring on. That is the **ceiling**
+the static candidates have to approach — see
+[the dense encoder run](benchmarks/dense-encoder-2026-09-16.md). It is not a shipping decision: it
+needs a native runtime, which is the thing the static models avoid.
+
 ## Recommendation
 
 Measure three, ship one:

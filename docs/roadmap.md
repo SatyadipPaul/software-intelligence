@@ -241,6 +241,16 @@ with separate traversal stages, which is a fair charge against `navigate`.
 all 200 questions and reported with its contamination status stated — or the approach is dropped,
 having been measured rather than assumed. The same standard as Milestone 6.
 
+**Status: met on quality, open on packaging.** A dense encoder takes subject-free retrieval from
+0.304 to **0.404**, with questions that name their subject at 39/39. `DENSE_HYBRID` — named subject
+first, dense second, flat hits last — is the **first mode to beat flat retrieval on every corpus on
+every headline metric**, which is the criterion Milestone 6 set and `HYBRID` failed. The encoder is
+an optional module, the ONNX runtime an optional dependency of it, and the weights are supplied by
+the operator: without one, every existing mode behaves exactly as before. What remains open is which
+encoder to *ship*: `all-MiniLM-L6-v2` was measured because it is the market default and it
+establishes the ceiling, while the static models that need no native runtime are the shipping
+candidates and are unmeasured. See [the dense encoder run](benchmarks/dense-encoder-2026-09-16.md).
+
 **Environment note:** step 6, and verification of every figure in
 [encoder selection](encoder-selection.md), need `arxiv.org` and the model hosts, which this
 session's network policy denies. They are blocked on egress, not on effort.

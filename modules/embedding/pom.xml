@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
+  <artifactId>embedding</artifactId>
+  <description>Optional dense encoder. The tokenizer and vector maths are plain Java; only the ONNX
+    backend needs a native runtime, and it is an optional dependency so nothing downstream inherits
+    a per-platform binary by depending on this module.</description>
+  <dependencies>
+    <!-- Optional on purpose: a consumer that never asks for a dense encoder must not be made to
+         download 90 MB of per-platform native libraries. EncoderFactory reports the encoder as
+         unavailable when the class is absent rather than failing to load. -->
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId>
+      <artifactId>onnxruntime</artifactId>
+      <version>1.20.0</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
+  </dependencies>
+</project>

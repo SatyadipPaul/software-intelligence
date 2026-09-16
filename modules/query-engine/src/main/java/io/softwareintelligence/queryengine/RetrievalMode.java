@@ -11,9 +11,12 @@ package io.softwareintelligence.queryengine;
  * level, which happens more in code than in prose because names repeat across modules.
  */
 public enum RetrievalMode {
-    BM25, TREE, HYBRID;
+    BM25, TREE, HYBRID, DENSE, DENSE_HYBRID;
 
-    public boolean needsTree() { return this != BM25; }
+    public boolean needsTree() { return this == TREE || this == HYBRID; }
 
-    public boolean needsFlat() { return this != TREE; }
+    public boolean needsFlat() { return this == BM25 || this == HYBRID || this == DENSE_HYBRID; }
+
+    /** Whether this mode needs an encoder, and therefore a configured embedding model. */
+    public boolean needsDense() { return this == DENSE || this == DENSE_HYBRID; }
 }

@@ -6,6 +6,9 @@ import io.softwareintelligence.evaluation.RetrievalHarness;
 import io.softwareintelligence.evaluation.TextSearchBaseline;
 import io.softwareintelligence.indextree.IndexTree;
 import io.softwareintelligence.model.CodeGraph;
+import io.softwareintelligence.embedding.EncoderFactory;
+import io.softwareintelligence.embedding.TextEncoder;
+import io.softwareintelligence.queryengine.DenseIndex;
 import io.softwareintelligence.queryengine.RetrievalMode;
 import io.softwareintelligence.queryengine.EnrichmentPlanner;
 import picocli.CommandLine;
@@ -40,6 +43,10 @@ final class EvaluateCommand implements Callable<Integer> {
     @CommandLine.Option(names = "--index", description = "Use a pinned tree file rather than deriving one")
     private java.nio.file.Path indexFile;
 
+    @CommandLine.Option(names = "--embedding-model",
+            description = "Directory holding model.onnx and vocab.txt, for the DENSE retrieval modes")
+    private java.nio.file.Path embeddingModel;
+
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
@@ -62,13 +69,40 @@ final class EvaluateCommand implements Callable<Integer> {
         IndexTree tree = TreeOptions.load(graph, indexFile);
         RetrievalHarness harness = new RetrievalHarness(10, maxAnchors, beam);
         double best = 0;
-        for (RetrievalMode mode : retrievalModes) {
-            RetrievalHarness.Report report = harness.run(graph, tree, set, mode);
-            System.out.print(RetrievalHarness.render(report));
-            System.out.println();
-            best = Math.max(best, report.anchorRecall());
+        // The encoder is opened once and shared: embedding the anchorable nodes is the whole cost of
+        // a dense mode, and doing it per mode would make a comparison of two dense modes a
+        // comparison of how many times the same vectors were computed.
+        try (TextEncoder encoder = openEncoder()) {
+            DenseIndex dense = null;
+            if (encoder != null) {
+                long start = System.currentTimeMillis();
+                dense = DenseIndex.over(graph, encoder);
+                System.err.printf("embedded %d nodes in %d ms%n", dense.size(), System.currentTimeMillis() - start);
+            }
+            for (RetrievalMode mode : retrievalModes) {
+                RetrievalHarness.Report report = harness.run(graph, tree, dense, set, mode);
+                System.out.print(RetrievalHarness.render(report));
+                System.out.println();
+                best = Math.max(best, report.anchorRecall());
+            }
         }
         return best + 1e-9 < failUnder ? 1 : 0;
+    }
+
+    /**
+     * Opens the encoder when one is both needed and configured.
+     *
+     * <p>Null rather than an exception when no dense mode was asked for: a lexical run must not be
+     * made to depend on a model being present, which is the local-first invariant in one method.
+     */
+    private TextEncoder openEncoder() {
+        if (retrievalModes.stream().noneMatch(RetrievalMode::needsDense)) return null;
+        if (embeddingModel == null) {
+            throw new IllegalArgumentException(
+                    "a DENSE retrieval mode needs --embedding-model pointing at a directory "
+                            + "with model.onnx and vocab.txt");
+        }
+        return EncoderFactory.open(embeddingModel);
     }
 
     /** grep, scored by the same rules. "Better than searching for the name" is the claim to beat. */

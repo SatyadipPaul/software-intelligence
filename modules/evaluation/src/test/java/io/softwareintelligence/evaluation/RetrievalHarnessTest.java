@@ -8,6 +8,8 @@ import io.softwareintelligence.model.GraphEdge;
 import io.softwareintelligence.model.GraphNode;
 import io.softwareintelligence.model.Provenance;
 import io.softwareintelligence.model.RelationKind;
+import io.softwareintelligence.embedding.TextEncoder;
+import io.softwareintelligence.queryengine.DenseIndex;
 import io.softwareintelligence.queryengine.RetrievalMode;
 import org.junit.jupiter.api.Test;
 
@@ -86,9 +88,38 @@ class RetrievalHarnessTest {
                 question("q2", "Who calls OrderService?", "OrderService"));
         RetrievalHarness harness = new RetrievalHarness(10, 5, 4);
 
-        for (RetrievalMode mode : RetrievalMode.values()) {
-            assertEquals(2, harness.run(graph, tree, set, mode).results().size(), mode.name());
+        // The dense modes are covered with a stub encoder rather than skipped: the property under
+        // test is that a mode never silently drops a question, and a mode exempted from that check
+        // is exactly where such a bug would live.
+        try (TextEncoder encoder = new HashingEncoder()) {
+            DenseIndex dense = DenseIndex.over(graph, encoder);
+            for (RetrievalMode mode : RetrievalMode.values()) {
+                assertEquals(2, harness.run(graph, tree, dense, set, mode).results().size(), mode.name());
+            }
         }
+    }
+
+    /** Deterministic stand-in for a model: enough to exercise the plumbing, no weights to download. */
+    private static final class HashingEncoder implements TextEncoder {
+        @Override public int dimensions() { return 16; }
+
+        @Override public float[][] encode(List<String> texts) {
+            float[][] vectors = new float[texts.size()][];
+            for (int i = 0; i < texts.size(); i++) {
+                float[] vector = new float[16];
+                for (String word : texts.get(i).toLowerCase(java.util.Locale.ROOT).split("[^a-z0-9]+")) {
+                    if (!word.isBlank()) vector[Math.floorMod(word.hashCode(), 16)] += 1;
+                }
+                double norm = 0;
+                for (float component : vector) norm += component * component;
+                norm = Math.sqrt(norm);
+                if (norm > 0) for (int d = 0; d < vector.length; d++) vector[d] /= (float) norm;
+                vectors[i] = vector;
+            }
+            return vectors;
+        }
+
+        @Override public void close() { }
     }
 
     @Test void anchor_coverage_measures_the_set_not_the_subject() {

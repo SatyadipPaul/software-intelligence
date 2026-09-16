@@ -7,6 +7,7 @@ import io.softwareintelligence.model.GraphNode;
 import io.softwareintelligence.model.GraphQueries;
 import io.softwareintelligence.model.RelationKind;
 import io.softwareintelligence.queryengine.Bm25Index;
+import io.softwareintelligence.queryengine.DenseIndex;
 import io.softwareintelligence.queryengine.QueryPlanner;
 import io.softwareintelligence.queryengine.RetrievalMode;
 
@@ -95,6 +96,11 @@ public final class RetrievalHarness {
     }
 
     public Report run(CodeGraph graph, IndexTree tree, List<GroundedQuestion> questions, RetrievalMode mode) {
+        return run(graph, tree, null, questions, mode);
+    }
+
+    public Report run(CodeGraph graph, IndexTree tree, DenseIndex dense,
+                      List<GroundedQuestion> questions, RetrievalMode mode) {
         Bm25Index index = Bm25Index.over(graph);
         List<Result> results = new ArrayList<>();
         List<GroundedQuestion> unusable = new ArrayList<>();
@@ -107,8 +113,8 @@ public final class RetrievalHarness {
                 continue;
             }
             long start = System.nanoTime();
-            QueryPlanner.Answerable answerable = QueryPlanner.plan(graph, index, tree, question.question(),
-                    retrievalLimit, mode, maxAnchors, beam);
+            QueryPlanner.Answerable answerable = QueryPlanner.plan(graph, index, tree, dense,
+                    question.question(), retrievalLimit, mode, maxAnchors, beam);
             long millis = Math.max(1, (System.nanoTime() - start) / 1_000_000);
 
             List<String> returned = answerable.anchors().stream().map(GraphNode::id).toList();
