@@ -130,6 +130,14 @@ credentials and outbound calls, which the local-first invariant makes optional b
   makes that coincidental, and it did not occur once. See
   [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
+**The descent had never been measured with anything but one scorer.** `modules/evaluation` did not
+reference `Chooser` at all, so every number below came from `TreeNavigator.DETERMINISTIC`. Measured
+against an oracle that always descends towards the answer, the tree reaches it **97-98%** of the
+time on junit5, jackson-databind and Petclinic, where the deterministic chooser reaches 27-56%. The
+tree is almost never the limitation; the chooser is the whole of it, and the architecture has about
+three times more in it than has ever been extracted. See
+[the chooser ceiling](benchmarks/chooser-ceiling-2026-09-16.md).
+
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.
 

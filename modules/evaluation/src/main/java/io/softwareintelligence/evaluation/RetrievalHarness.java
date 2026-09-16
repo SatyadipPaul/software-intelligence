@@ -10,6 +10,7 @@ import io.softwareintelligence.queryengine.Bm25Index;
 import io.softwareintelligence.queryengine.DenseIndex;
 import io.softwareintelligence.queryengine.QueryPlanner;
 import io.softwareintelligence.queryengine.RetrievalMode;
+import io.softwareintelligence.queryengine.TreeNavigator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -101,6 +102,16 @@ public final class RetrievalHarness {
 
     public Report run(CodeGraph graph, IndexTree tree, DenseIndex dense,
                       List<GroundedQuestion> questions, RetrievalMode mode) {
+        return run(graph, tree, dense, questions, mode, null);
+    }
+
+    /**
+     * @param chooserFor how each question's descent picks branches, or null for the model-free
+     *                   default. Supplied per question because a chooser may depend on the question
+     *                   — an encoder embeds it, and an oracle is built from its expected answer.
+     */
+    public Report run(CodeGraph graph, IndexTree tree, DenseIndex dense, List<GroundedQuestion> questions,
+                      RetrievalMode mode, java.util.function.Function<GroundedQuestion, TreeNavigator.Chooser> chooserFor) {
         Bm25Index index = Bm25Index.over(graph);
         List<Result> results = new ArrayList<>();
         List<GroundedQuestion> unusable = new ArrayList<>();
@@ -113,8 +124,10 @@ public final class RetrievalHarness {
                 continue;
             }
             long start = System.nanoTime();
+            TreeNavigator.Chooser chooser = chooserFor == null
+                    ? TreeNavigator.DETERMINISTIC : chooserFor.apply(question);
             QueryPlanner.Answerable answerable = QueryPlanner.plan(graph, index, tree, dense,
-                    question.question(), retrievalLimit, mode, maxAnchors, beam);
+                    question.question(), retrievalLimit, mode, maxAnchors, beam, chooser);
             long millis = Math.max(1, (System.nanoTime() - start) / 1_000_000);
 
             List<String> returned = answerable.anchors().stream().map(GraphNode::id).toList();

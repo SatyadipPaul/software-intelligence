@@ -102,6 +102,21 @@ public final class QueryPlanner {
     public static Answerable plan(CodeGraph graph, Bm25Index index, IndexTree tree, DenseIndex dense,
                                   String question, int retrievalLimit, RetrievalMode mode,
                                   int maxAnchors, int beam) {
+        return plan(graph, index, tree, dense, question, retrievalLimit, mode, maxAnchors, beam,
+                TreeNavigator.DETERMINISTIC);
+    }
+
+    /**
+     * The same, with the descent's branch chooser supplied.
+     *
+     * <p>Exposed so a chooser other than the model-free default can be <em>measured</em>. Every
+     * retrieval number this repository has published came from {@link TreeNavigator#DETERMINISTIC},
+     * which means the descent has only ever been scored with a scorer that cannot bridge a
+     * vocabulary gap — and the architecture's ceiling has therefore never been established.
+     */
+    public static Answerable plan(CodeGraph graph, Bm25Index index, IndexTree tree, DenseIndex dense,
+                                  String question, int retrievalLimit, RetrievalMode mode,
+                                  int maxAnchors, int beam, TreeNavigator.Chooser chooser) {
         Plan plan = classify(question);
         List<Bm25Index.Hit> hits = index.search(question, retrievalLimit);
         if (mode.needsTree() && tree == null) {
@@ -112,7 +127,7 @@ public final class QueryPlanner {
         }
 
         Optional<TreeNavigator.Descent> descent = mode.needsTree()
-                ? Optional.of(TreeNavigator.descend(tree, question, plan, beam, Math.max(1, maxAnchors)))
+                ? Optional.of(TreeNavigator.descend(tree, question, plan, beam, Math.max(1, maxAnchors), chooser))
                 : Optional.empty();
 
         List<GraphNode> anchors = new ArrayList<>();

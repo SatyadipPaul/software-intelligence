@@ -8,6 +8,11 @@ import io.softwareintelligence.indextree.IndexTree;
 import io.softwareintelligence.model.CodeGraph;
 import io.softwareintelligence.embedding.EncoderFactory;
 import io.softwareintelligence.embedding.TextEncoder;
+import io.softwareintelligence.evaluation.OracleChooser;
+import io.softwareintelligence.queryengine.DenseChooser;
+import io.softwareintelligence.queryengine.DenseTreeIndex;
+import io.softwareintelligence.queryengine.TreeNavigator;
+import io.softwareintelligence.model.GraphQueries;
 import io.softwareintelligence.queryengine.DenseIndex;
 import io.softwareintelligence.queryengine.RetrievalMode;
 import io.softwareintelligence.queryengine.EnrichmentPlanner;
@@ -42,6 +47,14 @@ final class EvaluateCommand implements Callable<Integer> {
 
     @CommandLine.Option(names = "--index", description = "Use a pinned tree file rather than deriving one")
     private java.nio.file.Path indexFile;
+
+    /** How a tree descent picks its branches, for measuring whether a better chooser helps. */
+    enum ChooserKind { DETERMINISTIC, DENSE, ORACLE }
+
+    @CommandLine.Option(names = "--chooser", defaultValue = "DETERMINISTIC",
+            description = "How a descent picks branches: ${COMPLETION-CANDIDATES}. ORACLE knows the "
+                    + "answer and measures the ceiling the descent could reach, not a usable mode.")
+    private ChooserKind chooser;
 
     @CommandLine.Option(names = "--embedding-model",
             description = "Model directory for the DENSE modes; defaults to the packaged model if one is on the classpath")
@@ -79,8 +92,10 @@ final class EvaluateCommand implements Callable<Integer> {
                 dense = DenseIndex.over(graph, encoder);
                 System.err.printf("embedded %d nodes in %d ms%n", dense.size(), System.currentTimeMillis() - start);
             }
+            java.util.function.Function<GroundedQuestion, TreeNavigator.Chooser> chooserFor =
+                    chooserFor(graph, tree, encoder);
             for (RetrievalMode mode : retrievalModes) {
-                RetrievalHarness.Report report = harness.run(graph, tree, dense, set, mode);
+                RetrievalHarness.Report report = harness.run(graph, tree, dense, set, mode, chooserFor);
                 System.out.print(RetrievalHarness.render(report));
                 System.out.println();
                 best = Math.max(best, report.anchorRecall());
@@ -98,7 +113,11 @@ final class EvaluateCommand implements Callable<Integer> {
      * operator can always override what was shipped.
      */
     private TextEncoder openEncoder() {
-        if (retrievalModes.stream().noneMatch(RetrievalMode::needsDense)) return null;
+        // A dense chooser needs the encoder as much as a dense mode does, and asking only about the
+        // mode silently produced an empty run rather than a refusal.
+        boolean wanted = retrievalModes.stream().anyMatch(RetrievalMode::needsDense)
+                || chooser == ChooserKind.DENSE;
+        if (!wanted) return null;
         return EncoderFactory.resolve(embeddingModel).orElseThrow(() -> new IllegalArgumentException(
                 "a DENSE retrieval mode needs a model: add the embedding-model artifact to the "
                         + "classpath, or pass --embedding-model pointing at a directory with "
@@ -126,6 +145,39 @@ final class EvaluateCommand implements Callable<Integer> {
                         + "  structural accuracy (recall) %.3f%n  evidence recall              %.3f%n"
                         + "  mean answer size             %.0f symbols%n  mean latency                 %d ms%n",
                 recall / count, evidence / count, answerSize / count, millis / count);
+    }
+
+    /**
+     * Builds the per-question branch chooser.
+     *
+     * <p>{@code ORACLE} is an instrument, not a mode: it resolves each question's declared answer to
+     * graph ids and always descends towards it, so what it still fails to reach is the descent's own
+     * ceiling rather than a chooser's mistake.
+     */
+    private java.util.function.Function<GroundedQuestion, TreeNavigator.Chooser> chooserFor(
+            CodeGraph graph, IndexTree tree, TextEncoder encoder) {
+        return switch (chooser) {
+            case DETERMINISTIC -> null;
+            case DENSE -> {
+                if (encoder == null) {
+                    throw new IllegalArgumentException("--chooser DENSE needs a model: add the "
+                            + "embedding-model artifact to the classpath, or pass --embedding-model");
+                }
+                DenseTreeIndex treeVectors = DenseTreeIndex.over(tree, encoder);
+                yield question -> new DenseChooser(encoder, treeVectors, question.question());
+            }
+            case ORACLE -> question -> OracleChooser.forTargets(tree, targets(graph, question));
+        };
+    }
+
+    /** The graph ids a question's declared answer names, which is what the oracle descends towards. */
+    private static java.util.Set<String> targets(CodeGraph graph, GroundedQuestion question) {
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+        GraphQueries.findSymbol(graph, question.subject()).ifPresent(node -> ids.add(node.id()));
+        for (String expected : question.expectedNames()) {
+            GraphQueries.findSymbol(graph, expected).ifPresent(node -> ids.add(node.id()));
+        }
+        return ids;
     }
 }
 
