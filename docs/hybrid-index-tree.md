@@ -437,3 +437,15 @@ the same shape as the pinned tree — never something recomputed per build.
 **And it is unmeasured.** Four interventions have come back negative. This one is a hypothesis with
 a mechanism, not a result, and it gets built in the order that can kill it cheapest: Tier 0 first,
 on both repository profiles, because it costs nothing and bounds the headroom left for Tier 1.
+
+### Prior work says most of this is known
+
+Four of the five things measured here are established results, and one negative result is explained
+by a paper from 2020. The register-mismatch split we measured at 0.974/0.180 is reported elsewhere
+at 96-100% against 36-44%; Tier 1 is the doc2query document-expansion family, whose failure modes
+and a filtering mitigation are documented; the tree with generated summaries is RAPTOR and its
+code-specific descendants; and the max-passage repair that failed here fails because PARADE's
+finding is about aggregating *representations*, not scores. See
+[research grounding](research-grounding.md), which also names an external benchmark that may
+replace the hand-built enterprise corpus, and a free source of Tier 0 prose - commit messages -
+that this design does not yet index.
