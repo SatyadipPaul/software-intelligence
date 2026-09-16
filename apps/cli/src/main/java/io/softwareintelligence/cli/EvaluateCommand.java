@@ -44,7 +44,7 @@ final class EvaluateCommand implements Callable<Integer> {
     private java.nio.file.Path indexFile;
 
     @CommandLine.Option(names = "--embedding-model",
-            description = "Directory holding model.onnx and vocab.txt, for the DENSE retrieval modes")
+            description = "Model directory for the DENSE modes; defaults to the packaged model if one is on the classpath")
     private java.nio.file.Path embeddingModel;
 
     @CommandLine.Mixin private AnalysisOptions options;
@@ -94,15 +94,15 @@ final class EvaluateCommand implements Callable<Integer> {
      *
      * <p>Null rather than an exception when no dense mode was asked for: a lexical run must not be
      * made to depend on a model being present, which is the local-first invariant in one method.
+     * When a dense mode <em>is</em> asked for, a configured model wins over a packaged one, so an
+     * operator can always override what was shipped.
      */
     private TextEncoder openEncoder() {
         if (retrievalModes.stream().noneMatch(RetrievalMode::needsDense)) return null;
-        if (embeddingModel == null) {
-            throw new IllegalArgumentException(
-                    "a DENSE retrieval mode needs --embedding-model pointing at a directory "
-                            + "with model.onnx and vocab.txt");
-        }
-        return EncoderFactory.open(embeddingModel);
+        return EncoderFactory.resolve(embeddingModel).orElseThrow(() -> new IllegalArgumentException(
+                "a DENSE retrieval mode needs a model: add the embedding-model artifact to the "
+                        + "classpath, or pass --embedding-model pointing at a directory with "
+                        + "model.safetensors and vocab.txt"));
     }
 
     /** grep, scored by the same rules. "Better than searching for the name" is the claim to beat. */

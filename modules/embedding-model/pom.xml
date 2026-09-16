@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
+  <artifactId>embedding-model</artifactId>
+  <description>Quantized static embedding weights, packaged so that adding this dependency is the
+    whole of the configuration. Carries no code: EncoderFactory.packaged() finds the files by their
+    fixed resource path. Built only when weights are actually present — see this module's README for
+    how to produce them and what must be checked before publishing third-party weights.</description>
+  <!-- No dependencies on purpose. This artifact is data; anything that reads it already depends on
+       the embedding module, and making weights depend on code would force a consumer to take both. -->
+</project>

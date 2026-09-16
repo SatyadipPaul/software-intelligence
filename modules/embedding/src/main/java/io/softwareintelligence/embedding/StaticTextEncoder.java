@@ -1,6 +1,7 @@
 package io.softwareintelligence.embedding;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -29,18 +30,17 @@ final class StaticTextEncoder implements TextEncoder {
     private final WordPieceTokenizer tokenizer;
     private final EmbeddingTable embeddings;
 
-    StaticTextEncoder(Path modelDirectory) {
-        Path weights = modelDirectory.resolve("model.safetensors");
-        Path vocabulary = modelDirectory.resolve("vocab.txt");
-        if (!Files.isRegularFile(weights) || !Files.isRegularFile(vocabulary)) {
-            throw new EncoderUnavailableException(
-                    "expected model.safetensors and vocab.txt in " + modelDirectory.toAbsolutePath());
-        }
-        try {
+    StaticTextEncoder(ModelSource source) {
+        try (InputStream vocabulary = source.open("vocab.txt");
+             InputStream weights = source.open("model.safetensors")) {
+            if (vocabulary == null || weights == null) {
+                throw new EncoderUnavailableException(
+                        "expected model.safetensors and vocab.txt in " + source.describe());
+            }
             this.tokenizer = WordPieceTokenizer.fromVocabulary(vocabulary);
-            this.embeddings = EmbeddingTable.load(weights);
+            this.embeddings = EmbeddingTable.load(weights.readAllBytes());
         } catch (IOException failure) {
-            throw new EncoderUnavailableException("could not load the static encoder from " + modelDirectory, failure);
+            throw new EncoderUnavailableException("could not load the static encoder from " + source.describe(), failure);
         }
         if (embeddings.rows() < tokenizer.vocabularySize()) {
             throw new EncoderUnavailableException("the vocabulary has " + tokenizer.vocabularySize()

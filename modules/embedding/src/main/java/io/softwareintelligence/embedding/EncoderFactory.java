@@ -2,6 +2,7 @@ package io.softwareintelligence.embedding;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Builds an encoder if one is both asked for and available, and explains itself when it is not.
@@ -40,7 +41,7 @@ public final class EncoderFactory {
             throw new EncoderUnavailableException("no embedding model directory was configured");
         }
         if (Files.isRegularFile(modelDirectory.resolve("model.safetensors"))) {
-            return new StaticTextEncoder(modelDirectory);
+            return new StaticTextEncoder(ModelSource.ofDirectory(modelDirectory));
         }
         if (!Files.isRegularFile(modelDirectory.resolve("model.onnx"))) {
             throw new EncoderUnavailableException("expected model.safetensors or model.onnx in "
@@ -53,5 +54,38 @@ public final class EncoderFactory {
                             + "runtime, or run without an encoder and retrieval stays lexical");
         }
         return new OnnxTextEncoder(modelDirectory);
+    }
+
+    /**
+     * The model packaged on the classpath, when a weights artifact is on it.
+     *
+     * <p>This is what an optional artifact buys: add the dependency and dense retrieval works with
+     * no flag and no path. Empty rather than throwing when nothing is packaged, because "no model
+     * was shipped" is the ordinary case for a consumer who never asked for one.
+     */
+    public static Optional<TextEncoder> packaged() {
+        return packaged(Thread.currentThread().getContextClassLoader() == null
+                ? EncoderFactory.class.getClassLoader()
+                : Thread.currentThread().getContextClassLoader());
+    }
+
+    static Optional<TextEncoder> packaged(ClassLoader loader) {
+        ModelSource source = ModelSource.ofClasspath(loader);
+        try (java.io.InputStream weights = source.open("model.safetensors")) {
+            if (weights == null) return Optional.empty();
+        } catch (java.io.IOException unreadable) {
+            return Optional.empty();
+        }
+        return Optional.of(new StaticTextEncoder(source));
+    }
+
+    /**
+     * The model to use: the one configured, else the one packaged, else none.
+     *
+     * <p>Configuration wins over packaging so an operator can always override what was shipped —
+     * with a newer model, a domain-tuned one, or the transformer reference.
+     */
+    public static Optional<TextEncoder> resolve(Path configured) {
+        return configured != null ? Optional.of(open(configured)) : packaged();
     }
 }

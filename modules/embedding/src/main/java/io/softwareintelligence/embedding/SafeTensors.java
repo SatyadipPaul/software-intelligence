@@ -50,7 +50,7 @@ public final class SafeTensors {
 
     /** Loads a two-dimensional {@code F32} tensor by name. */
     public static Tensor readMatrix(Path file, String name) throws IOException {
-        Raw raw = read(file, name);
+        Raw raw = read(Files.readAllBytes(file), name);
         if (!"F32".equals(raw.dtype())) throw new IOException("expected an F32 tensor, found " + raw.dtype());
         float[] values = new float[raw.rows() * raw.columns()];
         ByteBuffer.wrap(raw.data()).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(values);
@@ -65,8 +65,12 @@ public final class SafeTensors {
      * download.
      */
     public static Raw read(Path file, String name) throws IOException {
-        byte[] bytes = Files.readAllBytes(file);
-        if (bytes.length < 8) throw new IOException("not a safetensors file: " + file);
+        return read(Files.readAllBytes(file), name);
+    }
+
+    /** The same, from bytes already in hand — a jar entry, say. */
+    public static Raw read(byte[] bytes, String name) throws IOException {
+        if (bytes.length < 8) throw new IOException("not a safetensors file");
         long headerLength = ByteBuffer.wrap(bytes, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong();
         if (headerLength <= 0 || headerLength > MAX_HEADER_BYTES || 8 + headerLength > bytes.length) {
             throw new IOException("safetensors header length is implausible: " + headerLength);

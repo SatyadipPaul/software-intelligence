@@ -33,6 +33,11 @@ sealed interface EmbeddingTable {
      * a single global scale would quantise the small ones to almost nothing.
      */
     static EmbeddingTable load(Path weights) throws IOException {
+        return load(java.nio.file.Files.readAllBytes(weights));
+    }
+
+    /** The same, from bytes already in hand. */
+    static EmbeddingTable load(byte[] weights) throws IOException {
         SafeTensors.Raw embeddings = SafeTensors.read(weights, "embeddings");
         return switch (embeddings.dtype()) {
             case "F32" -> {

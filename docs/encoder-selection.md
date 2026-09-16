@@ -136,3 +136,30 @@ core degrading to lexical scoring when it is absent.
       tokenizer is the only part of a static encoder that is not trivial.
 - [ ] That no Java port already exists. The searches found a Rust server and the Python package, but
       absence of evidence here is weak: these searches could not reach the package registries.
+
+## Packaging: the mechanism ships, the weights do not
+
+`modules/embedding-model` turns a quantized model into a Maven artifact. It carries **no code** —
+`EncoderFactory.packaged()` finds two files at a fixed resource path, `repo-intel/embedding/`:
+
+| Consumer | Result |
+| --- | --- |
+| adds the `embedding-model` dependency | dense retrieval works with no flag and no path |
+| passes `--embedding-model <dir>` | that model wins, so a shipped one can always be overridden |
+| does neither, asks for a dense mode | a message naming both options, not a stack trace |
+| does neither, uses a lexical mode | unchanged, byte for byte |
+
+The module builds **exactly when weights are present**: the root POM activates it on the existence
+of `model.safetensors`, so a clone builds and tests without carrying tens of megabytes of binary and
+nobody has to remember a flag once they are there.
+
+**The weights are deliberately not committed.** Redistributing someone else's model is a licensing
+act, and this environment cannot reach a model card or a licence file to verify one — every licence
+figure in this document came from a search summary or a wrapper package's metadata, neither of which
+is the model's own licence. `modules/embedding-model/README.md` carries the checklist that must be
+completed first, including the licence of the model a static model was *distilled from*, since a
+derivative inherits terms. Quantizing changes the bytes and not the provenance.
+
+Verified end to end with the real `potion-base-32M` int8 weights staged locally: the module produced
+a 27 MB jar, and jackson-databind scored 0.557 / 0.357 / 0.431 from the classpath alone — identical
+to the same model passed by path.

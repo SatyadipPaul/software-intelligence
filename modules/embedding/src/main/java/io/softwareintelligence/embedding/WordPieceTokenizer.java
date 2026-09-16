@@ -1,6 +1,9 @@
 package io.softwareintelligence.embedding;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,9 +53,18 @@ public final class WordPieceTokenizer {
 
     /** Reads a {@code vocab.txt}: one token per line, the line number being the id. */
     public static WordPieceTokenizer fromVocabulary(Path vocabularyFile) throws IOException {
-        List<String> lines = Files.readAllLines(vocabularyFile, StandardCharsets.UTF_8);
-        Map<String, Integer> vocabulary = new HashMap<>(lines.size() * 2);
-        for (int i = 0; i < lines.size(); i++) vocabulary.putIfAbsent(lines.get(i), i);
+        try (InputStream stream = Files.newInputStream(vocabularyFile)) {
+            return fromVocabulary(stream);
+        }
+    }
+
+    /** The same, from any source — a file on disk or an entry in a jar. */
+    public static WordPieceTokenizer fromVocabulary(InputStream stream) throws IOException {
+        Map<String, Integer> vocabulary = new HashMap<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            String line;
+            for (int id = 0; (line = reader.readLine()) != null; id++) vocabulary.putIfAbsent(line, id);
+        }
         return new WordPieceTokenizer(vocabulary);
     }
 

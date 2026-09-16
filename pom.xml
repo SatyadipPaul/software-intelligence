@@ -81,6 +81,16 @@
     credentials: mvn -Prelease deploy.
   -->
   <profiles>
+    <!-- The weights artifact joins the build exactly when weights are there to package. A clone
+         builds and tests without carrying tens of megabytes of binary, and nobody has to remember
+         a flag to include them once they are. -->
+    <profile>
+      <id>embedding-model</id>
+      <activation>
+        <file><exists>modules/embedding-model/src/main/resources/repo-intel/embedding/model.safetensors</exists></file>
+      </activation>
+      <modules><module>modules/embedding-model</module></modules>
+    </profile>
     <profile>
       <id>release</id>
       <build>

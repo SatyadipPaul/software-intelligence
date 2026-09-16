@@ -1,0 +1,4 @@
+# Weights are produced by `repo-intel quantize-model`, not committed: they are large, binary, and
+# someone else's. See this module's README for the licence checklist that gates publishing them.
+model.safetensors
+vocab.txt
