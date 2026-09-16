@@ -173,3 +173,72 @@ the question type the corpus does not contain.
 That is why the demotion is a demotion and not an exclusion, and why the weight was taken from an
 existing shipped decision rather than fitted here. Fitting it on these 200 questions would have
 driven it to zero and looked like an improvement.
+
+---
+
+# Addendum: int8 quantization
+
+Date: 2026-09-16, same corpus and method.
+
+The static models are shippable in principle and awkward in practice: `potion-base-32M` is 124 MB of
+float32 and `potion-base-8M` is 30 MB. Quantizing the table to int8 is the obvious lever, and
+`repo-intel quantize-model` now does it.
+
+## How
+
+Symmetric, **per row**. Each token's vector is divided by its own largest magnitude and rounded into
+[-127, 127]; that divisor is stored beside it. Per row rather than per tensor because token vectors
+differ enormously in magnitude — one scale for the whole matrix would round every rare token's
+vector towards zero, and rare tokens are exactly the ones carrying the distinguishing meaning in a
+question. The cost is four bytes per row, which is under 1% on a 512-wide table.
+
+The table stays quantized in memory and is dequantized one row at a time during pooling. Expanding
+it on load would hand back the memory that quantizing saved and leave only a smaller download.
+
+## Does it need re-benchmarking? Yes — and here is why the answer is not obvious
+
+The error bound is tight and easy to state: rounding to the nearest of 127 levels moves a weight by
+at most `0.5/127` of its row's largest magnitude, **under 0.4%**. Measured worst cosine drift on
+probe texts was **0.00006**.
+
+Neither number tells you whether a *ranking* changed. Retrieval is decided by the order of
+candidates, not by the magnitude of their scores, and two cards separated by less than the drift
+can swap. That is a question only the benchmark answers.
+
+## The result
+
+| Model | Precision | On disk | subject-free | ranks changed |
+| --- | --- | ---: | ---: | ---: |
+| `potion-base-8M` | float32 | 30.2 MB | 0.466 | — |
+| `potion-base-8M` | **int8** | **7.7 MB** | **0.466** | 2 of 200 |
+| `potion-base-32M` | float32 | 129.2 MB | 0.522 | — |
+| `potion-base-32M` | **int8** | **32.6 MB** | **0.522** | 1 of 200 |
+
+**Four times smaller, and not one aggregate metric moved.** Per repository, `potion-base-32M` int8
+against float32: anchor recall, recall@1 and MRR are identical to three decimals everywhere except
+junit5's MRR, 0.336 against 0.335.
+
+And that single digit is the point. It comes from exactly one question:
+
+```
+junit5  ju-018  rank 4 -> 5   What controls the order the test methods run in?
+```
+
+Still found, still inside the anchor set, one position lower. Quantization did move a ranking — just
+not one that mattered. Nothing in the 0.4% weight bound or the 0.00006 cosine drift predicted which
+question it would be, or that it would be only one. **That is the argument for re-running rather
+than reasoning: the bound tells you the vectors barely moved, and says nothing about whether the
+order did.**
+
+Indexing time is unchanged within measurement noise at this scale — the runs varied more between
+repeats of the same configuration than between precisions — so the saving is disk and memory, not
+speed.
+
+## Where this leaves the recommendation
+
+`potion-base-32M` **int8**, at **32.6 MB**, with the full 0.522. That is a shippable artifact: no
+native runtime, no per-platform binaries, one optional module. `potion-base-8M` int8 at **7.7 MB**
+is the small option at 0.466.
+
+For comparison, the transformer reference is 87 MB *and* needs ONNX Runtime with its per-platform
+native libraries.

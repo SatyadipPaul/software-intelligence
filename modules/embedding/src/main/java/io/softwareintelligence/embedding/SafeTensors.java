@@ -32,10 +32,39 @@ public final class SafeTensors {
         }
     }
 
+    /** One tensor as stored: its declared type, its shape, and its bytes, undecoded. */
+    public record Raw(String dtype, int rows, int columns, byte[] data) {
+        /** Width in bytes of one element of this tensor's type. */
+        public int elementBytes() { return bytesPer(dtype); }
+    }
+
     private SafeTensors() { }
+
+    private static int bytesPer(String dtype) {
+        return switch (dtype) {
+            case "F32" -> 4;
+            case "I8", "U8" -> 1;
+            default -> -1;
+        };
+    }
 
     /** Loads a two-dimensional {@code F32} tensor by name. */
     public static Tensor readMatrix(Path file, String name) throws IOException {
+        Raw raw = read(file, name);
+        if (!"F32".equals(raw.dtype())) throw new IOException("expected an F32 tensor, found " + raw.dtype());
+        float[] values = new float[raw.rows() * raw.columns()];
+        ByteBuffer.wrap(raw.data()).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(values);
+        return new Tensor(raw.rows(), raw.columns(), values);
+    }
+
+    /**
+     * Loads a two-dimensional tensor by name without decoding it.
+     *
+     * <p>Undecoded because an int8 table is kept as int8: expanding a quantised matrix to floats on
+     * load would give back the memory that quantising it was meant to save, leaving only the smaller
+     * download.
+     */
+    public static Raw read(Path file, String name) throws IOException {
         byte[] bytes = Files.readAllBytes(file);
         if (bytes.length < 8) throw new IOException("not a safetensors file: " + file);
         long headerLength = ByteBuffer.wrap(bytes, 0, 8).order(ByteOrder.LITTLE_ENDIAN).getLong();
@@ -50,22 +79,51 @@ public final class SafeTensors {
             throw new IOException("safetensors file has no tensor called " + name + "; it has " + entries.keySet());
         }
         String dtype = String.valueOf(tensor.get("dtype"));
-        if (!"F32".equals(dtype)) throw new IOException("expected an F32 tensor, found " + dtype);
+        int width = bytesPer(dtype);
+        if (width < 0) throw new IOException("unsupported tensor type " + dtype + " for " + name);
         List<?> shape = (List<?>) tensor.get("shape");
-        if (shape == null || shape.size() != 2) throw new IOException("expected a two-dimensional tensor");
+        if (shape == null || shape.isEmpty() || shape.size() > 2) {
+            throw new IOException("expected a one- or two-dimensional tensor");
+        }
         int rows = ((Number) shape.get(0)).intValue();
-        int columns = ((Number) shape.get(1)).intValue();
+        int columns = shape.size() == 2 ? ((Number) shape.get(1)).intValue() : 1;
         List<?> offsets = (List<?>) tensor.get("data_offsets");
         long start = ((Number) offsets.get(0)).longValue() + 8 + headerLength;
         long end = ((Number) offsets.get(1)).longValue() + 8 + headerLength;
-        if (end > bytes.length || end - start != (long) rows * columns * 4) {
+        if (end > bytes.length || start < 0 || end < start
+                || end - start != (long) rows * columns * width) {
             throw new IOException("tensor " + name + " does not fit the file it claims to be in");
         }
-        ByteBuffer data = ByteBuffer.wrap(bytes, (int) start, (int) (end - start)).order(ByteOrder.LITTLE_ENDIAN);
-        float[] values = new float[rows * columns];
-        data.asFloatBuffer().get(values);
-        return new Tensor(rows, columns, values);
+        byte[] data = new byte[(int) (end - start)];
+        System.arraycopy(bytes, (int) start, data, 0, data.length);
+        return new Raw(dtype, rows, columns, data);
     }
+
+    /** Writes tensors in the order given, which is the order their byte ranges appear. */
+    public static void write(Path file, List<Written> tensors) throws IOException {
+        StringBuilder header = new StringBuilder("{");
+        long offset = 0;
+        for (int i = 0; i < tensors.size(); i++) {
+            Written tensor = tensors.get(i);
+            if (i > 0) header.append(',');
+            header.append('"').append(tensor.name()).append("\":{\"dtype\":\"").append(tensor.dtype())
+                    .append("\",\"shape\":[").append(tensor.rows());
+            if (tensor.columns() > 1) header.append(',').append(tensor.columns());
+            header.append("],\"data_offsets\":[").append(offset).append(',')
+                    .append(offset + tensor.data().length).append("]}");
+            offset += tensor.data().length;
+        }
+        header.append('}');
+        byte[] json = header.toString().getBytes(StandardCharsets.UTF_8);
+        try (java.io.OutputStream out = Files.newOutputStream(file)) {
+            out.write(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(json.length).array());
+            out.write(json);
+            for (Written tensor : tensors) out.write(tensor.data());
+        }
+    }
+
+    /** A tensor to write: its name, type, shape and bytes. */
+    public record Written(String name, String dtype, int rows, int columns, byte[] data) { }
 
     /**
      * Just enough JSON to read a safetensors header.

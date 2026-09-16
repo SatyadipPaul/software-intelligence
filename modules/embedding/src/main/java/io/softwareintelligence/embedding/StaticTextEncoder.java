@@ -27,7 +27,7 @@ final class StaticTextEncoder implements TextEncoder {
     private static final int MAX_TOKENS = 4096;
 
     private final WordPieceTokenizer tokenizer;
-    private final SafeTensors.Tensor embeddings;
+    private final EmbeddingTable embeddings;
 
     StaticTextEncoder(Path modelDirectory) {
         Path weights = modelDirectory.resolve("model.safetensors");
@@ -38,7 +38,7 @@ final class StaticTextEncoder implements TextEncoder {
         }
         try {
             this.tokenizer = WordPieceTokenizer.fromVocabulary(vocabulary);
-            this.embeddings = SafeTensors.readMatrix(weights, "embeddings");
+            this.embeddings = EmbeddingTable.load(weights);
         } catch (IOException failure) {
             throw new EncoderUnavailableException("could not load the static encoder from " + modelDirectory, failure);
         }
@@ -49,6 +49,9 @@ final class StaticTextEncoder implements TextEncoder {
     }
 
     @Override public int dimensions() { return embeddings.columns(); }
+
+    /** Whether these weights are stored as floats or quantised, for anything that reports on them. */
+    String precision() { return embeddings.precision(); }
 
     @Override
     public float[][] encode(List<String> texts) {
@@ -62,11 +65,7 @@ final class StaticTextEncoder implements TextEncoder {
         float[] pooled = new float[columns];
         int[] tokens = tokenizer.encodeContent(text, MAX_TOKENS);
         if (tokens.length == 0) return pooled;      // nothing known in it; an honest zero vector
-        float[] table = embeddings.values();
-        for (int token : tokens) {
-            int offset = token * columns;
-            for (int d = 0; d < columns; d++) pooled[d] += table[offset + d];
-        }
+        for (int token : tokens) embeddings.accumulateInto(token, pooled);
         double norm = 0.0;
         for (int d = 0; d < columns; d++) {
             pooled[d] /= tokens.length;

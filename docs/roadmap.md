@@ -257,8 +257,12 @@ question about X - correctly and uselessly - and on a testing framework that bur
 `DenseIndex` now demotes test nodes with the weight and detection `BranchEnrichment` already used,
 taking junit5 from 0.217 to 0.391 and jackson-databind from 0.333 to 0.483. Subject-free retrieval
 has gone **0.180 → 0.304 → 0.404 → 0.522** across Tier 0 Javadoc, the encoder, and this - 2.9x the
-lexical baseline, with named-subject questions still at 39/39. See
-[the dense encoder run](benchmarks/dense-encoder-2026-09-16.md) and
+lexical baseline, with named-subject questions still at 39/39. **int8 quantization makes it shippable and costs nothing measurable**: symmetric per-row
+quantization takes `potion-base-32M` from 124 MB to **32.6 MB** with subject-free retrieval
+unchanged at 0.522, and `potion-base-8M` from 30 MB to **7.7 MB** at 0.466. Exactly one question in
+200 changed rank, and only within the anchor set - which is precisely why it was re-benchmarked
+rather than reasoned about: the 0.4% weight bound says the vectors barely moved and says nothing
+about whether the order did. See [the dense encoder run](benchmarks/dense-encoder-2026-09-16.md) and
 [the static encoders](benchmarks/static-encoders-2026-09-16.md).
 
 **Environment note:** step 6, and verification of every figure in
