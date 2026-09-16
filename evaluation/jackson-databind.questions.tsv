@@ -36,3 +36,65 @@ jd-010	jackson-databind	What is affected by changing DeserializationContext?	IMP
 jd-011	jackson-databind	What is thrown when the JSON holds a property the target object cannot accept?	LOOKUP	tools.jackson.databind.exc.UnrecognizedPropertyException	PropertyBindingException	exc/UnrecognizedPropertyException.java:15	0.55	
 jd-012	jackson-databind	Which node type stands for an explicit JSON null?	LOOKUP	tools.jackson.databind.node.NullNode	ValueNode	node/NullNode.java:16	0.55	
 jd-013	jackson-databind	Which type is the immutable builder for configuring one deserialization?	LOOKUP	tools.jackson.databind.ObjectReader	DeserializationConfig|DeserializationContexts	ObjectReader.java:68|ObjectReader.java:74	0.55	
+#
+# jd-014 onwards are written subject-free wherever the subject has a describable job: the question
+# says what the code does, never what it is called. Ground truth read from the source at commit
+# 2b72ff3, not from tool output.
+#
+jd-014	jackson-databind	Which class do the numeric tree nodes share as a base?	LOOKUP	tools.jackson.databind.node.NumericNode	ValueNode	src/main/java/tools/jackson/databind/node/NumericNode.java:16	0.55
+jd-015	jackson-databind	Which node stands for a value that was never present at all?	LOOKUP	tools.jackson.databind.node.MissingNode	MissingNode	src/main/java/tools/jackson/databind/node/MissingNode.java:26	0.55
+jd-016	jackson-databind	Which node type holds an ordered sequence of other nodes?	LOOKUP	tools.jackson.databind.node.ArrayNode	ArrayNode	src/main/java/tools/jackson/databind/node/ArrayNode.java:22	0.55
+jd-017	jackson-databind	Which node type holds named fields?	LOOKUP	tools.jackson.databind.node.ObjectNode	ObjectNode	src/main/java/tools/jackson/databind/node/ObjectNode.java:22	0.55
+jd-018	jackson-databind	Which base class do the nodes that can hold children extend?	LOOKUP	tools.jackson.databind.node.ContainerNode	BaseJsonNode	src/main/java/tools/jackson/databind/node/ContainerNode.java:17	0.55
+jd-019	jackson-databind	Which node wraps a Java object that is written out as-is?	LOOKUP	tools.jackson.databind.node.POJONode	POJONode	src/main/java/tools/jackson/databind/node/POJONode.java:19	0.55
+jd-020	jackson-databind	Which node carries raw binary content?	LOOKUP	tools.jackson.databind.node.BinaryNode	BinaryNode	src/main/java/tools/jackson/databind/node/BinaryNode.java:14	0.55
+jd-021	jackson-databind	What creates the tree nodes so the concrete classes need not be named?	LOOKUP	tools.jackson.databind.node.JsonNodeFactory	JsonNodeFactory	src/main/java/tools/jackson/databind/node/JsonNodeFactory.java:25	0.55
+jd-022	jackson-databind	Which exception is raised when the incoming value does not fit the target shape?	LOOKUP	tools.jackson.databind.exc.MismatchedInputException	MismatchedInputException	src/main/java/tools/jackson/databind/exc/MismatchedInputException.java:24	0.55
+jd-023	jackson-databind	Which exception reports text that cannot be parsed into the target type?	LOOKUP	tools.jackson.databind.exc.InvalidFormatException	InvalidFormatException	src/main/java/tools/jackson/databind/exc/InvalidFormatException.java:12	0.55
+jd-024	jackson-databind	Which exception is raised when a constructor refuses the values it was handed?	LOOKUP	tools.jackson.databind.exc.ValueInstantiationException	ValueInstantiationException	src/main/java/tools/jackson/databind/exc/ValueInstantiationException.java:20	0.55
+jd-025	jackson-databind	Which exception reports a null where nulls are not allowed?	LOOKUP	tools.jackson.databind.exc.InvalidNullException	InvalidNullException	src/main/java/tools/jackson/databind/exc/InvalidNullException.java:16	0.55
+jd-026	jackson-databind	Which exception reports a type identifier the resolver does not recognize?	LOOKUP	tools.jackson.databind.exc.InvalidTypeIdException	InvalidTypeIdException	src/main/java/tools/jackson/databind/exc/InvalidTypeIdException.java:11	0.55
+jd-027	jackson-databind	Which class is the shared parent of the property-level binding failures?	LOOKUP	tools.jackson.databind.exc.PropertyBindingException	MismatchedInputException	src/main/java/tools/jackson/databind/exc/PropertyBindingException.java:15	0.55
+jd-028	jackson-databind	Which package collects the failures raised while binding?	STRUCTURE	tools.jackson.databind.exc.UnrecognizedPropertyException	module:tools.jackson.databind.exc		0.55
+jd-029	jackson-databind	Which package holds the in-memory tree representation?	STRUCTURE	tools.jackson.databind.node.ObjectNode	module:tools.jackson.databind.node		0.55
+jd-030	jackson-databind	Which package describes resolved generic types?	STRUCTURE	tools.jackson.databind.type.TypeFactory	module:tools.jackson.databind.type		0.55
+jd-031	jackson-databind	What builds the resolved type objects from raw classes?	LOOKUP	tools.jackson.databind.type.TypeFactory	TypeFactory	src/main/java/tools/jackson/databind/type/TypeFactory.java:65	0.55
+jd-032	jackson-databind	Which resolved type stands for a class with no interesting generics?	LOOKUP	tools.jackson.databind.type.SimpleType	TypeBase	src/main/java/tools/jackson/databind/type/SimpleType.java:13	0.55
+jd-033	jackson-databind	Which resolved type describes a key-and-value container?	LOOKUP	tools.jackson.databind.type.MapType	MapLikeType	src/main/java/tools/jackson/databind/type/MapType.java:10	0.55
+jd-034	jackson-databind	Which resolved type describes a Java array?	LOOKUP	tools.jackson.databind.type.ArrayType	TypeBase	src/main/java/tools/jackson/databind/type/ArrayType.java:13	0.55
+jd-035	jackson-databind	What records which type variable is bound to which type?	LOOKUP	tools.jackson.databind.type.TypeBindings	TypeBindings	src/main/java/tools/jackson/databind/type/TypeBindings.java:13	0.55
+jd-036	jackson-databind	Which base class do all the resolved type implementations share?	IMPACT	tools.jackson.databind.type.TypeBase	ArrayType|SimpleType		0.55
+jd-037	jackson-databind	Which type is the reusable, immutable configuration for writing?	LOOKUP	tools.jackson.databind.ObjectWriter	ObjectWriter	src/main/java/tools/jackson/databind/ObjectWriter.java:42	0.55
+jd-038	jackson-databind	What writes a stream of values one after another without holding them all?	LOOKUP	tools.jackson.databind.SequenceWriter	SequenceWriter	src/main/java/tools/jackson/databind/SequenceWriter.java:30	0.55
+jd-039	jackson-databind	What reads a sequence of values one at a time rather than all at once?	LOOKUP	tools.jackson.databind.MappingIterator	MappingIterator	src/main/java/tools/jackson/databind/MappingIterator.java:17	0.55
+jd-040	jackson-databind	Which class is the entry point for reading and writing values?	LOOKUP	tools.jackson.databind.ObjectMapper	ObjectMapper	src/main/java/tools/jackson/databind/ObjectMapper.java:94	0.55
+jd-041	jackson-databind	Which exception class do the binding failures ultimately extend?	LOOKUP	tools.jackson.databind.DatabindException	JacksonException	src/main/java/tools/jackson/databind/DatabindException.java:20	0.55
+jd-042	jackson-databind	What turns the keys of a map into Java objects?	LOOKUP	tools.jackson.databind.KeyDeserializer	KeyDeserializer	src/main/java/tools/jackson/databind/KeyDeserializer.java:10	0.55
+jd-043	jackson-databind	Which base class does a custom writer for one type extend?	LOOKUP	tools.jackson.databind.ValueSerializer	ValueSerializer	src/main/java/tools/jackson/databind/ValueSerializer.java:56	0.55
+jd-044	jackson-databind	Which base class does a custom reader for one type extend?	LOOKUP	tools.jackson.databind.ValueDeserializer	ValueDeserializer	src/main/java/tools/jackson/databind/ValueDeserializer.java:48	0.55
+jd-045	jackson-databind	What is registered to add a bundle of readers and writers at once?	LOOKUP	tools.jackson.databind.JacksonModule	JacksonModule	src/main/java/tools/jackson/databind/JacksonModule.java:24	0.55
+jd-046	jackson-databind	What supplies the ready-made conventions for renaming properties?	LOOKUP	tools.jackson.databind.PropertyNamingStrategies	PropertyNamingStrategies	src/main/java/tools/jackson/databind/PropertyNamingStrategies.java:15	0.55
+jd-047	jackson-databind	What supplies values that are injected rather than read from the input?	LOOKUP	tools.jackson.databind.InjectableValues	InjectableValues	src/main/java/tools/jackson/databind/InjectableValues.java:14	0.55
+jd-048	jackson-databind	What reads the annotations off a class to decide how it binds?	LOOKUP	tools.jackson.databind.AnnotationIntrospector	AnnotationIntrospector	src/main/java/tools/jackson/databind/AnnotationIntrospector.java:38	0.55
+jd-049	jackson-databind	What holds the analyzed view of one class being bound?	LOOKUP	tools.jackson.databind.BeanDescription	BeanDescription	src/main/java/tools/jackson/databind/BeanDescription.java:21	0.55
+jd-050	jackson-databind	What carries a property's name together with its namespace?	LOOKUP	tools.jackson.databind.PropertyName	PropertyName	src/main/java/tools/jackson/databind/PropertyName.java:17	0.55
+jd-051	jackson-databind	What is affected by a change to the tree node base class?	IMPACT	tools.jackson.databind.JsonNode	ObjectNode|ArrayNode		0.55
+jd-052	jackson-databind	Who depends on the resolved type abstraction?	IMPACT	tools.jackson.databind.JavaType	TypeFactory		0.55
+jd-053	jackson-databind	What breaks if the entry-point mapper changes?	IMPACT	tools.jackson.databind.ObjectMapper	ObjectReader|ObjectWriter		0.55
+jd-054	jackson-databind	Which module contains the class that builds resolved types?	STRUCTURE	tools.jackson.databind.type.TypeFactory	module:tools.jackson.databind.type		0.55
+jd-055	jackson-databind	Which node types are values rather than containers?	IMPACT	tools.jackson.databind.node.ValueNode	NullNode|NumericNode|StringNode		0.55
+jd-056	jackson-databind	What does the reusable writing configuration depend on?	LOOKUP	tools.jackson.databind.ObjectWriter	SerializationConfig		0.55
+jd-057	jackson-databind	Which package builds the writers that turn beans into output?	STRUCTURE	tools.jackson.databind.ser.BeanSerializerFactory	module:tools.jackson.databind.ser		0.55
+jd-058	jackson-databind	Which package builds the readers that turn input into beans?	STRUCTURE	tools.jackson.databind.deser.BeanDeserializerFactory	module:tools.jackson.databind.deser		0.55
+jd-059	jackson-databind	Which enum names the broad category a resolved type falls into?	LOOKUP	tools.jackson.databind.type.LogicalType	LogicalType	src/main/java/tools/jackson/databind/type/LogicalType.java:11	0.55
+jd-060	jackson-databind	Which node type carries text?	LOOKUP	tools.jackson.databind.node.StringNode	StringNode	src/main/java/tools/jackson/databind/node/StringNode.java:21	0.55
+jd-061	jackson-databind	Which class is the shared, immutable settings object the binding reads?	LOOKUP	tools.jackson.databind.cfg.MapperConfig	MapperConfig	src/main/java/tools/jackson/databind/cfg/MapperConfig.java:37	0.55
+jd-062	jackson-databind	What lets one class's handling be adjusted without touching the global settings?	LOOKUP	tools.jackson.databind.cfg.ConfigOverride	ConfigOverride	src/main/java/tools/jackson/databind/cfg/ConfigOverride.java:16	0.55
+jd-063	jackson-databind	Which enum says what to do when a value has to be forced into another shape?	LOOKUP	tools.jackson.databind.cfg.CoercionAction	CoercionAction	src/main/java/tools/jackson/databind/cfg/CoercionAction.java:16	0.55
+jd-064	jackson-databind	What holds the reflected view of one class and its annotations?	LOOKUP	tools.jackson.databind.introspect.AnnotatedClass	AnnotatedClass	src/main/java/tools/jackson/databind/introspect/AnnotatedClass.java:14	0.55
+jd-065	jackson-databind	What pairs a getter, a setter and a field into one logical property?	LOOKUP	tools.jackson.databind.introspect.BeanPropertyDefinition	BeanPropertyDefinition	src/main/java/tools/jackson/databind/introspect/BeanPropertyDefinition.java:21	0.55
+jd-066	jackson-databind	What decides which identifier is written to record a value's real type?	LOOKUP	tools.jackson.databind.jsontype.TypeIdResolver	TypeIdResolver	src/main/java/tools/jackson/databind/jsontype/TypeIdResolver.java:23	0.55
+jd-067	jackson-databind	What writes the extra type information alongside a polymorphic value?	LOOKUP	tools.jackson.databind.jsontype.TypeSerializer	TypeSerializer	src/main/java/tools/jackson/databind/jsontype/TypeSerializer.java:19	0.55
+jd-068	jackson-databind	What reads the type information back to pick the concrete class?	LOOKUP	tools.jackson.databind.jsontype.TypeDeserializer	TypeDeserializer	src/main/java/tools/jackson/databind/jsontype/TypeDeserializer.java:23	0.55
+jd-069	jackson-databind	Which subclass of the entry point is specialized for one format?	LOOKUP	tools.jackson.databind.json.JsonMapper	ObjectMapper	src/main/java/tools/jackson/databind/json/JsonMapper.java:18	0.55
+jd-070	jackson-databind	What rewrites a property name when it is unwrapped or prefixed?	LOOKUP	tools.jackson.databind.util.NameTransformer	NameTransformer	src/main/java/tools/jackson/databind/util/NameTransformer.java:10	0.55

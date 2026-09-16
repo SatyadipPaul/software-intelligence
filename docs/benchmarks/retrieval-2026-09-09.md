@@ -1,5 +1,11 @@
 # Retrieval baseline: flat BM25 against tree navigation
 
+> **Superseded on the headline comparison.** This run scored 53 questions. The corpus has since
+> grown to 200, most of which do not name their subject, and on it the conclusion below — that
+> HYBRID is never worse than flat retrieval — no longer holds. See
+> [the 200-question corpus](corpus-200-2026-09-16.md). The defects and methodology recorded here
+> stand.
+
 Date: 2026-09-09. JDK 25, single run, four repositories at the commits their question sets pin:
 the fixture, spring-petclinic `88e37c1`, jackson-databind `2b72ff3`, junit5 `de6d621`. No build
 classpath was supplied, so resolution is lower than the analyzer's best — but identically so for

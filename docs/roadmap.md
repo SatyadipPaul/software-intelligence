@@ -50,16 +50,16 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 
 ## Milestone 4 — evaluation before GraphRAG
 
-- Curate 200+ grounded questions across 3–5 Java repositories. **Started:** 18 questions across two
-  repositories ship in `evaluation/`, keyed to source names and file:line rather than to graph ids,
-  so they survive identity changes. Now 28 questions across three, including jackson-databind, which
-  has no framework at all, and junit5, which is Gradle multi-module. Now 51 questions across four: two declare plural
-  answers so anchor coverage has something to score, and thirteen deliberately do not name their
-  subject. Those thirteen are the most informative thing in the corpus - they drop Petclinic from
-  1.000 to 0.66, jackson-databind from 1.000 to 0.77 and junit5 from 0.94 to 0.68, and every one of
-  the six on the two large repositories is missed by every retrieval mode. Retrieval is much closer
-  to an exact-name matcher than the earlier 1.000s suggested. The harness, scoring, and CI gate
-  exist; the corpus is still a quarter of the target.
+- Curate 200+ grounded questions across 3–5 Java repositories. **Met: 200 questions across four** -
+  25 on the fixture, 50 on spring-petclinic, 70 on jackson-databind, 55 on junit5 - keyed to source
+  names and file:line rather than to graph ids, so they survive identity changes. Every one was read
+  out of the source at the pinned commit rather than from tool output, and every one passes the
+  traversal harness (25/25, 50/50, 70/70, 55/55, all metrics 1.000). **161 of the 200 never name the
+  symbol they ask about**, and that is what the corpus is for: questions that name their subject are
+  answered 38/39 = 0.974, questions that describe it instead are answered 29/161 = 0.180, falling
+  from 0.529 on a ten-class fixture to 0.022 on junit5. Retrieval here is an exact-name matcher, and
+  the old corpus could not show it because most of its questions said the name out loud. See
+  [the 200-question corpus](benchmarks/corpus-200-2026-09-16.md).
 - Measure structural accuracy, evidence recall, groundedness, latency, index cost, and token cost.
   **Precision now measured** on questions that declare an exhaustive answer, and every report states
   the answer size, because recall alone scored 1.000 against an answer of 7,946 symbols. Ranking
@@ -84,10 +84,10 @@ Both are now also measured **with build classpaths**, which lifts resolution to 
 from 77.01% and 78.78% - and moves no retrieval or traversal metric at all, because the questions
 that fail are failing on vocabulary rather than on resolution. See
 [the classpath run](benchmarks/classpath-2026-09-16.md).
-Both now have grounded question sets - 13 for jackson-databind, 11 for junit5, each including three
-that do not name their subject - and both are scored for retrieval in
-[the retrieval baseline](benchmarks/retrieval-2026-09-09.md). Answer quality on them is measured
-only at those sizes; the 200-question target above is what would settle it.
+Both now have grounded question sets - 70 for jackson-databind, 55 for junit5, the large majority of
+which do not name their subject - and both are scored for retrieval in
+[the 200-question corpus](benchmarks/corpus-200-2026-09-16.md). Both are also analyzed with build
+classpaths, at 99.18% and 98.82% resolution.
 
 ## Milestone 5 — selective semantic enrichment and verified answers
 
@@ -133,13 +133,26 @@ credentials and outbound calls, which the local-first invariant makes optional b
 **Exit criterion:** tree-navigated retrieval beats flat BM25 on recall@k, MRR, and anchor recall
 across all four question sets — or is dropped, having been measured rather than assumed.
 
-**Status:** met. Across all four question sets, `HYBRID` is never worse than flat retrieval and
-better on two: the fixture (MRR 0.950 against 0.833) and junit5 (0.938 against 0.875). `TREE` alone
-now also matches or beats flat retrieval everywhere. **`--retrieval` defaults to `HYBRID`**, and CI
-fails if either mode regresses against flat retrieval on the fixture. At scale the descent is the
-cheaper path — 63 ms against 104 ms on jackson-databind, 39 against 169 on junit5 — because it reads
-18 cards where flat ranking scores 45,595 nodes. Running the real corpora found four defects the
-fixture never could, each recorded in
+**Status: not met, and the earlier "met" is withdrawn.** On 53 questions `HYBRID` was never worse
+than flat retrieval and better on two sets. On the 200-question corpus that does not hold: it wins
+outright only on spring-petclinic, splits on the fixture (ahead on MRR and coverage, behind on
+anchor recall), and is indistinguishable from flat retrieval on jackson-databind and junit5, where
+every gap is a single question. The old result was an artifact of a corpus in which most questions
+named their subject and both modes scored 1.000, leaving nothing to separate them.
+
+**What survives the larger corpus.** Anchor coverage - the only metric that scores a set rather than
+one symbol - is clearly better under descent wherever it is non-zero (0.246 against 0.031 on
+Petclinic, 0.321 against 0.143 on the fixture), and the descent stays the cheaper path at scale
+(53 ms against 59 on jackson-databind, 38 against 47 on junit5, reading ~20 cards where flat ranking
+scores 45,595 nodes). **`--retrieval` therefore still defaults to `HYBRID`** - cheaper, ahead on
+coverage, behind by one question on two sets - but it is no longer described as beating flat
+retrieval. CI still fails if either mode regresses against flat retrieval on the fixture.
+
+**The bottleneck is not the index.** Four measurements have now come back negative - branch
+summaries, their blind re-run, build classpaths, and the tree itself at scale - and each enriched
+the structure around identifiers while leaving identifiers the only vocabulary retrieval can match.
+Questions that name their subject are answered 0.974 of the time; questions that describe it, 0.180.
+See [the 200-question corpus](benchmarks/corpus-200-2026-09-16.md) and
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **precision@k was the wrong ask.** Each grounded question declares one relevant symbol, so

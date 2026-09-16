@@ -37,3 +37,39 @@ pc-016	spring-petclinic	Where are the specialties a veterinarian holds stored?	P
 pc-017	spring-petclinic	What checks a pet is valid before the form is accepted?	LOOKUP	org.springframework.samples.petclinic.owner.PetValidator	PetValidator.validate	owner/PetValidator.java:37	0.55	
 pc-018	spring-petclinic	What turns the pet type typed into a form into an entity?	LOOKUP	org.springframework.samples.petclinic.owner.PetTypeFormatter	PetTypeRepository	owner/PetTypeFormatter.java:41	0.55	
 pc-019	spring-petclinic	Which routes list the clinic staff?	ENDPOINT	org.springframework.samples.petclinic.vet.VetController	endpoint:GET:/vets|endpoint:GET:/vets.html	vet/VetController.java:45|vet/VetController.java:66	0.85	true
+#
+# pc-020 onwards continue the subject-free style: almost none name the symbol they are about, so
+# they measure retrieval rather than the exact-name signal. Ground truth read from the source at
+# commit 88e37c1, not from tool output.
+#
+pc-020	spring-petclinic	Which class do all stored objects inherit their identifier from?	LOOKUP	org.springframework.samples.petclinic.model.BaseEntity	Owner|Vet	model/BaseEntity.java:33	0.55
+pc-021	spring-petclinic	Where do a first and last name live for both the clients and the staff?	STRUCTURE	org.springframework.samples.petclinic.model.Person	Owner|Vet	model/Person.java:29	0.55
+pc-022	spring-petclinic	Which table holds the kinds of animal the clinic treats?	PERSISTENCE	org.springframework.samples.petclinic.owner.PetType	table:types	owner/PetType.java:28	0.55
+pc-023	spring-petclinic	Which table records the appointments?	PERSISTENCE	org.springframework.samples.petclinic.owner.Visit	table:visits	owner/Visit.java:36	0.55
+pc-024	spring-petclinic	Which table stores the animals themselves?	PERSISTENCE	org.springframework.samples.petclinic.owner.Pet	table:pets	owner/Pet.java:46	0.55
+pc-025	spring-petclinic	Which table stores the people who treat the animals?	PERSISTENCE	org.springframework.samples.petclinic.vet.Vet	table:vets	vet/Vet.java:45	0.55
+pc-026	spring-petclinic	Which entity records one appointment for one animal?	LOOKUP	org.springframework.samples.petclinic.owner.Visit	Visit	owner/Visit.java:36	0.55
+pc-027	spring-petclinic	Which type wraps the staff list so it can be serialized to JSON?	LOOKUP	org.springframework.samples.petclinic.vet.Vets	Vets	vet/Vets.java:31	0.55
+pc-028	spring-petclinic	Which route returns the staff as data rather than as a page?	ENDPOINT	org.springframework.samples.petclinic.vet.VetController	endpoint:GET:/vets	vet/VetController.java:66	0.55
+pc-029	spring-petclinic	Which route renders the staff list as a web page?	ENDPOINT	org.springframework.samples.petclinic.vet.VetController	endpoint:GET:/vets.html	vet/VetController.java:45	0.55
+pc-030	spring-petclinic	What registers the reflection hints a native image needs?	LOOKUP	org.springframework.samples.petclinic.PetClinicRuntimeHints	PetClinicRuntimeHints	PetClinicRuntimeHints.java:25	0.55
+pc-031	spring-petclinic	Which class starts the application?	LOOKUP	org.springframework.samples.petclinic.PetClinicApplication	PetClinicApplication	PetClinicApplication.java:30	0.55
+pc-032	spring-petclinic	Where is the cache over the staff list set up?	STRUCTURE	org.springframework.samples.petclinic.system.CacheConfiguration	CacheConfiguration	system/CacheConfiguration.java:33	0.55
+pc-033	spring-petclinic	What lets a visitor switch the interface language?	LOOKUP	org.springframework.samples.petclinic.system.WebConfiguration	WebConfiguration	system/WebConfiguration.java:25	0.55
+pc-034	spring-petclinic	Which query returns the animal kinds sorted by name?	PERSISTENCE	org.springframework.samples.petclinic.owner.PetTypeRepository	PetTypeRepository|findPetTypes	owner/PetTypeRepository.java:30	0.55
+pc-035	spring-petclinic	Which controller handles registering a new client?	ENDPOINT	org.springframework.samples.petclinic.owner.OwnerController	OwnerController	owner/OwnerController.java:49	0.55
+pc-036	spring-petclinic	Which controller books a new appointment?	ENDPOINT	org.springframework.samples.petclinic.owner.VisitController	VisitController	owner/VisitController.java:43	0.55
+pc-037	spring-petclinic	What is affected if the shared identifier class changes?	IMPACT	org.springframework.samples.petclinic.model.BaseEntity	Owner|Pet|Vet|Visit		0.55
+pc-038	spring-petclinic	Who depends on the class that holds a person's name?	IMPACT	org.springframework.samples.petclinic.model.Person	Owner|Vet		0.55
+pc-039	spring-petclinic	Which entities inherit a name from a shared base class?	IMPACT	org.springframework.samples.petclinic.model.NamedEntity	Pet|PetType|Specialty		0.55
+pc-040	spring-petclinic	What does the animal entity point at through a foreign key?	LOOKUP	org.springframework.samples.petclinic.owner.Pet	PetType	owner/Pet.java:46	0.55
+pc-041	spring-petclinic	Which entity owns the collection of appointments?	LOOKUP	org.springframework.samples.petclinic.owner.Pet	Visit	owner/Pet.java:46	0.55
+pc-042	spring-petclinic	Which entity owns the collection of animals?	LOOKUP	org.springframework.samples.petclinic.owner.Owner	Pet	owner/Owner.java:49	0.55
+pc-043	spring-petclinic	Which entity names a field the treating staff can specialize in?	LOOKUP	org.springframework.samples.petclinic.vet.Specialty	Specialty	vet/Specialty.java:30	0.55
+pc-044	spring-petclinic	Which repository reads the kinds of animal?	PERSISTENCE	org.springframework.samples.petclinic.owner.PetTypeRepository	PetTypeRepository	owner/PetTypeRepository.java:30	0.55
+pc-045	spring-petclinic	What is affected by a change to the appointment entity?	IMPACT	org.springframework.samples.petclinic.owner.Visit	VisitController		0.55
+pc-046	spring-petclinic	Which routes change an existing client's details?	ENDPOINT	org.springframework.samples.petclinic.owner.OwnerController	endpoint:GET:/owners/{ownerId}/edit|endpoint:POST:/owners/{ownerId}/edit		0.55
+pc-047	spring-petclinic	Which routes add an animal to a client?	ENDPOINT	org.springframework.samples.petclinic.owner.PetController	endpoint:GET:/owners/{ownerId}/pets/new|endpoint:POST:/owners/{ownerId}/pets/new		0.55
+pc-048	spring-petclinic	Which repository does the client-facing controller hold?	IMPACT	org.springframework.samples.petclinic.owner.OwnerController	OwnerRepository	owner/OwnerController.java:49	0.55
+pc-049	spring-petclinic	What does the staff page read its rows from?	IMPACT	org.springframework.samples.petclinic.vet.VetController	VetRepository	vet/VetController.java:36	0.55
+pc-050	spring-petclinic	Which entity carries a telephone number?	LOOKUP	org.springframework.samples.petclinic.owner.Owner	Owner	owner/Owner.java:49	0.55
