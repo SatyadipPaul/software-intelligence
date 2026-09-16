@@ -82,6 +82,28 @@ class DenseIndexTest {
         }
     }
 
+    @Test void test_code_is_demoted_below_production_code_that_means_the_same_thing() {
+        CodeGraph graph = new CodeGraph();
+        // Same words in both, which is the situation that broke dense retrieval on junit5: the test
+        // genuinely is about the same subject as the question, so meaning alone cannot separate them.
+        graph.upsertNode(new GraphNode("type:demo.Disabled", EntityKind.TYPE, "demo.Disabled",
+                Map.of("doc", "Signals that the annotated test is currently switched off"),
+                Provenance.syntax("src/main/java/demo/Disabled.java", 1, 1)));
+        graph.upsertNode(new GraphNode("type:demo.DisabledTests", EntityKind.TYPE, "demo.DisabledTests",
+                Map.of("doc", "Signals that the annotated test is currently switched off"),
+                Provenance.syntax("src/test/java/demo/DisabledTests.java", 1, 1)));
+
+        try (TextEncoder encoder = new WordOverlapEncoder()) {
+            DenseIndex index = DenseIndex.over(graph, encoder);
+            assertEquals(1, index.testNodes());
+            List<DenseIndex.Hit> hits = index.search("switched off annotated test", 2);
+            assertEquals("type:demo.Disabled", hits.get(0).node().id(), "production code leads");
+            assertEquals("type:demo.DisabledTests", hits.get(1).node().id());
+            assertTrue(hits.get(1).similarity() < hits.get(0).similarity());
+            assertTrue(hits.get(1).similarity() > 0, "demoted, not removed: it stays reachable");
+        }
+    }
+
     @Test void an_empty_limit_returns_nothing_rather_than_everything() {
         try (TextEncoder encoder = new WordOverlapEncoder()) {
             assertTrue(DenseIndex.over(graph(), encoder).search("anything", 0).isEmpty());

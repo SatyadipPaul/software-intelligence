@@ -252,7 +252,13 @@ reaches **0.410**, matching the transformer reference's 0.404 while indexing jac
 faster (494 ms against 18.4 s); `potion-base-8M` reaches 0.379 at a quarter of the disk and 120x
 faster. No encoder dominates on every corpus, and the spread between encoders is smaller than the
 spread between any of them and lexical retrieval: **which** encoder is a second-order choice, having
-one is the first-order one. See [the dense encoder run](benchmarks/dense-encoder-2026-09-16.md) and
+one is the first-order one. **Demoting test code lifts it further, to 0.522.** Ranking by meaning ranks a test of X near a
+question about X - correctly and uselessly - and on a testing framework that buried the API:
+`DenseIndex` now demotes test nodes with the weight and detection `BranchEnrichment` already used,
+taking junit5 from 0.217 to 0.391 and jackson-databind from 0.333 to 0.483. Subject-free retrieval
+has gone **0.180 → 0.304 → 0.404 → 0.522** across Tier 0 Javadoc, the encoder, and this - 2.9x the
+lexical baseline, with named-subject questions still at 39/39. See
+[the dense encoder run](benchmarks/dense-encoder-2026-09-16.md) and
 [the static encoders](benchmarks/static-encoders-2026-09-16.md).
 
 **Environment note:** step 6, and verification of every figure in

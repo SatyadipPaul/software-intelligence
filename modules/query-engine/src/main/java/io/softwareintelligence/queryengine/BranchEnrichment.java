@@ -87,7 +87,7 @@ public final class BranchEnrichment {
 
             int symbols = reach.getOrDefault(node.id(), 1);
             int choices = node.children().size();
-            boolean generic = UNINFORMATIVE.contains(lastSegment(node.name()));
+            boolean generic = UNINFORMATIVE.contains(TestCode.lastSegment(node.name()));
             boolean unexemplified = node.facts().getOrDefault("exemplars", "").isBlank();
             // A test class is a branch with plenty of choices below it and no questions routed
             // through it. Ranking it by fan-out alone put OwnerControllerTests fifth on Petclinic,
@@ -146,22 +146,9 @@ public final class BranchEnrichment {
         return sizes;
     }
 
-    /**
-     * Whether this branch is test code, read from where it is declared rather than from its name
-     * alone: a repository may legitimately ship a class called {@code TestSupport} in production.
-     */
+    /** Whether this branch is test code. Shared with dense retrieval so the two agree. */
     private static boolean isTest(IndexNode node, GraphNode covered) {
-        String file = covered.provenance().file().replace('\\', '/');
-        if (file.contains("/src/test/") || file.startsWith("src/test/") || file.contains("/src/testFixtures/")) return true;
-        String name = lastSegment(node.name());
-        return name.endsWith("test") || name.endsWith("tests") || name.endsWith("testcase") || name.endsWith("it");
-    }
-
-    private static String lastSegment(String name) {
-        int dot = name.lastIndexOf('.');
-        int slash = name.lastIndexOf('/');
-        int cut = Math.max(dot, slash);
-        return (cut < 0 ? name : name.substring(cut + 1)).toLowerCase(Locale.ROOT);
+        return TestCode.is(node.name(), covered.provenance().file());
     }
 
     /** A stable estimate of what describing one branch costs, in tokens. */

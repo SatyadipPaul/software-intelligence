@@ -102,3 +102,74 @@ repo-intel evaluate <repo> evaluation/<repo>.questions.tsv \
 ```
 
 No ONNX runtime is needed on the classpath for a static model, which is the point.
+
+---
+
+# Addendum: demoting test code
+
+Date: 2026-09-16, same corpus and method, `potion-base-32M`.
+
+The run above recorded a confound and left it open: **dense retrieval is swamped by test code on a
+testing framework.** The first junit5 run put `TestAnnotation`, `AnnotationUtilsTests` and
+`LifecycleMethodTests` above the API for nearly every question, and excluding test sources moved
+subject-free recall@1 from 0.065 to 0.239 on identical questions.
+
+This is a dense-specific failure. A term index barely notices it, because an exact name cuts
+through; an encoder has nothing to cut through with, because the test genuinely *is* about the same
+subject as the question. Ranking by meaning ranks a test of X near a question about X — correctly,
+and uselessly.
+
+## The fix
+
+`DenseIndex` now demotes test nodes, **reusing the weight and the detection that
+`BranchEnrichment` already applied to branch ranking** rather than introducing a second opinion.
+Two details were worth getting right:
+
+- **Demoted, not dropped.** A test is sometimes exactly what a reader wants — "what covers this?" —
+  so it stays reachable and simply never wins when production code fits.
+- **The demotion is sign-safe.** Multiplying a signed score by a factor below one moves a *negative*
+  similarity up: −0.4 × 0.1 is −0.04, which outranks −0.4. Taking the smaller of the two keeps the
+  demotion monotone whatever the sign. Cosine similarity is genuinely signed, so this is a real bug
+  avoided rather than a hypothetical one, and there is a test pinning it.
+
+Detection was also unified on the way. Two implementations had drifted: enrichment knew about
+`src/test` and `src/testFixtures`, the analyzer also knew about `src/it` and both spellings of an
+integration-test root. `TestCode` is the union, so a branch and a vector now agree about what a test
+is.
+
+## The result
+
+Subject-free questions, `DENSE_HYBRID` with `potion-base-32M`:
+
+| Repository | before | after | change |
+| --- | ---: | ---: | --- |
+| sample-commerce | 0.765 | 0.765 | — *(no test sources: nothing to demote)* |
+| spring-petclinic | 0.605 | 0.632 | +4% |
+| jackson-databind | 0.333 | **0.483** | **+45%** |
+| junit5 | 0.217 | **0.391** | **+80%** |
+| **all 200** | **0.410** | **0.522** | **+27%** |
+
+Headline metrics:
+
+| Repository | anchor recall | recall@1 | MRR |
+| --- | --- | --- | --- |
+| spring-petclinic | 0.700 → **0.720** | 0.460 → **0.520** | 0.552 → **0.602** |
+| jackson-databind | 0.429 → **0.557** | 0.286 → **0.357** | 0.340 → **0.431** |
+| junit5 | 0.345 → **0.491** | 0.255 → **0.273** | 0.287 → **0.336** |
+
+Named-subject questions stay at **39/39**, and the lexical modes are unchanged to three decimals —
+BM25 on junit5 is 0.345/0.218/0.257 before and after — because nothing outside `DenseIndex` moved.
+
+Subject-free retrieval has now gone **0.180 → 0.304 → 0.404 → 0.522** across Tier 0 Javadoc, the
+encoder, and this: **2.9× the lexical baseline.**
+
+## What this measurement cannot tell us
+
+Every question in the corpus is grounded in a **production** symbol, by construction. So a corpus
+like this one can only reward demoting test code; it is structurally incapable of detecting the harm
+if the demotion is too strong. The counter-case — "which tests cover `PaymentService`?" — is exactly
+the question type the corpus does not contain.
+
+That is why the demotion is a demotion and not an exclusion, and why the weight was taken from an
+existing shipped decision rather than fitted here. Fitting it on these 200 questions would have
+driven it to zero and looked like an improvement.
