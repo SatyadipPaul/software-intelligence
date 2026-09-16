@@ -5,6 +5,11 @@ the fixture, spring-petclinic `88e37c1`, jackson-databind `2b72ff3`, junit5 `de6
 classpath was supplied, so resolution is lower than the analyzer's best — but identically so for
 every retrieval mode, which is what the comparison needs.
 
+**That caveat has since been tested and is weaker than it reads.** Supplying build classpaths for
+jackson-databind and junit5 lifts resolution from 77% to 99% and from 79% to 99%, and moves not one
+retrieval or traversal metric on either repository. See
+[the classpath run](classpath-2026-09-16.md).
+
 Reproduce with:
 
 ```bash

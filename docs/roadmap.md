@@ -80,6 +80,10 @@ returns a factor-by-factor explanation, discounted by the weakest confidence on 
 **Generalization:** the analyzer is now exercised on jackson-databind (Maven, no framework, extreme
 generics) and junit5 (Gradle Kotlin DSL, 27 source roots), which found four defects invisible on
 Spring Petclinic. See [the generalization benchmark](benchmarks/generalization-2026-08-10.md).
+Both are now also measured **with build classpaths**, which lifts resolution to 99.18% and 98.82%
+from 77.01% and 78.78% - and moves no retrieval or traversal metric at all, because the questions
+that fail are failing on vocabulary rather than on resolution. See
+[the classpath run](benchmarks/classpath-2026-09-16.md).
 Both now have grounded question sets - 13 for jackson-databind, 11 for junit5, each including three
 that do not name their subject - and both are scored for retrieval in
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md). Answer quality on them is measured
