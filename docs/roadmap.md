@@ -177,3 +177,61 @@ precision@k cannot exceed 1/k and would measure that cap rather than the ranking
 recall@k, MRR, and anchor recall, and says in its own output why the fourth metric is absent.
 
 **Design:** [a hybrid of the code graph and PageIndex RAG](hybrid-index-tree.md).
+
+## Milestone 7 — closing the register gap
+
+Milestone 6's exit criterion was not met, and the 200-question corpus said why in one line:
+retrieval answers **0.974** of questions that name their subject and **0.180** of questions that
+describe it instead. Tier 0 contextual cards moved the second number to 0.304. This milestone is
+about that number and nothing else.
+
+[Prior work](research-grounding.md) calls this **register mismatch** and reports it at the same
+magnitude elsewhere — 96–100% recall on formal-register queries against 36–44% on plain-register
+ones. Four of the five things measured here are established results, and one of the negative results
+is explained by a 2020 paper. The sequence below is ordered by that reading, cheapest and
+most-unblocking first.
+
+**1. Fix the evaluation before building anything else.** Two workstreams are blocked on "get an
+enterprise-shaped repository and hold it out", and every result so far carries a contamination
+caveat because the same hand wrote the corpus and the code. CORE-Bench reports 180K queries and 106K
+broader-context relevance labels for requirement-driven repository search, externally authored. If
+its licence and format allow, adopting it removes the contamination question permanently and is
+worth more than hand-building a fifth repository. If not, Apache Fineract is the fallback.
+
+**2. Finish Tier 0 with prose the repository already contains.** Javadoc was one source and it moved
+subject-free retrieval 0.180 → 0.304. Two more cost nothing and need no model: **commit messages**,
+which are human prose in the asker's register already tied to files — one paper retrieves on them
+alone and reports up to 80% over a BM25 baseline — and **test method names**, which in Java are
+near-sentences (`shouldRejectPaymentWhenBalanceIsInsufficient`). Both matter most on exactly the
+enterprise profile where Javadoc is absent, which is the profile the current corpus lacks.
+
+**3. Choose an encoder under the distribution constraint.** A small general-purpose encoder is cheap
+to ship and weaker on identifiers; a code-trained one is 5–7× the parameters. The earlier "~25 MB"
+estimate in this repository was for the former and understated the trade-off. Decide on measured
+retrieval, and keep the encoder an optional artifact with the core degrading to lexical scoring.
+
+**4. Only then, the dilution fix.** Scoring a node as its whole subtree dilutes a single good card,
+and the max-passage repair failed *because it was applied to scores*. PARADE's finding is that
+aggregating passage **representations** beats aggregating passage **scores** — so there is no
+correct constant to find in BM25 space, and this work is blocked on step 3 rather than on
+calibration data.
+
+**5. Tier 1, with a verification gate rather than trust.** Generated descriptions are the doc2query
+family, whose documented failure modes are exactly the risks already recorded here. Doc2Query--
+supplies the mitigation: filter generated text through a relevance model before indexing. That is
+this repository's existing claims gate applied to enrichment, and it is a requirement rather than an
+enhancement. Measuring it needs step 1: with externally authored queries, a model writing the
+descriptions is no longer single-author contamination.
+
+**6. Read the closest prior art and record the deltas.** RANGER builds a repository knowledge graph
+by AST parsing, LLM-assisted description generation and embedding — our three tiers, in our order —
+and splits queries into code-entity and general, which is our named/subject-free split renamed.
+LARGER formalises `HYBRID`'s thesis and criticises graph retrieval for fragmenting the agent loop
+with separate traversal stages, which is a fair charge against `navigate`.
+
+**Exit criterion:** plain-register retrieval, measured on an externally authored held-out set,
+improves on the Tier 0 baseline of 0.304 — or the approach is dropped, having been measured rather
+than assumed. The same standard as Milestone 6, applied to a corpus nobody here wrote.
+
+**Environment note:** steps 1 and 6 need `arxiv.org` and dataset hosts, which this session's network
+policy denies. They are blocked on egress, not on effort.
