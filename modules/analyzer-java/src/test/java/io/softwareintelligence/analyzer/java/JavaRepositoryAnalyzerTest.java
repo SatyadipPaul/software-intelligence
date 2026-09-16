@@ -70,6 +70,34 @@ class JavaRepositoryAnalyzerTest {
                 && edge.from().equals("type:demo.Money#plus(demo.Money)") && edge.to().equals("type:demo.Money#cents()")));
     }
 
+    @Test void the_first_javadoc_sentence_is_recorded_as_searchable_prose(@TempDir Path repository) throws Exception {
+        write(repository, "Disabled.java", """
+                package demo;
+                /**
+                 * Signals that the annotated test is currently <em>switched off</em> and will not
+                 * be executed. See {@link Runner} for the mechanism.
+                 *
+                 * @param value the reason
+                 */
+                public class Disabled {
+                  /** Turns the thing off. Second sentence is dropped. */
+                  public void off() { }
+                  public void undocumented() { }
+                }
+                """);
+
+        CodeGraph graph = new JavaRepositoryAnalyzer().analyze(repository);
+
+        // HTML is stripped, an inline {@link} contributes the word a reader sees, and the block
+        // tags below the description are left out - they recur on every card and distinguish none.
+        assertEquals("Signals that the annotated test is currently switched off and will not be executed",
+                node(graph, "type:demo.Disabled").attributes().get("doc"));
+        assertEquals("Turns the thing off", node(graph, "type:demo.Disabled#off()").attributes().get("doc"));
+        // A declaration with no Javadoc carries no key at all, rather than an empty one that would
+        // add a term to every card in a repository that does not document itself.
+        assertFalse(node(graph, "type:demo.Disabled#undocumented()").attributes().containsKey("doc"));
+    }
+
     @Test void overloads_are_distinct_symbols_with_distinct_callers(@TempDir Path repository) throws Exception {
         write(repository, "Overload.java", """
                 package demo;

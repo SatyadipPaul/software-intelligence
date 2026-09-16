@@ -260,10 +260,12 @@ Not tree-instead-of-BM25. **The union of both.**
 Tree descent produces structurally coherent anchors and fails by committing to a wrong branch early.
 Flat BM25 produces incoherent anchors and never has that failure mode, because it never made a
 choice. Taking top-*n* from each, deduplicating, and splitting the budget covers the other's
-weakness. That is what `HYBRID` means, and across four repositories it is never worse than flat
-retrieval and better on two, which is what earned it the default. `TREE` alone now also matches or
-beats flat retrieval everywhere, but lands ju-002 third where `HYBRID` lands it first — the flat
-hits behind a descent are what cover a wrong branch.
+weakness. That is what `HYBRID` means.
+
+**On 53 questions this was measured and held. On 200 it does not.** `HYBRID` wins outright only on
+spring-petclinic, splits on the fixture, and is indistinguishable from flat retrieval on both large
+repositories. The union argument above is still sound about *failure modes*; it was simply never the
+thing that decided these numbers. See [the 200-question corpus](benchmarks/corpus-200-2026-09-16.md).
 
 Early branch commitment is worse on code than on prose, because names repeat across modules in a way
 section titles in a document do not. `OwnerController` and `OwnerRestController` in different source
@@ -320,3 +322,118 @@ from.
 - It does not make the assistant navigator the default, or reachable without an explicit
   `navigate` session. It is an option where a model is available, never a dependency.
 - It does not let a model author tree structure. A model may name a branch. It may not invent one.
+
+## Revision: what 200 questions changed, and the architecture that follows
+
+Everything above describes a tree whose cards are built from **identifiers**. Four independent
+measurements have now said that is the binding constraint, not the tree:
+
+| Intervention | Result |
+| --- | --- |
+| Hand-written branch summaries | +0.105 anchor recall on Petclinic — contaminated, same author wrote summaries and questions |
+| The same experiment run blind | 26 summaries, **zero** metrics moved, zero questions recovered |
+| Build classpaths (77% → 99% resolution) | **Zero** retrieval metrics moved |
+| The tree itself, at 200 questions | Indistinguishable from flat retrieval on both large repositories |
+
+And one measurement that explains all four. Split the 200 questions by whether the question says its
+subject's name:
+
+| | found |
+| --- | ---: |
+| names its subject | 38/39 = **0.974** |
+| describes it instead | 29/161 = **0.180** |
+
+Each intervention enriched the *structure around* identifiers while leaving identifiers the only
+vocabulary retrieval can match. The gap is lexical, and nothing tried so far touches it.
+
+### Two models, not one
+
+The fix is contextual enrichment — embedding a description of what a node *does* rather than what it
+is called. That requires two different models, and conflating them is a distribution error this
+library cannot afford:
+
+| | writes the context | encodes it |
+| --- | --- | --- |
+| Kind | generative (1–7B+) | embedding encoder (22–33M) |
+| Size | GB | ~25 MB int8 |
+| Licence | varies, often restrictive | `all-MiniLM-L6-v2` Apache-2.0, `bge-small-en-v1.5` MIT |
+| Determinism | no | yes |
+| **Shippable in this library** | **never** | **yes, as an optional artifact** |
+
+The encoder is bundled — in a separate optional module, with the core degrading to lexical scoring
+when it is absent. The generator is always **bring-your-own**, reached through the same offline file
+exchange `enrich-targets` / `enrich-apply` already uses. The operator supplies the model; the library
+orchestrates, budgets and verifies.
+
+### Three tiers
+
+**Tier 0 — deterministic, free, every node.** Compose the indexed text from the AST itself:
+camel-case-split identifiers (already done), package path, supertypes, signature types, **annotation
+literals**, and javadoc first sentences. The graph already carries the annotation values —
+`annotation.KafkaListener.topics: payment-authorized`, `annotation.Table.name: CUST_ORDER` — and
+they are business vocabulary sitting unused. Every token traces to a source range, so Tier 0 breaks
+no invariant in the table above.
+
+**Tier 1 — generated, budgeted, pinned.** A one-sentence purpose, written by the operator's model,
+only for nodes where Tier 0 comes out uninformative *and* the existing planner ranks them high. Not
+500k nodes; a few thousand. `EnrichmentPlanner`, `BranchEnrichment` and the claims gate already
+implement the selection, the budget and the confidence cap — what failed before was *what* they were
+pointed at (package summaries) and *how the output was consumed* (BM25).
+
+**Tier 2 — encode both, compare siblings.** Brute-force cosine over the ~20 siblings at a frontier.
+No ANN index, therefore no further dependency.
+
+### Why the tree is what makes this affordable
+
+This is the argument the design should have made from the start, and did not.
+
+Contextual retrieval as usually practised bakes ancestor context into *every* chunk's vector,
+because flat search has no path to inherit from. A descent **inherits context at query time** from
+the path it already walked: repository, module and type context ride the frontier instead of being
+duplicated into every leaf's embedding.
+
+Combined with node counts — module + package + type is **6,527 of 43,798** nodes on
+jackson-databind (15%) and **3,664 of 29,647** on junit5 (12%) — the tree needs roughly one vector
+in eight, and no nearest-neighbour structure at all:
+
+| | flat dense | dense over the tree |
+| --- | ---: | ---: |
+| vectors (jackson-databind) | 43,798 | **6,527** |
+| index structure | ANN — another dependency | none |
+| shipped index @384d int8 | ~17 MB | **~2.5 MB** |
+
+### The corpus is an overfitting risk, and the profile inverts
+
+The four repositories are framework and infrastructure code. Enterprise business code is the mirror
+image, and tuning on one profile will mislead about the other:
+
+| | OSS framework code | enterprise business code |
+| --- | --- | --- |
+| javadoc | good — public APIs with maintainers | absent, stale, or `/** Gets the value of x. */` |
+| identifiers | abstract, domain-free: `TypeBase`, `ContainerNode` | **domain-laden**: `OrderSettlementProcessor` |
+| annotations | few, structural | **dense and semantic**, carrying table names, topics, routes |
+| string literals | rare | business vocabulary throughout |
+
+So a javadoc-only Tier 0 would likely succeed here and fail on the repositories this library is
+meant for. Tier 0 must lean on annotation literals and split identifiers, which survive both
+profiles, and the corpus needs a fifth, enterprise-shaped repository before any of this is tuned.
+
+### Risks this introduces
+
+**Index-time cost at enterprise scale.** A generated sentence per node does not survive a 500k-node
+repository. Tiering bounds it; the existing snapshot/diff machinery must drive re-enrichment of
+changed subtrees only, or every build pays for the whole repository again.
+
+**Unverifiable routing bias — the serious one.** A generated sentence that is subtly wrong does not
+produce a wrong *claim*: the chooser contract already prevents that, because a navigation choice
+names a place to look and asserts nothing. But it silently biases *routing*, and unlike a claim
+there is no citation to check it against. Generated context is therefore **index-only** and must
+never be quotable into an answer, on top of the existing ≤0.80 confidence cap.
+
+**Determinism.** Byte-identical output from identical source is a stated invariant, and a generative
+model breaks it. Generated context must be a *pinned input artifact* carrying its own fingerprint —
+the same shape as the pinned tree — never something recomputed per build.
+
+**And it is unmeasured.** Four interventions have come back negative. This one is a hypothesis with
+a mechanism, not a result, and it gets built in the order that can kill it cheapest: Tier 0 first,
+on both repository profiles, because it costs nothing and bounds the headroom left for Tier 1.

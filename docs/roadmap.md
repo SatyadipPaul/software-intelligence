@@ -148,11 +148,20 @@ scores 45,595 nodes). **`--retrieval` therefore still defaults to `HYBRID`** - c
 coverage, behind by one question on two sets - but it is no longer described as beating flat
 retrieval. CI still fails if either mode regresses against flat retrieval on the fixture.
 
-**The bottleneck is not the index.** Four measurements have now come back negative - branch
-summaries, their blind re-run, build classpaths, and the tree itself at scale - and each enriched
-the structure around identifiers while leaving identifiers the only vocabulary retrieval can match.
-Questions that name their subject are answered 0.974 of the time; questions that describe it, 0.180.
-See [the 200-question corpus](benchmarks/corpus-200-2026-09-16.md) and
+**The bottleneck is not the index, and that is now shown rather than inferred.** Four measurements
+came back negative - branch summaries, their blind re-run, build classpaths, and the tree itself at
+scale - and each enriched the structure around identifiers while leaving identifiers the only
+vocabulary retrieval can match. Questions that name their subject were answered 0.974 of the time;
+questions that describe it, 0.180.
+
+**Tier 0 contextual cards moved it.** Recording the first sentence of each declaration's Javadoc -
+no model, no network, fully deterministic - took subject-free retrieval from **0.180 to 0.304**,
+with junit5 going 0.022 to 0.239. The Javadoc is upstream-authored on three of the four
+repositories, so unlike the summary experiment it is not the same hand writing the enrichment and
+the questions. It also exposed a design tension: the gain favours flat retrieval, because
+`CardIndex` scores a node as its whole subtree and dilutes a single doc sentence across a package.
+See [Tier 0 contextual cards](benchmarks/tier0-context-2026-09-16.md),
+[the 200-question corpus](benchmarks/corpus-200-2026-09-16.md) and
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
 **precision@k was the wrong ask.** Each grounded question declares one relevant symbol, so
