@@ -95,7 +95,18 @@ the static candidates have to approach — see
 [the dense encoder run](benchmarks/dense-encoder-2026-09-16.md). It is not a shipping decision: it
 needs a native runtime, which is the thing the static models avoid.
 
-## Recommendation
+## Measured: all three, and the recommendation changed
+
+Every candidate below has now been run on the full corpus. Subject-free retrieval: `potion-base-32M`
+**0.410**, `all-MiniLM-L6-v2` 0.404, `potion-base-8M` 0.379, against 0.304 for lexical alone. The
+static models need no native runtime and index 37-120x faster. **Recommendation: `potion-base-32M`,
+or `potion-base-8M` where size rules.** The transformer stays supported and unshipped as the
+reference. `potion-retrieval-32M` could not be obtained from any reachable host and remains
+unmeasured. Measured sizes on disk, fp32 as published, differ from the figures quoted below: 30 MB
+for the 8M model and 124 MB for the 32M, not the ~8/~30 MB that parameter-count summaries imply.
+See [the static encoders](benchmarks/static-encoders-2026-09-16.md).
+
+## The original plan, kept for the record
 
 Measure three, ship one:
 

@@ -77,6 +77,28 @@ public final class WordPieceTokenizer {
         return encoded;
     }
 
+    /**
+     * Token ids for one text with the special tokens and the unknowns left out.
+     *
+     * <p>What a static model wants. There is no network to give {@code [CLS]} a meaning, so a
+     * static model pools the content tokens and nothing else — including an {@code [UNK]} would
+     * average in one fixed vector for every word the vocabulary does not know, which drags every
+     * text that has one towards the same place.
+     */
+    public int[] encodeContent(String text, int maxLength) {
+        List<Integer> ids = new ArrayList<>();
+        for (String word : split(text)) {
+            if (ids.size() >= maxLength) break;
+            for (int id : subwords(word)) {
+                if (id != unknown) ids.add(id);
+            }
+        }
+        if (ids.size() > maxLength) ids = ids.subList(0, maxLength);
+        int[] encoded = new int[ids.size()];
+        for (int i = 0; i < encoded.length; i++) encoded[i] = ids.get(i);
+        return encoded;
+    }
+
     /** Lowercases, strips accents, and splits on whitespace with each punctuation mark on its own. */
     private static List<String> split(String text) {
         String folded = Normalizer.normalize(text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)

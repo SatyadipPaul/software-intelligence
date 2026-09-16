@@ -1,5 +1,6 @@
 package io.softwareintelligence.embedding;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -25,19 +26,31 @@ public final class EncoderFactory {
     }
 
     /**
-     * Opens the encoder in {@code modelDirectory}, which must hold {@code model.onnx} and
-     * {@code vocab.txt}.
+     * Opens whichever encoder {@code modelDirectory} holds.
      *
-     * @throws EncoderUnavailableException when the runtime is absent or the model cannot be read
+     * <p>A {@code model.safetensors} is a static model and is preferred when both are present: it
+     * needs no native runtime, so it works everywhere the library does. A {@code model.onnx} needs
+     * the optional runtime and is used when that is the only model there.
+     *
+     * @throws EncoderUnavailableException when nothing usable is there, or the ONNX model is there
+     *         and its runtime is not
      */
     public static TextEncoder open(Path modelDirectory) {
         if (modelDirectory == null) {
             throw new EncoderUnavailableException("no embedding model directory was configured");
         }
+        if (Files.isRegularFile(modelDirectory.resolve("model.safetensors"))) {
+            return new StaticTextEncoder(modelDirectory);
+        }
+        if (!Files.isRegularFile(modelDirectory.resolve("model.onnx"))) {
+            throw new EncoderUnavailableException("expected model.safetensors or model.onnx in "
+                    + modelDirectory.toAbsolutePath());
+        }
         if (!available()) {
             throw new EncoderUnavailableException(
-                    "the ONNX runtime is not on the classpath; add com.microsoft.onnxruntime:onnxruntime "
-                            + "to use a dense encoder, or run without one and retrieval stays lexical");
+                    "this model needs the ONNX runtime, which is not on the classpath; add "
+                            + "com.microsoft.onnxruntime:onnxruntime, use a static model that needs no "
+                            + "runtime, or run without an encoder and retrieval stays lexical");
         }
         return new OnnxTextEncoder(modelDirectory);
     }

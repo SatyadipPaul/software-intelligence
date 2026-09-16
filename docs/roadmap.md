@@ -246,10 +246,14 @@ having been measured rather than assumed. The same standard as Milestone 6.
 first, dense second, flat hits last — is the **first mode to beat flat retrieval on every corpus on
 every headline metric**, which is the criterion Milestone 6 set and `HYBRID` failed. The encoder is
 an optional module, the ONNX runtime an optional dependency of it, and the weights are supplied by
-the operator: without one, every existing mode behaves exactly as before. What remains open is which
-encoder to *ship*: `all-MiniLM-L6-v2` was measured because it is the market default and it
-establishes the ceiling, while the static models that need no native runtime are the shipping
-candidates and are unmeasured. See [the dense encoder run](benchmarks/dense-encoder-2026-09-16.md).
+the operator: without one, every existing mode behaves exactly as before. **The encoder to ship is now measured too.** Model2Vec's static models have no forward pass at all -
+a vocabulary-to-vector table, no ONNX, no JNI, no per-platform artifacts - and `potion-base-32M`
+reaches **0.410**, matching the transformer reference's 0.404 while indexing jackson-databind 37x
+faster (494 ms against 18.4 s); `potion-base-8M` reaches 0.379 at a quarter of the disk and 120x
+faster. No encoder dominates on every corpus, and the spread between encoders is smaller than the
+spread between any of them and lexical retrieval: **which** encoder is a second-order choice, having
+one is the first-order one. See [the dense encoder run](benchmarks/dense-encoder-2026-09-16.md) and
+[the static encoders](benchmarks/static-encoders-2026-09-16.md).
 
 **Environment note:** step 6, and verification of every figure in
 [encoder selection](encoder-selection.md), need `arxiv.org` and the model hosts, which this
