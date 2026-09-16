@@ -160,7 +160,15 @@ with junit5 going 0.022 to 0.239. The Javadoc is upstream-authored on three of t
 repositories, so unlike the summary experiment it is not the same hand writing the enrichment and
 the questions. It also exposed a design tension: the gain favours flat retrieval, because
 `CardIndex` scores a node as its whole subtree and dilutes a single doc sentence across a package.
-See [Tier 0 contextual cards](benchmarks/tier0-context-2026-09-16.md),
+**The obvious repair for that tension does not work.** Scoring a node as the maximum of its pooled
+subtree and its best single card - max-passage, the standard remedy - came out worse than *either*
+input alone on jackson-databind (anchor recall 0.271, against 0.300 pooled and 0.314 best-card),
+because the two quantities are not on a comparable scale: a best-card score carries no penalty for
+how much of the branch you would have to search to find that card. Reverted, with the finding
+recorded in the code so it is not retried blind. A calibrated blend would need a constant, and
+fitting one on four repositories that are all OSS framework code is the overfitting this corpus is
+already flagged for. See [Tier 0 contextual cards](benchmarks/tier0-context-2026-09-16.md),
+[subtree dilution](benchmarks/subtree-dilution-2026-09-16.md),
 [the 200-question corpus](benchmarks/corpus-200-2026-09-16.md) and
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 

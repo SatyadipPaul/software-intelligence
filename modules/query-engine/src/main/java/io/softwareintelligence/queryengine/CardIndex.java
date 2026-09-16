@@ -28,6 +28,17 @@ import java.util.TreeMap;
  * BM25's length normalization then does the discriminating — a small package holding the match
  * beats a large module holding the same match and a thousand other things.
  *
+ * <p>Pooling is an average, and averages do hide a single good answer among many mediocre ones.
+ * That bias is real and measured: once cards carried Javadoc, flat retrieval — which scores each
+ * type as its own document — pulled ahead of the descent on both large repositories. <b>The obvious
+ * repair does not work.</b> Scoring a node as {@code max(pooled, bestSingleCardBelow)} was tried and
+ * came out worse than <em>either</em> input alone on jackson-databind (anchor recall 0.271, against
+ * 0.300 pooled and 0.314 best-card). The two quantities are not on a comparable scale: a best-card
+ * score carries no penalty for how much you would have to search to find that card, so which of the
+ * two wins the maximum is decided by how big the branch is rather than by how good its evidence is.
+ * Combining them needs a calibrated blend and held-out data to calibrate it on. Do not reintroduce
+ * the maximum. See {@code docs/benchmarks/subtree-dilution-2026-09-16.md}.
+ *
  * <p>The subtree is not materialized. Nodes are numbered in preorder, so a subtree is a contiguous
  * range, and each term's postings are a sorted array of those numbers; a subtree's term frequency is
  * two binary searches. That keeps the index linear in the tree rather than in tree × depth.
