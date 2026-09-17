@@ -176,7 +176,8 @@ how much of the branch you would have to search to find that card. Reverted, wit
 recorded in the code so it is not retried blind. A calibrated blend would need a constant, and
 fitting one on four repositories that are all OSS framework code is the overfitting this corpus is
 already flagged for. See [Tier 0 contextual cards](benchmarks/tier0-context-2026-09-16.md),
-[subtree dilution](benchmarks/subtree-dilution-2026-09-16.md),
+[subtree dilution](benchmarks/subtree-dilution-2026-09-16.md) and its
+[sequel over representations](benchmarks/subtree-aggregation-2026-09-17.md),
 [the 200-question corpus](benchmarks/corpus-200-2026-09-16.md) and
 [the retrieval baseline](benchmarks/retrieval-2026-09-09.md).
 
@@ -225,11 +226,17 @@ reference; ship one, as a separate optional artifact, with the core degrading to
 See [encoder selection](encoder-selection.md) — every figure in it is unverified, because the model
 hosts are blocked here.
 
-**4. Only then, the dilution fix.** Scoring a node as its whole subtree dilutes a single good card,
-and the max-passage repair failed *because it was applied to scores*. PARADE's finding is that
-aggregating passage **representations** beats aggregating passage **scores** — so there is no
-correct constant to find in BM25 space, and this work is blocked on step 3 rather than on
-calibration data.
+**4. Only then, the dilution fix. Done, and it says the dilution hypothesis was wrong.** The
+max-passage repair failed *because it was applied to scores*; PARADE's finding is that aggregating
+passage **representations** beats aggregating passage **scores**. `DenseTreeIndex` now folds a
+subtree into one vector in a single post-order pass, with three aggregators behind `--chooser`. The
+size-weighted mean wins, and both alternatives are worse: an element-wise maximum saturates over
+thousands of unit vectors and collapses to 0.018 on junit5, while a size-blind centroid is the best
+chooser measured on spring-petclinic (0.600) and a third of the mean on junit5 (0.073). Removing
+size-weighting does not remove dilution, it trades it for the opposite distortion, and on a deep
+tree the opposite distortion is worse. The dense-versus-lexical gap therefore has some other cause,
+and step 6's ceiling of 0.97 is unaffected. See
+[subtree aggregation](benchmarks/subtree-aggregation-2026-09-17.md).
 
 **5. Tier 1, with a verification gate rather than trust.** Generated descriptions are the doc2query
 family, whose documented failure modes are exactly the risks already recorded here. Doc2Query--

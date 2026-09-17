@@ -27,78 +27,136 @@ import java.util.Map;
  * {@code docs/benchmarks/subtree-dilution-2026-09-16.md} recorded after max-over-scores came out
  * worse than either of its inputs.
  *
- * <p>Subtree sums are a subtraction. Nodes are numbered in preorder so a subtree is a contiguous
- * range, and prefix sums over the vectors turn "everything below this node" into one vector
- * difference — linear in tree × dimensions, once per tree.
+ * <p>Aggregates are computed once per tree by a single post-order pass: a node's vector is its own
+ * card combined with its children's, so the whole tree costs one traversal rather than one range
+ * scan per query.
+ *
+ * <p>Three ways to combine, which is PARADE's comparison plus the one it does not cover.
+ * {@code MEAN} asks what a branch is about on average, every card below it counting once.
+ * {@code MAX} asks, dimension by dimension, what the most any card below it has to say on that
+ * dimension — the representation-level form of "is the answer somewhere under here".
+ * {@code CENTROID} is the direct test of the dilution hypothesis: each child contributes one unit
+ * vector regardless of how many cards are under it, so a package of five is not drowned by a
+ * sibling of five hundred. Summing is not a fourth option: cosine ignores length, so a sum and a
+ * mean rank identically, and measuring both would be theatre.
+ *
+ * <p>Measured, {@code docs/benchmarks/subtree-aggregation-2026-09-17.md}: MEAN is the default
+ * because it is the only one that holds up on a deep tree. MAX collapses — an element-wise maximum
+ * over thousands of unit vectors saturates, and every large branch ends up looking alike. CENTROID
+ * beats it on a shallow repository and loses badly on a deep one, which says the dilution the
+ * weighting was suspected of causing is the lesser of the two distortions available.
  */
 public final class DenseTreeIndex {
 
-    private final Map<String, Integer> position = new HashMap<>();
-    private final Map<String, Integer> subtreeEnd = new HashMap<>();
-    private final float[][] prefix;
-    private final int dimensions;
+    /** How a branch combines the cards beneath it. */
+    public enum Aggregation {
+        /** Element-wise mean: what the subtree is about on average. */
+        MEAN,
+        /** Element-wise maximum: the strongest thing any card below says on each dimension. */
+        MAX,
+        /** Mean of the children's directions: every child counts once, whatever its size. */
+        CENTROID
+    }
 
-    private DenseTreeIndex(float[][] prefix, int dimensions) {
-        this.prefix = prefix;
+    private final Map<String, Integer> position = new HashMap<>();
+    private final float[][] aggregates;
+    private final int dimensions;
+    private final Aggregation aggregation;
+
+    private DenseTreeIndex(Map<String, Integer> position, float[][] aggregates,
+                           int dimensions, Aggregation aggregation) {
+        this.position.putAll(position);
+        this.aggregates = aggregates;
         this.dimensions = dimensions;
+        this.aggregation = aggregation;
     }
 
     public int dimensions() { return dimensions; }
 
-    /** Embeds every card once, then prefix-sums so any subtree's mean is one subtraction. */
-    public static DenseTreeIndex over(IndexTree tree, TextEncoder encoder) {
+    public Aggregation aggregation() { return aggregation; }
+
+    public int size() { return aggregates.length; }
+
+    /** Embeds every card once, then folds each subtree into one vector. */
+    public static DenseTreeIndex over(IndexTree tree, TextEncoder encoder, Aggregation aggregation) {
         List<IndexNode> preorder = new ArrayList<>();
-        DenseTreeIndex index = new DenseTreeIndex(null, encoder.dimensions());
-        index.number(tree, preorder);
+        Map<String, Integer> position = new HashMap<>();
+        number(tree, preorder, position);
 
         List<String> texts = preorder.stream().map(DenseTreeIndex::readable).toList();
-        float[][] vectors = encoder.encode(texts);
+        float[][] cards = encoder.encode(texts);
         int dimensions = encoder.dimensions();
-        float[][] prefix = new float[preorder.size() + 1][dimensions];
-        for (int i = 0; i < preorder.size(); i++) {
-            for (int d = 0; d < dimensions; d++) prefix[i + 1][d] = prefix[i][d] + vectors[i][d];
+
+        // Post-order by walking preorder backwards: a node always appears before its descendants,
+        // so going right to left means every child is folded before its parent is.
+        float[][] aggregates = new float[preorder.size()][];
+        int[] counts = new int[preorder.size()];
+        for (int i = preorder.size() - 1; i >= 0; i--) {
+            float[] folded = cards[i].clone();
+            int count = 1;
+            for (IndexNode child : tree.children(preorder.get(i))) {
+                Integer at = position.get(child.id());
+                if (at == null || aggregates[at] == null) continue;
+                // CENTROID weights every child as one, so a child is folded in as a direction only;
+                // MEAN weights it by the cards it stands for, so the result is a true subtree mean.
+                int weight = aggregation == Aggregation.CENTROID ? 1 : counts[at];
+                combine(folded, aggregates[at], weight, count, aggregation);
+                count += weight;
+            }
+            // A CENTROID parent must see its children as unit vectors, so each node is normalised as
+            // soon as it is folded rather than in one pass at the end.
+            if (aggregation == Aggregation.CENTROID) normalize(folded);
+            aggregates[i] = folded;
+            counts[i] = count;
         }
-        DenseTreeIndex built = new DenseTreeIndex(prefix, dimensions);
-        built.position.putAll(index.position);
-        built.subtreeEnd.putAll(index.subtreeEnd);
-        return built;
+        for (float[] vector : aggregates) normalize(vector);
+        return new DenseTreeIndex(position, aggregates, dimensions, aggregation);
     }
 
-    /** Cosine of the question against the mean of everything at or below this node. */
-    public double score(float[] query, IndexNode node) {
-        Integer start = position.get(node.id());
-        if (start == null || prefix == null) return 0.0;
-        int end = subtreeEnd.getOrDefault(node.id(), start + 1);
-        int count = end - start;
-        if (count <= 0) return 0.0;
-        double dot = 0.0;
-        double norm = 0.0;
-        for (int d = 0; d < dimensions; d++) {
-            double mean = (prefix[end][d] - prefix[start][d]) / count;
-            dot += mean * query[d];
-            norm += mean * mean;
+    /**
+     * Folds {@code other} into {@code into}, each side weighted by how much it already stands for,
+     * so the result is a true mean rather than the parent's own card counting as much as everything
+     * below it.
+     */
+    private static void combine(float[] into, float[] other, int otherCount, int intoCount, Aggregation aggregation) {
+        if (aggregation == Aggregation.MAX) {
+            for (int d = 0; d < into.length; d++) into[d] = Math.max(into[d], other[d]);
+            return;
         }
+        double total = intoCount + otherCount;
+        for (int d = 0; d < into.length; d++) {
+            into[d] = (float) ((into[d] * intoCount + other[d] * otherCount) / total);
+        }
+    }
+
+    private static void normalize(float[] vector) {
+        double norm = 0;
+        for (float component : vector) norm += (double) component * component;
         norm = Math.sqrt(norm);
-        return norm == 0 ? 0.0 : dot / norm;
+        if (norm > 0) for (int d = 0; d < vector.length; d++) vector[d] /= (float) norm;
+    }
+
+    /** Cosine of the question against the folded vector of everything at or below this node. */
+    public double score(float[] query, IndexNode node) {
+        Integer at = position.get(node.id());
+        if (at == null) return 0.0;
+        float[] vector = aggregates[at];
+        double dot = 0.0;
+        for (int d = 0; d < dimensions; d++) dot += (double) vector[d] * query[d];
+        return dot;
     }
 
     /** Numbers every node in preorder, iteratively, so a deep tree cannot overflow the stack. */
-    private void number(IndexTree tree, List<IndexNode> preorder) {
-        record Frame(IndexNode node, boolean entered) { }
-        Deque<Frame> stack = new ArrayDeque<>();
-        stack.push(new Frame(tree.root(), false));
+    private static void number(IndexTree tree, List<IndexNode> preorder, Map<String, Integer> position) {
+        Deque<IndexNode> stack = new ArrayDeque<>();
+        stack.push(tree.root());
         while (!stack.isEmpty()) {
-            Frame frame = stack.pop();
-            if (frame.entered()) {
-                subtreeEnd.put(frame.node().id(), preorder.size());
-                continue;
-            }
-            if (position.containsKey(frame.node().id())) continue;
-            position.put(frame.node().id(), preorder.size());
-            preorder.add(frame.node());
-            stack.push(new Frame(frame.node(), true));
-            List<IndexNode> children = tree.children(frame.node());
-            for (int i = children.size() - 1; i >= 0; i--) stack.push(new Frame(children.get(i), false));
+            IndexNode node = stack.pop();
+            if (position.containsKey(node.id())) continue;
+            position.put(node.id(), preorder.size());
+            preorder.add(node);
+            List<IndexNode> children = tree.children(node);
+            for (int i = children.size() - 1; i >= 0; i--) stack.push(children.get(i));
         }
     }
 

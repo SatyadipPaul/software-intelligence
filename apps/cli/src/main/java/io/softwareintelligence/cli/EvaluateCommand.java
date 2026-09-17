@@ -49,10 +49,11 @@ final class EvaluateCommand implements Callable<Integer> {
     private java.nio.file.Path indexFile;
 
     /** How a tree descent picks its branches, for measuring whether a better chooser helps. */
-    enum ChooserKind { DETERMINISTIC, DENSE, ORACLE }
+    enum ChooserKind { DETERMINISTIC, DENSE, DENSE_MAX, DENSE_CENTROID, ORACLE }
 
     @CommandLine.Option(names = "--chooser", defaultValue = "DETERMINISTIC",
-            description = "How a descent picks branches: ${COMPLETION-CANDIDATES}. ORACLE knows the "
+            description = "How a descent picks branches: ${COMPLETION-CANDIDATES}. The DENSE variants "
+                    + "differ only in how a branch folds the cards below it. ORACLE knows the "
                     + "answer and measures the ceiling the descent could reach, not a usable mode.")
     private ChooserKind chooser;
 
@@ -116,7 +117,7 @@ final class EvaluateCommand implements Callable<Integer> {
         // A dense chooser needs the encoder as much as a dense mode does, and asking only about the
         // mode silently produced an empty run rather than a refusal.
         boolean wanted = retrievalModes.stream().anyMatch(RetrievalMode::needsDense)
-                || chooser == ChooserKind.DENSE;
+                || chooser.name().startsWith("DENSE");
         if (!wanted) return null;
         return EncoderFactory.resolve(embeddingModel).orElseThrow(() -> new IllegalArgumentException(
                 "a DENSE retrieval mode needs a model: add the embedding-model artifact to the "
@@ -158,12 +159,17 @@ final class EvaluateCommand implements Callable<Integer> {
             CodeGraph graph, IndexTree tree, TextEncoder encoder) {
         return switch (chooser) {
             case DETERMINISTIC -> null;
-            case DENSE -> {
+            case DENSE, DENSE_MAX, DENSE_CENTROID -> {
                 if (encoder == null) {
-                    throw new IllegalArgumentException("--chooser DENSE needs a model: add the "
+                    throw new IllegalArgumentException("--chooser " + chooser + " needs a model: add the "
                             + "embedding-model artifact to the classpath, or pass --embedding-model");
                 }
-                DenseTreeIndex treeVectors = DenseTreeIndex.over(tree, encoder);
+                DenseTreeIndex.Aggregation how = switch (chooser) {
+                    case DENSE_MAX -> DenseTreeIndex.Aggregation.MAX;
+                    case DENSE_CENTROID -> DenseTreeIndex.Aggregation.CENTROID;
+                    default -> DenseTreeIndex.Aggregation.MEAN;
+                };
+                DenseTreeIndex treeVectors = DenseTreeIndex.over(tree, encoder, how);
                 yield question -> new DenseChooser(encoder, treeVectors, question.question());
             }
             case ORACLE -> question -> OracleChooser.forTargets(tree, targets(graph, question));

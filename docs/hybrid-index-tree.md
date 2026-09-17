@@ -445,7 +445,9 @@ by a paper from 2020. The register-mismatch split we measured at 0.974/0.180 is 
 at 96-100% against 36-44%; Tier 1 is the doc2query document-expansion family, whose failure modes
 and a filtering mitigation are documented; the tree with generated summaries is RAPTOR and its
 code-specific descendants; and the max-passage repair that failed here fails because PARADE's
-finding is about aggregating *representations*, not scores. See
+finding is about aggregating *representations*, not scores — though moving to representations turned
+out to leave the ranking where it was, for reasons
+[recorded separately](benchmarks/subtree-aggregation-2026-09-17.md). See
 [research grounding](research-grounding.md), which also names an external benchmark that may
 replace the hand-built enterprise corpus, and a free source of Tier 0 prose - commit messages -
 that this design does not yet index.
