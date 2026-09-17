@@ -208,12 +208,25 @@ text the question author never read. Where even that is impossible, a number is 
 contaminated ceiling and is never sufficient grounds to change a default. Stating this once, here,
 is worth more than repeating the caveat per experiment.
 
-**2. Finish Tier 0 with prose the repository already contains.** Javadoc was one source and it moved
-subject-free retrieval 0.180 → 0.304. Two more cost nothing and need no model: **commit messages**,
-which are human prose in the asker's register already tied to files — one paper retrieves on them
-alone and reports up to 80% over a BM25 baseline — and **test method names**, which in Java are
-near-sentences (`shouldRejectPaymentWhenBalanceIsInsufficient`). Both matter most on exactly the
-enterprise profile where Javadoc is absent, which is the profile the current corpus lacks.
+**2. Finish Tier 0 with prose the repository already contains. Half done, and the done half says
+no.** Javadoc was one source and it moved subject-free retrieval 0.180 → 0.304. Two more cost
+nothing and need no model: **commit messages**, which are human prose in the asker's register
+already tied to files — one paper retrieves on them alone and reports up to 80% over a BM25
+baseline — and **test method names**, which in Java are near-sentences
+(`shouldRejectPaymentWhenBalanceIsInsufficient`).
+
+Test method names were built and measured, and they **cost** recall: 0.522 → 0.509 subject-free in
+their least invasive form, 0.522 → 0.484 when allowed beside an existing doc sentence. The reason is
+sharper than "noisy". A test name says *what happens when*; every question in this corpus asks *what
+is the thing that*. On jackson-databind, `AnnotatedClass` went from rank 1 to outside the top five
+because 240 characters of accurate description of its tests displaced the sentence that actually
+answered the question. The pass ships off, behind `--test-vocabulary`, because the profile it was
+built for — uncommented business logic with a large test suite — is the one profile this corpus
+cannot represent. See [test vocabulary](benchmarks/test-vocabulary-2026-09-17.md).
+
+That result changes what to expect of commit messages rather than ruling them out: a commit message
+says why a thing exists, which is nearer to what it is. It also fixes the experiment to run —
+gap-filling first, and a check for what the new text *displaces*, not only for what it adds.
 
 **3. Choose an encoder under the distribution constraint.** Every locally-runnable graph-RAG system
 has converged on the same point — 384 dimensions, 22–33M parameters — and everything larger is an

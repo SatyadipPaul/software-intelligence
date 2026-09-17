@@ -1,18 +1,14 @@
 package io.softwareintelligence.queryengine;
 
-import java.util.Locale;
+import io.softwareintelligence.model.TestSources;
 
 /**
- * Whether a symbol is test code, decided once for everything that needs to know.
+ * What retrieval does about test code, once, for everything that needs to know.
  *
- * <p>Two places already needed this and had drifted apart: enrichment ranking knew about
- * {@code src/test} and {@code src/testFixtures}, while the analyzer also knew about {@code src/it}
- * and the two spellings of an integration-test root. This is the union, so a branch and a vector
- * agree about what a test is.
- *
- * <p>The path is asked first and the name second, because a repository may legitimately ship a
- * production class called {@code TestSupport} — and, the other way round, a test class is often
- * named after the thing it exercises with no hint in the name at all.
+ * <p>The predicate itself moved to {@link TestSources} when a third caller appeared — the analyzer
+ * pass that reads test names as vocabulary has to agree with retrieval about which side of the line
+ * a type is on. What stays here is the part that is retrieval's own opinion: how much of a test
+ * symbol's score survives.
  */
 final class TestCode {
 
@@ -33,15 +29,7 @@ final class TestCode {
      * @param file the file it was declared in, as recorded in its provenance
      */
     static boolean is(String name, String file) {
-        String path = '/' + (file == null ? "" : file.replace('\\', '/'));
-        if (path.contains("/src/test/") || path.contains("/src/testFixtures/")
-                || path.contains("/src/it/") || path.contains("/src/integration-test/")
-                || path.contains("/src/integrationTest/")) {
-            return true;
-        }
-        String simple = lastSegment(name);
-        return simple.endsWith("test") || simple.endsWith("tests")
-                || simple.endsWith("testcase") || simple.endsWith("it");
+        return TestSources.is(name, file);
     }
 
     /**
@@ -57,10 +45,6 @@ final class TestCode {
 
     /** The last dotted or slashed segment, lowercased. Shared so callers agree on what a name is. */
     static String lastSegment(String name) {
-        if (name == null) return "";
-        int dot = name.lastIndexOf('.');
-        int slash = name.lastIndexOf('/');
-        int cut = Math.max(dot, slash);
-        return (cut < 0 ? name : name.substring(cut + 1)).toLowerCase(Locale.ROOT);
+        return TestSources.lastSegment(name);
     }
 }

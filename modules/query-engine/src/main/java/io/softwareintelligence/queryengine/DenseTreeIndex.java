@@ -1,6 +1,7 @@
 package io.softwareintelligence.queryengine;
 
 import io.softwareintelligence.embedding.TextEncoder;
+import io.softwareintelligence.model.Attributes;
 import io.softwareintelligence.indextree.IndexKind;
 import io.softwareintelligence.indextree.IndexNode;
 import io.softwareintelligence.indextree.IndexTree;
@@ -169,7 +170,11 @@ public final class DenseTreeIndex {
         }
         String words = name.replaceAll("[._/]", " ")
                 .replaceAll("(?<!^)(?=[A-Z][a-z])|(?<=[a-z0-9])(?=[A-Z])", " ");
-        String documentation = node.facts().getOrDefault("doc", node.facts().getOrDefault("summary", ""));
-        return documentation.isBlank() ? words : words + ". " + documentation;
+        StringBuilder text = new StringBuilder(words);
+        String documentation = node.facts().getOrDefault(Attributes.DOC, node.facts().getOrDefault("summary", ""));
+        if (!documentation.isBlank()) text.append(". ").append(documentation);
+        String behaviour = node.facts().getOrDefault(Attributes.BEHAVIOUR, "");
+        if (!behaviour.isBlank()) text.append(". ").append(behaviour);
+        return text.toString();
     }
 }

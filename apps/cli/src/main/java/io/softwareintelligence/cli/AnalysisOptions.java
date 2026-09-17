@@ -30,6 +30,11 @@ final class AnalysisOptions {
     @CommandLine.Option(names = "--no-tests", description = "Exclude test sources")
     private boolean noTests;
 
+    @CommandLine.Option(names = "--test-vocabulary",
+            description = "Read test method names as prose about the undocumented code they exercise. "
+                    + "Off by default: it measured negative on every repository benchmarked here.")
+    private boolean testVocabulary;
+
     /**
      * Loads a graph from whatever the user pointed at: a `.json` graph or snapshot is read back,
      * and anything else is analyzed as a repository.
@@ -57,7 +62,7 @@ final class AnalysisOptions {
             }
             entries = discovered.entries();
         }
-        RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8);
+        RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8, testVocabulary);
         return new RepositoryModel().build(repository, entries, !noTests, layers);
     }
 

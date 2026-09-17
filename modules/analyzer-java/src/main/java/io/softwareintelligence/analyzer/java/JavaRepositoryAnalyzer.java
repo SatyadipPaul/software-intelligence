@@ -1,5 +1,6 @@
 package io.softwareintelligence.analyzer.java;
 
+import io.softwareintelligence.model.Attributes;
 import io.softwareintelligence.model.CodeGraph;
 import io.softwareintelligence.model.EntityKind;
 import io.softwareintelligence.model.GraphEdge;
@@ -296,7 +297,7 @@ public final class JavaRepositoryAnalyzer {
             attributes.put("annotations", String.join(",", annotations));
             attributes.putAll(annotationAttributes(declaration.modifiers()));
             String doc = docSentence(declaration);
-            if (!doc.isEmpty()) attributes.put("doc", doc);
+            if (!doc.isEmpty()) attributes.put(Attributes.DOC, doc);
             graph.declaration(methodId, EntityKind.METHOD, name, Map.copyOf(attributes), p(at, false));
             graph.edge(types.peek(), methodId, RelationKind.DECLARES, Map.of(), p(at, false));
             for (Object parameter : declaration.parameters()) {
@@ -542,7 +543,7 @@ public final class JavaRepositoryAnalyzer {
             attributes.put("type", flavour);
             attributes.putAll(annotationAttributes(declaration.modifiers()));
             String doc = docSentence(declaration);
-            if (!doc.isEmpty()) attributes.put("doc", doc);
+            if (!doc.isEmpty()) attributes.put(Attributes.DOC, doc);
             graph.declaration(id, kind, name, Map.copyOf(attributes), p(at, false));
             graph.edge(types.isEmpty() ? fileId : types.peek(), id, RelationKind.DECLARES, Map.of(), p(at, false));
             types.push(id);

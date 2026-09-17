@@ -1,6 +1,7 @@
 package io.softwareintelligence.queryengine;
 
 import io.softwareintelligence.embedding.TextEncoder;
+import io.softwareintelligence.model.Attributes;
 import io.softwareintelligence.model.CodeGraph;
 import io.softwareintelligence.model.EntityKind;
 import io.softwareintelligence.model.GraphNode;
@@ -83,18 +84,21 @@ public final class DenseIndex {
      * <p>Split on camel case because an encoder is trained on prose — {@code BeforeEachCallback} is
      * one unknown token, "Before Each Callback" is three known ones, and only the second can be
      * close to "runs before every test". The doc sentence follows because it is the one part of a
-     * Java repository already written in a reader's register.
+     * Java repository already written in a reader's register, and the test-name digest after it for
+     * the same reason on code that has no doc sentence.
      */
     private static String text(GraphNode node) {
         String simple = node.name();
         int dot = simple.lastIndexOf('.');
         if (dot >= 0 && dot < simple.length() - 1) simple = simple.substring(dot + 1);
         String words = simple.replaceAll("(?<!^)(?=[A-Z][a-z])|(?<=[a-z0-9])(?=[A-Z])", " ");
-        String documentation = node.attributes().getOrDefault("doc", "");
+        String documentation = node.attributes().getOrDefault(Attributes.DOC, "");
         String summary = node.attributes().getOrDefault("claim.summary", "");
         StringBuilder text = new StringBuilder(words);
         if (!documentation.isBlank()) text.append(". ").append(documentation);
         else if (!summary.isBlank()) text.append(". ").append(summary);
+        String behaviour = node.attributes().getOrDefault(Attributes.BEHAVIOUR, "");
+        if (!behaviour.isBlank()) text.append(". ").append(behaviour);
         return text.toString();
     }
 
