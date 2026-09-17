@@ -143,7 +143,7 @@ class TestVocabularyTest {
 
         String digest = TestVocabulary.digest(names);
 
-        assertTrue(digest.length() <= TestVocabulary.BUDGET, "digest was " + digest.length() + " characters");
+        assertTrue(digest.length() <= 240, "digest was " + digest.length() + " characters");
     }
 
     @Test void a_phrase_drops_the_word_that_only_marks_it_a_test() {

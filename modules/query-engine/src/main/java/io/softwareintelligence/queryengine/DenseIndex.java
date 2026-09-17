@@ -60,13 +60,26 @@ public final class DenseIndex {
                 .filter(node -> ANCHORABLE.contains(node.kind()))
                 .sorted(Comparator.comparing(GraphNode::id))
                 .toList();
-        List<String> texts = documents.stream().map(DenseIndex::text).toList();
+        // One flat list of every node's facets, so the encoder is still called once for the whole
+        // graph; `spans` remembers which rows belong to which node.
+        List<String> texts = new java.util.ArrayList<>();
+        int[] spans = new int[documents.size() + 1];
+        for (int i = 0; i < documents.size(); i++) {
+            spans[i] = texts.size();
+            texts.addAll(facets(documents.get(i)));
+        }
+        spans[documents.size()] = texts.size();
+
+        float[][] encoded = encoder.encode(texts);
+        float[][] vectors = new float[documents.size()][];
+        for (int i = 0; i < documents.size(); i++) vectors[i] = Vectors.pool(encoded, spans[i], spans[i + 1]);
+
         boolean[] test = new boolean[documents.size()];
         for (int i = 0; i < documents.size(); i++) {
             GraphNode node = documents.get(i);
             test[i] = TestCode.is(node.name(), node.provenance().file());
         }
-        return new DenseIndex(documents, encoder.encode(texts), test, encoder);
+        return new DenseIndex(documents, vectors, test, encoder);
     }
 
     /** How many of the embedded nodes are test code, which is what the demotion applies to. */
@@ -79,7 +92,7 @@ public final class DenseIndex {
     public int size() { return documents.size(); }
 
     /**
-     * The text a node is embedded as: its name split into words, then its documentation.
+     * The texts a node is embedded as: what it is, and then each optional source of added prose.
      *
      * <p>Split on camel case because an encoder is trained on prose — {@code BeforeEachCallback} is
      * one unknown token, "Before Each Callback" is three known ones, and only the second can be
@@ -87,19 +100,27 @@ public final class DenseIndex {
      * Java repository already written in a reader's register, and the test-name digest after it for
      * the same reason on code that has no doc sentence.
      */
-    private static String text(GraphNode node) {
+    static List<String> facets(GraphNode node) {
         String simple = node.name();
         int dot = simple.lastIndexOf('.');
         if (dot >= 0 && dot < simple.length() - 1) simple = simple.substring(dot + 1);
         String words = simple.replaceAll("(?<!^)(?=[A-Z][a-z])|(?<=[a-z0-9])(?=[A-Z])", " ");
         String documentation = node.attributes().getOrDefault(Attributes.DOC, "");
         String summary = node.attributes().getOrDefault("claim.summary", "");
-        StringBuilder text = new StringBuilder(words);
-        if (!documentation.isBlank()) text.append(". ").append(documentation);
-        else if (!summary.isBlank()) text.append(". ").append(summary);
+        StringBuilder identity = new StringBuilder(words);
+        // The doc sentence stays with the name rather than becoming its own facet: it is what the
+        // symbol is, written by the person who wrote the symbol, and splitting them would halve the
+        // weight of the one description this project has evidence for.
+        if (!documentation.isBlank()) identity.append(". ").append(documentation);
+        else if (!summary.isBlank()) identity.append(". ").append(summary);
+
+        List<String> facets = new java.util.ArrayList<>();
+        facets.add(identity.toString());
         String behaviour = node.attributes().getOrDefault(Attributes.BEHAVIOUR, "");
-        if (!behaviour.isBlank()) text.append(". ").append(behaviour);
-        return text.toString();
+        if (!behaviour.isBlank()) facets.add(behaviour);
+        String history = node.attributes().getOrDefault(Attributes.HISTORY, "");
+        if (!history.isBlank()) facets.add(history);
+        return facets;
     }
 
     /**

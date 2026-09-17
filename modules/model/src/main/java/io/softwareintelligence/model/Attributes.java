@@ -19,5 +19,12 @@ public final class Attributes {
      */
     public static final String BEHAVIOUR = "behaviour";
 
+    /**
+     * A digest of the commit subjects that changed this symbol, capped. Written by the
+     * commit-vocabulary pass. Named for its provenance on purpose: it is the one attribute that does
+     * not come from the source at the pinned commit, and a card showing it should say so.
+     */
+    public static final String HISTORY = "history";
+
     private Attributes() { }
 }

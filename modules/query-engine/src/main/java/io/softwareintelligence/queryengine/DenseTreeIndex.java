@@ -84,8 +84,18 @@ public final class DenseTreeIndex {
         Map<String, Integer> position = new HashMap<>();
         number(tree, preorder, position);
 
-        List<String> texts = preorder.stream().map(DenseTreeIndex::readable).toList();
-        float[][] cards = encoder.encode(texts);
+        // Each card may carry more than one source of prose; they are encoded in one flat list and
+        // pooled per node, so a card's vector means the same thing here as it does in DenseIndex.
+        List<String> texts = new ArrayList<>();
+        int[] spans = new int[preorder.size() + 1];
+        for (int i = 0; i < preorder.size(); i++) {
+            spans[i] = texts.size();
+            texts.addAll(readable(preorder.get(i)));
+        }
+        spans[preorder.size()] = texts.size();
+        float[][] encoded = encoder.encode(texts);
+        float[][] cards = new float[preorder.size()][];
+        for (int i = 0; i < preorder.size(); i++) cards[i] = Vectors.pool(encoded, spans[i], spans[i + 1]);
         int dimensions = encoder.dimensions();
 
         // Post-order by walking preorder backwards: a node always appears before its descendants,
@@ -106,11 +116,11 @@ public final class DenseTreeIndex {
             }
             // A CENTROID parent must see its children as unit vectors, so each node is normalised as
             // soon as it is folded rather than in one pass at the end.
-            if (aggregation == Aggregation.CENTROID) normalize(folded);
+            if (aggregation == Aggregation.CENTROID) Vectors.normalize(folded);
             aggregates[i] = folded;
             counts[i] = count;
         }
-        for (float[] vector : aggregates) normalize(vector);
+        for (float[] vector : aggregates) Vectors.normalize(vector);
         return new DenseTreeIndex(position, aggregates, dimensions, aggregation);
     }
 
@@ -128,13 +138,6 @@ public final class DenseTreeIndex {
         for (int d = 0; d < into.length; d++) {
             into[d] = (float) ((into[d] * intoCount + other[d] * otherCount) / total);
         }
-    }
-
-    private static void normalize(float[] vector) {
-        double norm = 0;
-        for (float component : vector) norm += (double) component * component;
-        norm = Math.sqrt(norm);
-        if (norm > 0) for (int d = 0; d < vector.length; d++) vector[d] /= (float) norm;
     }
 
     /** Cosine of the question against the folded vector of everything at or below this node. */
@@ -161,8 +164,8 @@ public final class DenseTreeIndex {
         }
     }
 
-    /** The card as prose: split identifiers, then whatever documentation it carries. */
-    static String readable(IndexNode node) {
+    /** The card as prose: what the entry is, then each optional source of added prose in turn. */
+    static List<String> readable(IndexNode node) {
         String name = node.name();
         int dot = name.lastIndexOf('.');
         if (dot >= 0 && dot < name.length() - 1 && node.kind() != IndexKind.PACKAGE) {
@@ -170,11 +173,16 @@ public final class DenseTreeIndex {
         }
         String words = name.replaceAll("[._/]", " ")
                 .replaceAll("(?<!^)(?=[A-Z][a-z])|(?<=[a-z0-9])(?=[A-Z])", " ");
-        StringBuilder text = new StringBuilder(words);
+        StringBuilder identity = new StringBuilder(words);
         String documentation = node.facts().getOrDefault(Attributes.DOC, node.facts().getOrDefault("summary", ""));
-        if (!documentation.isBlank()) text.append(". ").append(documentation);
+        if (!documentation.isBlank()) identity.append(". ").append(documentation);
+
+        List<String> facets = new ArrayList<>();
+        facets.add(identity.toString());
         String behaviour = node.facts().getOrDefault(Attributes.BEHAVIOUR, "");
-        if (!behaviour.isBlank()) text.append(". ").append(behaviour);
-        return text.toString();
+        if (!behaviour.isBlank()) facets.add(behaviour);
+        String history = node.facts().getOrDefault(Attributes.HISTORY, "");
+        if (!history.isBlank()) facets.add(history);
+        return facets;
     }
 }

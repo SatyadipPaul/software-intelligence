@@ -11,7 +11,6 @@ import io.softwareintelligence.model.TestSources;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -69,15 +68,6 @@ public final class TestVocabulary {
      * which are exactly what their tests are about.
      */
     static final double FIXTURE_SHARE = 0.5;
-
-    /**
-     * The character budget for one type's digest, matching the Javadoc first-sentence cap.
-     *
-     * <p>Same reason as there: a card that grows with the number of tests would reintroduce the
-     * length-noise BM25 normalisation then has to undo, and a type with two hundred tests would
-     * outrank a type with two on volume alone.
-     */
-    static final int BUDGET = 240;
 
     /** Names that start a test and say nothing: the phrase begins after them. */
     private static final Set<String> LEADING_NOISE = Set.of(
@@ -152,43 +142,14 @@ public final class TestVocabulary {
         }
     }
 
-    /**
-     * Picks phrases that each add the most words not already said, until the budget runs out.
-     *
-     * <p>Taking the first N alphabetically would spend the whole budget on {@code addAllWithNull},
-     * {@code addAllWithEmpty}, {@code addAllWithDuplicate}. The point of this attribute is the
-     * vocabulary it adds, so what it selects for is vocabulary added per character.
-     */
+    /** The selected names as one bounded, deduplicated line. */
     static String digest(Set<String> names) {
         Set<String> phrases = new TreeSet<>();
         for (String name : names) {
             String phrase = phrase(name);
             if (!phrase.isEmpty()) phrases.add(phrase);
         }
-        Set<String> said = new HashSet<>();
-        List<String> chosen = new ArrayList<>();
-        int used = 0;
-        while (!phrases.isEmpty()) {
-            String best = null;
-            int bestGain = 0;
-            for (String phrase : phrases) {
-                int gain = 0;
-                for (String word : phrase.split(" ")) if (!said.contains(word)) gain++;
-                if (gain > bestGain) {
-                    bestGain = gain;
-                    best = phrase;
-                }
-            }
-            if (best == null) break;
-            phrases.remove(best);
-            // Skipped rather than truncated, and the loop continues: a long phrase that does not fit
-            // must not stop a short one that does.
-            if (used + best.length() + 2 > BUDGET) continue;
-            chosen.add(best);
-            used += best.length() + 2;
-            said.addAll(List.of(best.split(" ")));
-        }
-        return String.join("; ", chosen);
+        return VocabularyDigest.of(phrases);
     }
 
     /** A test name as the sentence it was written to be, minus the word that only marks it a test. */

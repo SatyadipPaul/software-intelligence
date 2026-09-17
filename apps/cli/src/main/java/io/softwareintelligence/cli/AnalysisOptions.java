@@ -35,6 +35,12 @@ final class AnalysisOptions {
                     + "Off by default: it measured negative on every repository benchmarked here.")
     private boolean testVocabulary;
 
+    @CommandLine.Option(names = "--commit-vocabulary",
+            description = "Read commit subjects as prose about the undocumented files they changed. "
+                    + "Off by default: it reads git history rather than the source at the analyzed "
+                    + "commit, needs a full clone, and refuses a shallow one.")
+    private boolean commitVocabulary;
+
     /**
      * Loads a graph from whatever the user pointed at: a `.json` graph or snapshot is read back,
      * and anything else is analyzed as a repository.
@@ -62,7 +68,7 @@ final class AnalysisOptions {
             }
             entries = discovered.entries();
         }
-        RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8, testVocabulary);
+        RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8, testVocabulary, commitVocabulary);
         return new RepositoryModel().build(repository, entries, !noTests, layers);
     }
 

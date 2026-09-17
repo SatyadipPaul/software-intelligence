@@ -170,6 +170,7 @@ truncating silently. For very large graphs use `--format GRAPHML` and open it in
 - Retrieve minimum sufficient evidence rather than entire files or communities.
 - Treat impact analysis and verified answers as product capabilities built on the same model.
 - Everything in the bundle is open source, and the build proves it rather than a document claiming it.
+- An optional pass that reads outside the pinned source says so in its attribute name, and is off by default.
 
 ## Licensing: everything in the bundle is open source
 

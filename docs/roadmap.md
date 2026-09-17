@@ -224,9 +224,24 @@ answered the question. The pass ships off, behind `--test-vocabulary`, because t
 built for — uncommented business logic with a large test suite — is the one profile this corpus
 cannot represent. See [test vocabulary](benchmarks/test-vocabulary-2026-09-17.md).
 
-That result changes what to expect of commit messages rather than ruling them out: a commit message
-says why a thing exists, which is nearer to what it is. It also fixes the experiment to run —
-gap-filling first, and a check for what the new text *displaces*, not only for what it adds.
+**Commit messages were built next, and they pay — after the displacement turned out to be a bug in
+how prose was pooled rather than a property of the prose.** `CommitVocabulary` reads focused commits
+(more than ten files changed is a sweep, not a description), drops merges, keeps the newest twenty
+per file, and shares the test-name digest. Its first measurement was another wash made of two
+opposite effects: junit5 gained, and `AnnotatedClass` fell out of the top five on jd-064 again — the
+same node and the same question the test-name run had broken, from an unrelated source. Twice is a
+mechanism. `DenseIndex` was embedding a node as one concatenated string and mean-pooling it, which
+weighs each source by how many words it happens to have: a name is three words, a commit digest is
+forty, so a change log outvoted the identifier. Embedding each source separately and averaging unit
+vectors — one source, one vote, no fitted constant, and bit-for-bit unchanged for a node with one
+source — turns 0.472 into **0.507** against a re-measured baseline of 0.493. Test names stay negative
+under the same pooling, so #13's conclusion survives its own best defence. `--commit-vocabulary` is
+opt-in because it reads git history rather than the source at the pinned commit, needs a full clone
+and refuses a shallow one — not because it costs anything. See
+[commit vocabulary](benchmarks/commit-vocabulary-2026-09-17.md).
+
+**Tier 0 is finished.** What is left is generated text, which is step 5, and the enterprise corpus
+nobody has.
 
 **3. Choose an encoder under the distribution constraint.** Every locally-runnable graph-RAG system
 has converged on the same point — 384 dimensions, 22–33M parameters — and everything larger is an
