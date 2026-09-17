@@ -163,7 +163,8 @@ context packet. Beyond `--max-nodes` the view keeps the highest-degree nodes and
 truncating silently. For very large graphs use `--format GRAPHML` and open it in Gephi or yEd.
 
 Release notes are in [`CHANGELOG.md`](CHANGELOG.md); every number in them names the benchmark it
-came from.
+came from. How a release is cut, and what is deliberately not published, is in
+[`RELEASING.md`](RELEASING.md).
 
 ## Design principles
 
