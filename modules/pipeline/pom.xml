@@ -4,6 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>pipeline</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <description>
+    Composes the layers in the one order the architecture requires: deterministic Java facts first, then
+    framework interpretation, then architecture summaries. Any suffix can be switched off and the facts
+    underneath stay identical.
+  </description>
   <name>Analysis pipeline composition</name>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>

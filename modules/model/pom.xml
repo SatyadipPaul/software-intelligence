@@ -4,6 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>model</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <description>
+    The canonical graph every layer reads and writes: nodes, edges, entity and relation kinds, and the
+    provenance record that ties each fact to a resolver, a confidence and a source location. Depends on
+    nothing but the JDK.
+  </description>
   <name>Canonical repository model</name>
   <dependencies>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>

@@ -16,6 +16,12 @@
   <developers>
     <developer><id>satyadippaul</id><name>Satyadip Paul</name></developer>
   </developers>
+  <!--
+    Every module repeats <url> rather than inheriting it. Maven appends the child's directory to an
+    inherited URL, which would publish thirteen artifacts pointing at paths GitHub answers with a
+    404; the documented attribute for suppressing that (child.project.url.inherit.append.path) was
+    tried here and has no effect on Maven 3.9.11. One line per module is the version that works.
+  -->
   <scm>
     <connection>scm:git:https://github.com/SatyadipPaul/software-intelligence.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/SatyadipPaul/software-intelligence.git</developerConnection>

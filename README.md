@@ -162,6 +162,9 @@ tables, and guards; `ARCHITECTURE` keeps modules, capabilities, and workflows; `
 context packet. Beyond `--max-nodes` the view keeps the highest-degree nodes and says so rather than
 truncating silently. For very large graphs use `--format GRAPHML` and open it in Gephi or yEd.
 
+Release notes are in [`CHANGELOG.md`](CHANGELOG.md); every number in them names the benchmark it
+came from.
+
 ## Design principles
 
 - Deterministic analysis first; LLMs are optional downstream consumers.

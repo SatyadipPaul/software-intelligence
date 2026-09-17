@@ -4,6 +4,8 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>embedding</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <name>Optional dense text encoder</name>
   <description>Optional dense encoder. The tokenizer and vector maths are plain Java; only the ONNX
     backend needs a native runtime, and it is an optional dependency so nothing downstream inherits
     a per-platform binary by depending on this module.</description>

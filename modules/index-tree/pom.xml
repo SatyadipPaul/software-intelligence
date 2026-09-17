@@ -4,6 +4,13 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>index-tree</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <name>Navigable index tree</name>
+  <description>
+    Derives a tree of cards from the graph's own containment - repository, module, capability or package,
+    type, member - so retrieval can descend structure rather than rank a flat list. Deterministic,
+    fingerprinted against the graph it came from, and pinnable to a file.
+  </description>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>model</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>

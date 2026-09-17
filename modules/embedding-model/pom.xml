@@ -4,6 +4,8 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>embedding-model</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <name>Packaged embedding weights</name>
   <description>Quantized static embedding weights, packaged so that adding this dependency is the
     whole of the configuration. Carries no code: EncoderFactory.packaged() finds the files by their
     fixed resource path. Built only when weights are actually present — see this module's README for

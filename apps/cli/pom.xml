@@ -4,6 +4,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.1.0</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>cli</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <description>
+    The repo-intel command line: analyze, impact, context, architecture, ask, index, navigate, snapshot,
+    diff, evaluate, visualize and enrichment planning. Local-first - no service, no upload, and no model
+    credentials required for anything deterministic.
+  </description>
   <name>Repository intelligence CLI</name>
   <dependencies>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>analyzer-java</artifactId><version>${project.version}</version></dependency>
