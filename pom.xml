@@ -50,9 +50,54 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>3.5.0</version>
-          <executions><execution><id>require-jdk-25</id><goals><goal>enforce</goal></goals><configuration><rules>
-            <requireJavaVersion><version>[25,26)</version></requireJavaVersion>
-          </rules></configuration></execution></executions>
+          <executions>
+            <execution><id>require-jdk-25</id><goals><goal>enforce</goal></goals><configuration><rules>
+              <requireJavaVersion><version>[25,26)</version></requireJavaVersion>
+            </rules></configuration></execution>
+            <!--
+              Everything published has to be open source, so every dependency that can reach a
+              published artifact is named here, and nothing else may. The rule bans all coordinates
+              and then permits the audited ones: a new dependency, direct or transitive, fails the
+              build until someone has read its licence and added it to THIRD-PARTY-NOTICES.md. An
+              inventory that is only a document drifts; this one cannot.
+            -->
+            <execution><id>only-audited-dependencies</id><goals><goal>enforce</goal></goals><configuration><rules>
+              <bannedDependencies>
+                <searchTransitive>true</searchTransitive>
+                <message>Undeclared dependency on the distribution path. Everything that reaches a
+                  published artifact must be open source, audited, and listed in
+                  THIRD-PARTY-NOTICES.md before it is added to the allow-list in the root POM's
+                  only-audited-dependencies rule.</message>
+                <excludes><exclude>*</exclude></excludes>
+                <includes>
+                  <!-- This project. -->
+                  <include>io.github.satyadippaul:*</include>
+                  <!-- Eclipse JDT and the Platform and Equinox pieces it needs: EPL-2.0. -->
+                  <include>org.eclipse.jdt:org.eclipse.jdt.core:3.46.0</include>
+                  <include>org.eclipse.jdt:ecj:3.46.0</include>
+                  <include>org.eclipse.platform:*</include>
+                  <!-- OSGi service and annotation jars: Apache-2.0. -->
+                  <include>org.osgi:*</include>
+                  <!-- JNA: dual LGPL-2.1-or-later / Apache-2.0, Apache-2.0 elected. See NOTICE. -->
+                  <include>net.java.dev.jna:jna:5.18.1</include>
+                  <include>net.java.dev.jna:jna-platform:5.18.1</include>
+                  <!-- Command line parsing: Apache-2.0. -->
+                  <include>info.picocli:picocli:4.7.6</include>
+                  <!-- Optional dense backend, never bundled: MIT. -->
+                  <include>com.microsoft.onnxruntime:onnxruntime:1.20.0</include>
+                  <!--
+                    Test and provided scope are open, because neither reaches a published artifact:
+                    a test dependency is not transitive to a consumer, and a provided one is the
+                    Maven runtime's own tree, supplied by the build rather than shipped by us. The
+                    rule is about what is distributed, and pinning Maven's internals here would make
+                    it fail on a Maven upgrade while saying nothing about the bundle.
+                  -->
+                  <include>*:*:*:*:test</include>
+                  <include>*:*:*:*:provided</include>
+                </includes>
+              </bannedDependencies>
+            </rules></configuration></execution>
+          </executions>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>

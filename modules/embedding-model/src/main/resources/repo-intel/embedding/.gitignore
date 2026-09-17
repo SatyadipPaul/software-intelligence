@@ -1,4 +1,5 @@
 # Weights are produced by `repo-intel quantize-model`, not committed: they are large, binary, and
-# someone else's. See this module's README for the licence checklist that gates publishing them.
+# someone else's. The module refuses to build unless LICENSE and PROVENANCE.md sit beside them, and
+# those two ARE committed - they are the record of whose work this is. See this module's README.
 model.safetensors
 vocab.txt

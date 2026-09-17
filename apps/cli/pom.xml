@@ -19,6 +19,22 @@
   </dependencies>
   <build>
     <plugins>
+      <!--
+        The legal files live once, at the repository root, and are copied into the jar rather than
+        duplicated in a resources directory. A second copy in the tree is a second copy to forget.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId><artifactId>maven-resources-plugin</artifactId><version>3.3.1</version>
+        <executions><execution><id>copy-legal</id><phase>generate-resources</phase><goals><goal>copy-resources</goal></goals>
+          <configuration>
+            <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
+            <resources><resource>
+              <directory>${project.basedir}/../..</directory>
+              <includes><include>LICENSE</include><include>NOTICE</include><include>THIRD-PARTY-NOTICES.md</include></includes>
+            </resource></resources>
+          </configuration>
+        </execution></executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version>
         <configuration><archive><manifest><mainClass>io.softwareintelligence.cli.Main</mainClass></manifest></archive></configuration>
@@ -28,10 +44,34 @@
         <executions><execution><phase>package</phase><goals><goal>shade</goal></goals><configuration>
           <createDependencyReducedPom>false</createDependencyReducedPom>
           <finalName>repo-intel</finalName>
-          <filters><filter><artifact>*:*</artifact><excludes>
-            <exclude>META-INF/*.SF</exclude><exclude>META-INF/*.DSA</exclude><exclude>META-INF/*.RSA</exclude>
-          </excludes></filter></filters>
-          <transformers><transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"><mainClass>io.softwareintelligence.cli.Main</mainClass></transformer></transformers>
+          <filters>
+            <filter><artifact>*:*</artifact><excludes>
+              <exclude>META-INF/*.SF</exclude><exclude>META-INF/*.DSA</exclude><exclude>META-INF/*.RSA</exclude>
+            </excludes></filter>
+            <!--
+              META-INF/LICENSE can only mean one thing in one jar, and in a shaded jar that thing is
+              the aggregate's licence. Before this, whichever dependency won the race decided it:
+              the published jar carried JNA's file, which opens "Java Native Access (JNA) is licensed
+              under the LGPL, version 2.1" - a statement about one dependency, standing where a
+              reader looks for the licence of everything. Neither exclusion loses any text. JNA's own
+              licences stay at META-INF/AL2.0 and META-INF/LGPL2.1, the OSGi jars' Apache-2.0 text
+              stays at about_files/LICENSE-2.0.txt, and both are named in META-INF/THIRD-PARTY-NOTICES.md.
+            -->
+            <filter><artifact>net.java.dev.jna:*</artifact><excludes><exclude>META-INF/LICENSE</exclude></excludes></filter>
+            <filter><artifact>org.osgi:*</artifact><excludes><exclude>META-INF/LICENSE</exclude></excludes></filter>
+          </filters>
+          <transformers>
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"><mainClass>io.softwareintelligence.cli.Main</mainClass></transformer>
+            <!-- Equinox and the OSGi jars register services; concatenating the files rather than
+                 letting one jar's copy win is the difference between a working uber-jar and one
+                 that fails on whichever provider lost the race. -->
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+            <!-- Apache-2.0 section 4(d) says a redistribution carries the NOTICE it received, so
+                 the OSGi jars' notices are concatenated rather than overwritten by ours. -->
+            <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+              <resource>META-INF/NOTICE</resource>
+            </transformer>
+          </transformers>
         </configuration></execution></executions>
       </plugin>
     </plugins>

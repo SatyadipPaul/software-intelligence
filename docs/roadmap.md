@@ -239,6 +239,16 @@ reference; ship one, as a separate optional artifact, with the core degrading to
 See [encoder selection](encoder-selection.md) — every figure in it is unverified, because the model
 hosts are blocked here.
 
+**The weights are the one thing in the bundle whose licence is not yet established, and shipping is
+now blocked on it by the build rather than by a note.** Everything else this project publishes is
+audited open source: the root POM's enforcer holds an allow-list of every dependency on the
+distribution path, the shaded jar carries its own licence and the full inventory rather than
+whichever `META-INF/LICENSE` won the shading race, and JNA's dual licence is elected to Apache-2.0
+in `NOTICE`. The weights that produced the numbers above came from an npm re-packaging whose
+`license` field describes the wrapper, not the model, so `modules/embedding-model` refuses to build
+unless the model's own `LICENSE` and a `PROVENANCE.md` sit beside them. See
+[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
+
 **4. Only then, the dilution fix. Done, and it says the dilution hypothesis was wrong.** The
 max-passage repair failed *because it was applied to scores*; PARADE's finding is that aggregating
 passage **representations** beats aggregating passage **scores**. `DenseTreeIndex` now folds a

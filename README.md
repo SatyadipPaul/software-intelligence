@@ -169,6 +169,27 @@ truncating silently. For very large graphs use `--format GRAPHML` and open it in
 - Every relation is source-backed, and unresolved facts stay explicitly unresolved.
 - Retrieve minimum sufficient evidence rather than entire files or communities.
 - Treat impact analysis and verified answers as product capabilities built on the same model.
+- Everything in the bundle is open source, and the build proves it rather than a document claiming it.
+
+## Licensing: everything in the bundle is open source
+
+The project is Apache-2.0. Every dependency that can reach a published artifact is open source, and
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) is the inventory — artifact, version, licence and
+source, read from each artifact's own POM. It is not a document that has to be remembered:
+
+- **The root POM's enforcer carries an allow-list.** A new dependency, direct or transitive, on the
+  compile or runtime path fails the build until someone has read its licence and added it. Test and
+  provided scope are open, because neither reaches a published artifact.
+- **The shaded jar states its own terms.** `META-INF/LICENSE`, `META-INF/NOTICE` and
+  `META-INF/THIRD-PARTY-NOTICES.md` are the aggregate's, and every dependency's own licence text
+  stays where it was. Before this was set up, the published `META-INF/LICENSE` was whichever file
+  won the shading race — in practice JNA's, which opens by naming the LGPL.
+- **JNA is dual-licensed and this project elects Apache-2.0**, so nothing bundled is under a licence
+  that reaches beyond its own files. The Eclipse components are EPL-2.0, redistributed unmodified,
+  with source available at the same coordinates.
+- **The optional weights artifact refuses to build without a licence.** Model weights are someone
+  else's work; `modules/embedding-model` will not package them unless the model's own `LICENSE` and a
+  `PROVENANCE.md` sit beside them. No weights are committed to this repository.
 
 ## Current coverage and boundary
 
