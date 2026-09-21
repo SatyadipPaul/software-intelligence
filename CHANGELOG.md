@@ -10,7 +10,14 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **The Central publishing plugin is current again**, 0.5.0 to 0.11.0. Releasing 0.2.0 uploaded the
+  bundle successfully and then failed the build reading the portal's reply, because the API had
+  grown a `warnings` field that 0.5.0 deserializes strictly and does not know. The upload is the
+  irreversible half of a release, so failing after it is the worst place to fail: the deployment was
+  staged and waiting while CI reported a red build, and the step that attaches the runnable jar to
+  the GitHub release never ran. Pinning a stale version of this plugin is not a neutral choice.
 
 ## [0.2.0] — 2026-09-21
 
