@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.satyadippaul</groupId>
   <artifactId>software-intelligence</artifactId>
-  <version>0.2.0-SNAPSHOT</version>
+  <version>0.2.0</version>
   <packaging>pom</packaging>
   <name>Software Intelligence</name>
   <description>Evidence-first, Java-first repository intelligence: a deterministic, provenance-bearing software model.</description>
