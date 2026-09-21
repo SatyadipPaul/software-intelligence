@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.2.0-SNAPSHOT</version><relativePath>../../pom.xml</relativePath></parent>
+  <artifactId>embedding-model</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <name>Packaged embedding weights</name>
+  <description>Quantized static embedding weights, packaged so that adding this dependency is the
+    whole of the configuration. Carries no code: EncoderFactory.packaged() finds the files by their
+    fixed resource path. Built only when weights are actually present — see this module's README for
+    how to produce them and what must be checked before publishing third-party weights.</description>
+  <!-- No dependencies on purpose. This artifact is data; anything that reads it already depends on
+       the embedding module, and making weights depend on code would force a consumer to take both. -->
+  <build>
+    <plugins>
+      <!--
+        The weights are someone else's work, and redistributing them is a licensing act. This module
+        only exists when weights are present, so this rule fires exactly when something is about to
+        be packaged: no licence text and no provenance record beside the weights, no build. It is the
+        README's checklist expressed as a build failure, because a checklist is a thing a hurried
+        maintainer skips and a build failure is not.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId><artifactId>maven-enforcer-plugin</artifactId>
+        <executions><execution><id>weights-must-carry-their-licence</id><goals><goal>enforce</goal></goals><configuration><rules>
+          <requireFilesExist>
+            <files>
+              <file>${project.basedir}/src/main/resources/repo-intel/embedding/LICENSE</file>
+              <file>${project.basedir}/src/main/resources/repo-intel/embedding/PROVENANCE.md</file>
+            </files>
+            <message>Model weights are present but their licence is not. Put the model's own licence
+              text at src/main/resources/repo-intel/embedding/LICENSE and a provenance record - model
+              name, upstream URL, pinned revision, what it was distilled from, and the licence of
+              that - at PROVENANCE.md beside it. Both travel inside the artifact. See this module's
+              README. Everything this project publishes is open source, and weights whose licence
+              nobody has read cannot be shown to be.</message>
+          </requireFilesExist>
+        </rules></configuration></execution></executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

@@ -5,6 +5,7 @@ import io.softwareintelligence.model.GraphJsonWriter;
 import io.softwareintelligence.model.Json;
 import io.softwareintelligence.queryengine.EnrichmentClaims;
 import io.softwareintelligence.queryengine.EnrichmentMerge;
+import io.softwareintelligence.queryengine.BranchEnrichment;
 import io.softwareintelligence.queryengine.EnrichmentPlanner;
 import picocli.CommandLine;
 
@@ -26,13 +27,22 @@ final class EnrichTargetsCommand implements Callable<Integer> {
             description = "JSON for a program that loops; MARKDOWN for a person or a chat assistant")
     private Format format;
 
+    @CommandLine.Option(names = "--branches",
+            description = "Rank index-tree branches instead of symbols: a summary there is read by every descent through it")
+    private boolean branches;
+
+    @CommandLine.Option(names = "--index", description = "Use a pinned tree file rather than deriving one")
+    private Path indexFile;
+
     enum Format { JSON, MARKDOWN }
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
         CodeGraph graph = options.analyze(source);
         EnrichmentPlanner.Budget budget = new EnrichmentPlanner.Budget(maxTokens, costPerThousand);
-        EnrichmentPlanner.Plan plan = EnrichmentPlanner.plan(graph, budget);
+        EnrichmentPlanner.Plan plan = branches
+                ? BranchEnrichment.plan(graph, TreeOptions.load(graph, indexFile), budget)
+                : EnrichmentPlanner.plan(graph, budget);
         List<EnrichmentPlanner.Candidate> selected = plan.selected().stream().limit(limit).toList();
         List<EnrichmentClaims.WorkPacket> packets = EnrichmentClaims.workPackets(graph, selected);
         Path destination = output.toAbsolutePath();

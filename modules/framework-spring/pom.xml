@@ -4,6 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.2.0-SNAPSHOT</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>framework-spring</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
   <name>Spring and persistence framework model</name>
   <description>Interprets Java facts as Spring operational structure: bean wiring, endpoints, guards, queries, and clients.</description>
   <dependencies>

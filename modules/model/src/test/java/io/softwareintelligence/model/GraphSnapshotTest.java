@@ -119,4 +119,26 @@ class GraphSnapshotTest {
         graph.addEdge(new GraphEdge("type:demo.A", "type:demo.B", RelationKind.DEPENDS_ON, Map.of("resolution", "JDT_BINDING"), SOURCE));
         return graph;
     }
+
+    @Test void a_symbol_named_edges_does_not_swallow_the_edge_array(@TempDir Path directory) throws IOException {
+        // Analyzing this repository produces CodeGraph#edges(), whose node is written as
+        // "name":"edges" long before the real edges array. A reader that located the array by
+        // searching the text for that key read back a graph with no edges at all, and every
+        // command that accepts a graph file then answered "nothing is affected" without failing.
+        CodeGraph graph = new CodeGraph();
+        Provenance source = new Provenance("JDT_AST", 1.0, "src/main/java/demo/CodeGraph.java", 12, 3);
+        graph.upsertNode(new GraphNode("type:demo.CodeGraph", EntityKind.TYPE, "demo.CodeGraph", Map.of(), source), true);
+        graph.upsertNode(new GraphNode("type:demo.CodeGraph#edges()", EntityKind.METHOD, "edges", Map.of(), source), true);
+        graph.upsertNode(new GraphNode("type:demo.CodeGraph#nodes()", EntityKind.METHOD, "nodes", Map.of(), source), true);
+        graph.addEdge(new GraphEdge("type:demo.CodeGraph", "type:demo.CodeGraph#edges()", RelationKind.DECLARES, Map.of(), source));
+        graph.addEdge(new GraphEdge("type:demo.CodeGraph", "type:demo.CodeGraph#nodes()", RelationKind.DECLARES, Map.of(), source));
+        Path file = directory.resolve("graph.json");
+        GraphSnapshot.write(graph, file);
+
+        CodeGraph read = GraphSnapshot.read(file);
+
+        assertEquals(3, read.nodes().size());
+        assertEquals(2, read.edges().size(), "the edge array was located by matching a node's name");
+        assertEquals(2, read.outgoing("type:demo.CodeGraph").size());
+    }
 }

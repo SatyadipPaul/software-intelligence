@@ -4,6 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.2.0-SNAPSHOT</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>repo-intel-maven-plugin</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
   <packaging>maven-plugin</packaging>
   <name>Repository Intelligence Maven Plugin</name>
   <description>Local-first, evidence-bearing Java repository analysis for Maven builds.</description>

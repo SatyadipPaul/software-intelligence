@@ -1,0 +1,104 @@
+name: Release
+
+# Releases are cut from a tag, and only from the default branch.
+#
+# Publishing from a laptop means the signing key lives on a laptop, and a coordinate published to
+# Maven Central can never be taken back or overwritten. This job is the only path that publishes, so
+# the key and the portal token exist in exactly one place — this repository's secrets — and the
+# artifacts are always built from a clean checkout of a commit that is already on main.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build and sign everything, but do not upload'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: The tag must be on main, and must match the project version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(sed -n 's|.*<version>\(.*\)</version>.*|\1|p' pom.xml | head -1)"
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag does not match the project version $version" >&2
+            exit 1
+          fi
+          # A release built from a commit that is not on main publishes code nobody reviewed, at
+          # coordinates that can never be reused.
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "tag $GITHUB_REF_NAME is not an ancestor of main; merge before tagging" >&2
+            exit 1
+          fi
+          echo "releasing $version from $GITHUB_SHA"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          # setup-java writes the settings.xml server entry and imports the key, so no credential
+          # is ever written into the repository.
+          server-id: central
+          server-username: CENTRAL_TOKEN_USERNAME
+          server-password: CENTRAL_TOKEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      # The same gate every pull request passes, run again on the exact tree being published.
+      - name: Verify
+        run: mvn -B clean verify
+
+      - name: Build, sign, and stage
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        # install rather than deploy: everything a release does, including signing, without the one
+        # step that cannot be undone.
+        run: mvn -B -Prelease -DskipTests install
+
+      - name: Publish to Maven Central
+        if: ${{ github.event_name == 'push' || !inputs.dry_run }}
+        env:
+          CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        # autoPublish is false in the release profile, so this uploads to a staging repository and
+        # stops. A human opens https://central.sonatype.com/publishing and releases it, or drops it.
+        run: mvn -B -Prelease -DskipTests deploy
+
+      - name: Attach the runnable jar to the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # The shaded jar is what every example in the README tells people to run, and it is not a
+        # Maven artifact: apps/cli publishes a thin jar. Without this step a release gives nobody a
+        # way to get the file the documentation is about.
+        run: |
+          set -euo pipefail
+          # The changelog section for this version, from its heading to the next one.
+          awk -v want="## [${GITHUB_REF_NAME#v}]" '
+            index($0, want) == 1 { inside = 1; next }
+            inside && /^## \[/  { exit }
+            inside               { print }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || echo "See CHANGELOG.md." > release-notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            apps/cli/target/repo-intel.jar

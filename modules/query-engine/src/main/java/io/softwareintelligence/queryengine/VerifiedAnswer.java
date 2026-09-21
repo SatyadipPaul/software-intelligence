@@ -85,13 +85,33 @@ public final class VerifiedAnswer {
      * to catch.
      */
     public static List<Claim> claimsFrom(ContextPacket packet) {
+        return claimsFrom(packet, java.util.Set.of(packet.subject().id()));
+    }
+
+    /**
+     * Restates a packet built from several anchors.
+     *
+     * <p>Each claim is anchored on the anchor its cited edge actually touches, not on the first one:
+     * a merged packet legitimately contains evidence for every anchor, and attributing all of it to
+     * whichever anchor happened to sort first is the same unsupported attribution this class exists
+     * to catch, only harder to notice.
+     */
+    public static List<Claim> claimsFrom(ContextPacket packet, java.util.Set<String> anchorIds) {
+        java.util.Set<String> anchors = anchorIds.isEmpty() ? java.util.Set.of(packet.subject().id()) : anchorIds;
         List<Claim> claims = new ArrayList<>();
         for (GraphEdge edge : packet.evidence()) {
-            String anchor = edge.from().equals(packet.subject().id()) || owner(edge.from()).equals(packet.subject().id())
-                    ? packet.subject().id() : edge.from();
-            claims.add(new Claim(describe(edge), anchor, List.of(new Citation(edge.from(), edge.to(), edge.kind().name()))));
+            claims.add(new Claim(describe(edge), anchorFor(edge, anchors),
+                    List.of(new Citation(edge.from(), edge.to(), edge.kind().name()))));
         }
         return List.copyOf(claims);
+    }
+
+    /** The anchor an edge belongs to, preferring the end that owns it, and falling back to its source. */
+    private static String anchorFor(GraphEdge edge, java.util.Set<String> anchors) {
+        for (String candidate : List.of(edge.from(), edge.to(), owner(edge.from()), owner(edge.to()))) {
+            if (anchors.contains(candidate)) return candidate;
+        }
+        return edge.from();
     }
 
     public static String render(Answer answer) {

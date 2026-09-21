@@ -4,6 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.2.0-SNAPSHOT</version><relativePath>../../pom.xml</relativePath></parent>
   <artifactId>architecture</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
   <name>Architecture intelligence</name>
   <description>Modules, centrality, communities, workflows, capabilities, and explainable change-risk scoring over the code graph.</description>
   <dependencies>

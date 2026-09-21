@@ -1,0 +1,18 @@
+software-intelligence
+Copyright the software-intelligence contributors
+
+This product is licensed under the Apache License, Version 2.0. See LICENSE.
+
+This product bundles third-party software. Every bundled component is open source; the
+inventory, with versions, licences and sources, is in THIRD-PARTY-NOTICES.md, which travels
+inside the shaded jar as META-INF/THIRD-PARTY-NOTICES.md.
+
+Two elections and statements a redistributor needs:
+
+  * JNA (net.java.dev.jna:jna, jna-platform) is offered under LGPL-2.1-or-later or
+    Apache-2.0 at the consumer's choice. This project elects Apache-2.0. The
+    META-INF/LGPL2.1 file inside the shaded jar describes an option not taken here.
+
+  * The Eclipse JDT, Platform and Equinox components are redistributed unmodified in
+    object form under EPL-2.0. Their source is available from Maven Central at the
+    same coordinates and versions with the -sources classifier.

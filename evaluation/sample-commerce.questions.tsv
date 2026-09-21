@@ -25,3 +25,22 @@ sc-007	sample-commerce	Which type consumes the payment event topic?	STRUCTURE	Pa
 sc-008	sample-commerce	Does removing PaymentGateway affect the checkout flow?	IMPACT	PaymentGateway	CheckoutService		0.85
 sc-009	sample-commerce	Everything affected if PaymentGateway changes	IMPACT	PaymentGateway	CheckoutService|CheckoutService.execute|CheckoutController|BillingLedger|BillingAdminController|checkout		0.85	true
 sc-010	sample-commerce	Everything affected if OrderRepository changes	IMPACT	OrderRepository	CheckoutService|CheckoutService.execute|CheckoutController|checkout		0.85	true
+#
+# sc-011 onwards are written subject-free: the question says what the code does, never what it is
+# called. Ground truth read from the fixture source, not from tool output.
+#
+sc-011	sample-commerce	Which route is protected by a role check?	ENDPOINT	BillingAdminController	endpoint:GET:/billing/ledger	com/acme/billing/BillingAdminController.java:24	0.55
+sc-012	sample-commerce	Which method runs inside a transaction?	LOOKUP	PaymentService	PaymentService.authorize	com/acme/checkout/PaymentService.java:9	0.55
+sc-013	sample-commerce	What reads an address out of configuration?	LOOKUP	BillingAdminController	property:billing.endpoint		0.55
+sc-014	sample-commerce	Which type writes down what happened for later review?	LOOKUP	AuditTrail	AuditTrail	com/acme/audit/AuditTrail.java:6	0.55
+sc-015	sample-commerce	Which service reaches into two other packages?	IMPACT	BillingLedger	AuditTrail|PaymentGateway	com/acme/billing/BillingLedger.java:12	0.55
+sc-016	sample-commerce	What stores the order once payment goes through?	LOOKUP	OrderRepository	OrderRepository	com/acme/checkout/OrderRepository.java:5	0.55
+sc-017	sample-commerce	What talks to the outside payment provider?	LOOKUP	PaymentGateway	PaymentGateway	com/acme/checkout/PaymentGateway.java:5	0.55
+sc-018	sample-commerce	What puts authorizing and saving in order?	LOOKUP	CheckoutService	PaymentGateway|OrderRepository	com/acme/checkout/CheckoutService.java:5	0.55
+sc-019	sample-commerce	Which package holds the buying flow?	STRUCTURE	CheckoutService	module:com.acme.checkout		0.55
+sc-020	sample-commerce	Which package holds the money record-keeping?	STRUCTURE	BillingLedger	module:com.acme.billing		0.55
+sc-021	sample-commerce	Which package exists only to record events?	STRUCTURE	AuditTrail	module:com.acme.audit		0.55
+sc-022	sample-commerce	What is affected by a change to the event recorder?	IMPACT	AuditTrail	BillingLedger		0.55
+sc-023	sample-commerce	Which guard stands in front of the ledger?	ENDPOINT	BillingAdminController	guard:PreAuthorize:hasRole('BILLING_ADMIN')		0.55
+sc-024	sample-commerce	Which routes does the administrative side expose?	ENDPOINT	BillingAdminController	endpoint:GET:/billing/ledger		0.55
+sc-025	sample-commerce	What listens for a message rather than serving a request?	LOOKUP	PaymentEventConsumer	PaymentEventConsumer	com/acme/checkout/PaymentEventConsumer.java:5	0.55
