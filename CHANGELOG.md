@@ -10,7 +10,11 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
-Targets 0.2.0. Everything below landed after `v0.1.0` was published to Maven Central.
+Nothing yet.
+
+## [0.2.0] — 2026-09-21
+
+Everything here landed after `v0.1.0` was published to Maven Central.
 
 ### Added — retrieval that navigates structure
 
@@ -149,5 +153,6 @@ Two defects in what it published are fixed in the next release rather than in it
 on Central cannot be replaced: the shaded jar's `META-INF/LICENSE` carried JNA's file rather than the
 project's, and no third-party inventory shipped with it. Both are listed under Fixed above.
 
-[Unreleased]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SatyadipPaul/software-intelligence/releases/tag/v0.1.0

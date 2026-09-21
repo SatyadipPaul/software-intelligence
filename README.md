@@ -315,7 +315,7 @@ mvn io.github.satyadippaul:repo-intel-maven-plugin:0.1.0:impact-check '-DrepoInt
 
 The plugin does not require Docker, a hosted graph, or source-code upload.
 
-See [publishing](docs/publishing.md) for how these artifacts reach Maven Central.
+See [releasing](RELEASING.md) for how these artifacts reach Maven Central.
 
 ## Layers above the deterministic graph
 
