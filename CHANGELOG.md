@@ -10,46 +10,16 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
-Nothing yet.
+Targets 0.2.0. Everything below landed after `v0.1.0` was published to Maven Central.
 
-## [0.1.0] — unreleased
+### Added — retrieval that navigates structure
 
-First public release. The date is set when the tag is cut.
+Three new modules — `index-tree`, `embedding` and `embedding-model` — and three new commands:
+`index`, `navigate` and `quantize-model`.
 
-### Added — the deterministic core
-
-- **`repo-intel`, a local-first command line** with fifteen commands: `inspect`, `impact`,
-  `context`, `architecture`, `ask`, `index`, `navigate`, `snapshot`, `diff`, `evaluate`,
-  `enrichment-plan`, `visualize`, `quantize-model`, `enrich-targets` and `enrich-apply`. No service,
-  no upload, and no model credentials for anything deterministic.
-- **A canonical, provenance-bearing code graph.** Every node and edge carries the resolver that
-  produced it, a confidence, and a file, line and column. A fact that could not be resolved stays
-  explicitly unresolved rather than being guessed.
-- **Compiler-grade Java semantics** through Eclipse JDT: cross-file calls, overloads,
-  implementations, fields, constructors, method references and library types when a build classpath
-  is supplied. Measured resolution: 99.82% on spring-petclinic, 99.96% on spring-petclinic-rest,
-  99.18% on jackson-databind, 98.82% on junit5.
-- **Classpath discovery for Maven and Gradle**, the latter verified against a build with Gradle
-  Isolated Projects enabled.
-- **Framework interpretation for Spring and JPA**: controllers, services, repositories, beans,
-  configuration properties, security guards, entities, tables, transactions, Kafka listeners, HTTP
-  endpoints and `@Query` table links, each emitted with provenance.
-- **Architecture summaries**: modules, workflows, business capabilities, communities
-  (connected-components and k-core behind one strategy interface), PageRank and degree centrality,
-  and a risk score that explains itself factor by factor and is discounted by the weakest confidence
-  on the evidence path.
-- **Reproducible exports.** Graph JSON, snapshots and the index tree are byte-for-byte stable across
-  runs and declare a schema version. `diff` compares a snapshot against the working tree and ranks
-  what changed by risk.
-- **Self-contained visualization.** An interactive HTML view that loads no script from anywhere,
-  plus GraphML, DOT and Cytoscape JSON.
-- **A Maven plugin** with `analyze` and `impact-check` goals that reuse the build's own classpath.
-
-### Added — retrieval
-
-- **Ask a question in words, not by name.** `BM25`, `TREE`, `HYBRID`, `DENSE` and `DENSE_HYBRID`
-  retrieval over the graph's own vocabulary; retrieval returns symbols that can be traversed and
-  cited rather than line ranges that still have to be located.
+- **Ask a question in words, not by name.** `TREE`, `DENSE` and `DENSE_HYBRID` join the existing
+  `BM25` and `HYBRID` modes. Retrieval returns symbols that can be traversed and cited rather than
+  line ranges that still have to be located.
 - **A navigable index tree** derived from the graph's containment — repository, module, capability
   or package, type, member — with oversized sibling sets grouped rather than truncated, and
   fingerprinted against the graph it came from. `navigate` walks it one card at a time so an
@@ -73,8 +43,8 @@ First public release. The date is set when the tag is cut.
 
 ### Added — evaluation
 
-- **200 grounded questions across four repositories**, keyed to source names and `file:line` rather
-  than to graph ids. Every answer was read out of the source at the pinned commit. 161 of the 200
+- **The corpus grew from 38 questions to 200** across the same four repositories, keyed to source
+  names and `file:line` rather than to graph ids. Every answer was read out of the source at the pinned commit. 161 of the 200
   never name the symbol they ask about, which is what the corpus is for.
 - **`evaluate`** scores structural accuracy, evidence recall, anchor recall, anchor coverage,
   recall@k and MRR, and can run a naive text-search baseline over the same questions for comparison.
@@ -84,15 +54,30 @@ First public release. The date is set when the tag is cut.
   reachable at all". It found that the tree is almost never the limitation — the answer is reachable
   97–98% of the time and the best automatic chooser reaches 27–56% of it.
 
-### Added — licensing and supply chain
+### Added — release engineering
+
+- **`CHANGELOG.md`, `RELEASING.md`, `NOTICE` and `THIRD-PARTY-NOTICES.md`**, none of which existed
+  when 0.1.0 was published.
+- **A tag-triggered release workflow** that publishes from CI rather than a workstation, refuses a
+  tag that is not on `main` or does not match the project version, stages rather than
+  auto-publishing, and attaches the runnable shaded jar to the GitHub release — `apps/cli` publishes
+  a thin jar, so every README example saying `java -jar repo-intel.jar` referred to a file no
+  release produced.
+- **An enforcer allow-list of every dependency on the distribution path**, so a new one fails the
+  build until someone has read its licence and added it to the inventory.
+
+### Fixed — licensing of what 0.1.0 published
 
 - **Every dependency on the distribution path is open source and audited**, listed with version,
-  licence and source in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+  licence and source in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). No such inventory
+  shipped with 0.1.0.
 - **The root POM's enforcer holds an allow-list.** A new dependency, direct or transitive, on the
   compile or runtime path fails the build until someone has read its licence and added it.
 - **The shaded jar states its own terms.** `META-INF/LICENSE`, `META-INF/NOTICE` and
   `META-INF/THIRD-PARTY-NOTICES.md` are the aggregate's, and every dependency's own licence text is
-  preserved where it already lived.
+  preserved where it already lived. **The published 0.1.0 jar does not have this**: its
+  `META-INF/LICENSE` is whichever file won the shading race, in practice JNA's, which opens by naming
+  the LGPL. That coordinate cannot be replaced, so the correction lands here.
 - **JNA's dual licence is elected to Apache-2.0**, so nothing bundled is under a licence that
   reaches beyond its own files. The Eclipse components are EPL-2.0, redistributed unmodified, with
   source available at the same coordinates.
@@ -152,6 +137,17 @@ because the measurement is the value — and one earlier "met" was withdrawn on 
 - Score-level max-passage, which came out worse than either of its inputs.
 - Element-wise max and size-blind centroid aggregation of subtree representations.
 - Test method names as Tier 0 prose.
+
+## [0.1.0] — 2026-09-11
+
+The first release to Maven Central, cut before this changelog existed. Its contents are the
+repository at [`v0.1.0`](https://github.com/SatyadipPaul/software-intelligence/releases/tag/v0.1.0);
+they are not reconstructed here, because a changelog written after the fact from a diff is a guess
+dressed as a record.
+
+Two defects in what it published are fixed in the next release rather than in it, since a coordinate
+on Central cannot be replaced: the shaded jar's `META-INF/LICENSE` carried JNA's file rather than the
+project's, and no third-party inventory shipped with it. Both are listed under Fixed above.
 
 [Unreleased]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/SatyadipPaul/software-intelligence/releases/tag/v0.1.0

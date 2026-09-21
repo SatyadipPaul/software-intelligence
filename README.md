@@ -63,6 +63,7 @@ fixtures/sample-commerce/    Small checkout flow for local smoke testing
 docs/architecture.md         Product architecture and invariants
 docs/roadmap.md              Sequenced implementation roadmap and exit criteria
 docs/hybrid-index-tree.md    Tree-navigated retrieval: design, and what it measured
+docs/evidence/               Terminal transcripts and a rendered graph screenshot (see below)
 ```
 
 ## Commands
@@ -161,6 +162,72 @@ Scope matters more than zoom: `OPERATIONAL` keeps the endpoints, services, repos
 tables, and guards; `ARCHITECTURE` keeps modules, capabilities, and workflows; `SYMBOL` draws one
 context packet. Beyond `--max-nodes` the view keeps the highest-degree nodes and says so rather than
 truncating silently. For very large graphs use `--format GRAPHML` and open it in Gephi or yEd.
+
+## Evidence: real output, not claims
+
+Every command below is copy-paste runnable against the fixture checked into this repository
+(`fixtures/sample-commerce`). Nothing here is hand-edited: this is `stdout` from an actual run.
+
+### `inspect`
+
+```text
+$ java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
+Wrote 72 nodes and 132 edges to outputs/sample-commerce.graph.json
+```
+
+### `impact` — source-backed blast radius
+
+```text
+$ java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
+IMPACT: com.acme.checkout.PaymentService (SERVICE)
+Direct: 3 | Transitive: 2 | Depth: 3
+DIRECT EVIDENCE:
+  - com.acme.checkout.PaymentController [CONTROLLER] via DEPENDS_ON at src/main/java/com/acme/checkout/PaymentController.java:8 (confidence 1.00)
+  - authorize [METHOD] via CALLS at src/main/java/com/acme/checkout/PaymentController.java:12 (confidence 1.00)
+  - POST /payments/authorize [WORKFLOW] via PARTICIPATES_IN at src/main/java/com/acme/checkout/PaymentController.java:11 (confidence 0.90)
+TRANSITIVE EVIDENCE:
+  - POST /payments/authorize [ENDPOINT] via EXPOSES at src/main/java/com/acme/checkout/PaymentController.java:11 (confidence 1.00)
+  - payments [BUSINESS_CAPABILITY] via PARTICIPATES_IN at src/main/java/com/acme/checkout/PaymentController.java:11 (confidence 0.85)
+```
+
+Every line names a file, a line number, and a confidence — nothing here is a guess.
+
+### `context` — minimum-sufficient evidence packet
+
+```text
+$ java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
+Wrote context packet: callers=1 endpoints=1 dependencies=1 evidence=7 to context.json
+```
+
+### `visualize` — the graph, rendered
+
+```text
+$ java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope OPERATIONAL -o graph.html
+Wrote graph.html (20/20 nodes, 12/12 edges)
+```
+
+That file is a self-contained, interactive canvas view — no server, no CDN, opens from disk.
+This is what it draws for the fixture's checkout flow, captured directly from the rendered
+canvas (colour = kind: blue controller, purple service/capability, grey repository/type, red
+endpoint, pink workflow, orange dynamic topic):
+
+![Operational graph of the sample-commerce fixture](docs/evidence/sample-commerce-graph.png)
+
+`PaymentGateway` and `CheckoutService` sit at the join between the `payments` capability and
+the `POST /payments/authorize` endpoint — exactly the shape you'd sketch on a whiteboard, except
+every edge here is a compiler-proven or explicitly-scored relationship, not a guess. The dashed
+edges are the ones below full confidence; the legend and the min-confidence slider are visible
+in the full render at [`docs/evidence/sample-commerce.graph.html`](docs/evidence/sample-commerce.graph.html).
+
+Reproduce all four commands and the screenshot yourself:
+
+```powershell
+mvn -q verify
+java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
+java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
+java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
+java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope OPERATIONAL -o graph.html
+```
 
 Release notes are in [`CHANGELOG.md`](CHANGELOG.md); every number in them names the benchmark it
 came from. How a release is cut, and what is deliberately not published, is in

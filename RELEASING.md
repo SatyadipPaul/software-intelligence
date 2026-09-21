@@ -4,13 +4,13 @@ Releases go to **Maven Central** under the `io.github.satyadippaul` group, throu
 [Central Portal](https://central.sonatype.com/). They are cut by tagging `main`; CI does the rest.
 
 **A coordinate published to Central is permanent.** It cannot be overwritten, and it cannot be
-deleted. `0.1.0` can only ever mean one set of bytes, so everything below is arranged so that the
-irreversible step is the last one and a human takes it deliberately.
+deleted. `0.1.0` already means one set of bytes and always will, so everything below is arranged so
+that the irreversible step is the last one and a human takes it deliberately.
 
 ## One-time setup
 
-None of this lives in the repository. It is done once, by a maintainer, and stored as GitHub
-repository secrets.
+Already done for `0.1.0`, which is on Central. Repeat only if the token is rotated or the signing
+key is replaced. None of it lives in the repository.
 
 ### 1. Claim the namespace
 
@@ -60,8 +60,9 @@ an unmerged branch publishes code nobody reviewed, at coordinates that can never
 ### 2. Settle the version and the changelog
 
 `pom.xml`'s `<version>` is what gets published, and the workflow refuses a tag that disagrees with
-it. In `CHANGELOG.md`, replace `## [0.1.0] — unreleased` with the release date, and open a fresh
-`## [Unreleased]` section above it.
+it, so drop the `-SNAPSHOT` before tagging. In `CHANGELOG.md`, rename `## [Unreleased]` to the
+version and its release date, open a fresh `## [Unreleased]` above it, and add the two link
+references at the foot of the file.
 
 ### 3. Rehearse
 
@@ -74,8 +75,8 @@ only thing left untested is the upload.
 
 ```bash
 git checkout main && git pull
-git tag -a v0.1.0 -m "0.1.0"
-git push origin v0.1.0
+git tag -a v0.2.0 -m "0.2.0"     # the version in pom.xml, with a v prefix
+git push origin v0.2.0
 ```
 
 The tag push starts the workflow. It verifies, builds, signs, uploads to a **staging** repository,
