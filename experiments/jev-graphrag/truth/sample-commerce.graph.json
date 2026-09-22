@@ -1,0 +1,3024 @@
+{
+ "edges": [
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/audit/AuditTrail.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/audit/AuditTrail.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.audit"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/audit/AuditTrail.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.stereotype.Service"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/audit/AuditTrail.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.audit.AuditTrail"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.audit.AuditTrail",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.audit.AuditTrail#record(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.audit.AuditTrail",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 26,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 7,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/billing/BillingAdminController.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.billing"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.beans.factory.annotation.Value"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.security.access.prepost.PreAuthorize"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.web.bind.annotation.GetMapping"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.web.bind.annotation.RequestMapping"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.web.bind.annotation.RestController"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 15,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingAdminController"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.billing.BillingAdminController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 18,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingAdminController.field:endpoint"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingAdminController",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 18,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.billing.BillingAdminController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 33,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 20,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingAdminController.field:ledger"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/billing/BillingLedger;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingAdminController",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 33,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 20,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.billing.BillingLedger"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.billing.BillingAdminController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingAdminController#ledger()"
+  },
+  {
+   "attributes": {},
+   "from": "endpoint:GET:/billing/ledger",
+   "kind": "EXPOSES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingAdminController#ledger()"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/billing/BillingLedger;.summary(Ljava/lang/String;)Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingAdminController#ledger()",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 25,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.billing.BillingLedger#summary(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingAdminController#ledger()",
+   "kind": "READS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 25,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.billing.BillingAdminController.field:ledger"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingAdminController#ledger()",
+   "kind": "READS",
+   "provenance": {
+    "column": 31,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 25,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.billing.BillingAdminController.field:endpoint"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/billing/BillingLedger.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/billing/BillingLedger.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.billing"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingLedger.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:com.acme.audit.AuditTrail"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingLedger.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:com.acme.checkout.PaymentGateway"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/billing/BillingLedger.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.stereotype.Service"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/billing/BillingLedger.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 12,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingLedger"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.billing.BillingLedger",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 30,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 13,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingLedger.field:audit"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/audit/AuditTrail;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 30,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 13,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.audit.AuditTrail"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.billing.BillingLedger",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 14,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingLedger.field:gateway"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/PaymentGateway;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 14,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.PaymentGateway"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.billing.BillingLedger",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 16,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.billing.BillingLedger#summary(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 27,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 16,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/audit/AuditTrail;.record(Ljava/lang/String;)Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger#summary(java.lang.String)",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.audit.AuditTrail#record(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger#summary(java.lang.String)",
+   "kind": "READS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.billing.BillingLedger.field:audit"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/Class;.getSimpleName()Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger#summary(java.lang.String)",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 29,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.Class#getSimpleName()"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/Object;.getClass()Ljava/lang/Class<*>;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger#summary(java.lang.String)",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 29,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.Object#getClass()"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.billing.BillingLedger#summary(java.lang.String)",
+   "kind": "READS",
+   "provenance": {
+    "column": 29,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.billing.BillingLedger.field:gateway"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/CheckoutController.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/CheckoutController.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/CheckoutController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:java.math.BigDecimal"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/CheckoutController.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutController"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.CheckoutController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 35,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutController.field:checkoutService"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/CheckoutService;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutController",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 35,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 6,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.CheckoutService"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.CheckoutController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 8,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutController#checkout(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutController",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 28,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 8,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/math/BigDecimal;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutController",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 47,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 8,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.math.BigDecimal"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/CheckoutService;.execute(Ljava/lang/String;Ljava/math/BigDecimal;)Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutController#checkout(java.lang.String,java.math.BigDecimal)",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 9,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutController#checkout(java.lang.String,java.math.BigDecimal)",
+   "kind": "READS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 9,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.CheckoutController.field:checkoutService"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/CheckoutService.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/CheckoutService.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/CheckoutService.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:java.math.BigDecimal"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/CheckoutService.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutService"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutService.field:payments"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/PaymentGateway;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 6,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.PaymentGateway"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 35,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutService.field:orders"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/OrderRepository;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 35,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 7,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.OrderRepository"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 9,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 27,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 9,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/math/BigDecimal;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 46,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 9,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.math.BigDecimal"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/PaymentGateway;.authorize(Ljava/lang/String;Ljava/math/BigDecimal;)V",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 9,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 10,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.PaymentGateway#authorize(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)",
+   "kind": "READS",
+   "provenance": {
+    "column": 9,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 10,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.CheckoutService.field:payments"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/OrderRepository;.save(Ljava/lang/String;Ljava/math/BigDecimal;)Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 11,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.OrderRepository#save(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)",
+   "kind": "READS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 11,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.CheckoutService.field:orders"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/OrderRepository.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/OrderRepository.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/OrderRepository.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:java.math.BigDecimal"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/OrderRepository.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.OrderRepository"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.OrderRepository",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.OrderRepository#save(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.OrderRepository",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 24,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 6,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/math/BigDecimal;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.OrderRepository",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 43,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 6,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.math.BigDecimal"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/PaymentController.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentController.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/PaymentController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.web.bind.annotation.PostMapping"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/PaymentController.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.web.bind.annotation.RestController"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentController.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentController"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 8,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentController.field:payments"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/PaymentService;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.PaymentController",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 8,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.PaymentService"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentController",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentController#authorize()"
+  },
+  {
+   "attributes": {},
+   "from": "endpoint:POST:/payments/authorize",
+   "kind": "EXPOSES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentController#authorize()"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Lcom/acme/checkout/PaymentService;.authorize()Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.PaymentController#authorize()",
+   "kind": "CALLS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 12,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.PaymentService#authorize()"
+  },
+  {
+   "attributes": {
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.PaymentController#authorize()",
+   "kind": "READS",
+   "provenance": {
+    "column": 16,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 12,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:com.acme.checkout.PaymentController.field:payments"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/PaymentEventConsumer.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.kafka.annotation.KafkaListener"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentEventConsumer"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentEventConsumer",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 17,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentEventConsumer#consume(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.PaymentEventConsumer",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 25,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentEventConsumer#consume(java.lang.String)",
+   "kind": "CONSUMES",
+   "provenance": {
+    "column": 17,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "topic:<dynamic-topic>"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/PaymentGateway.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentGateway.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/PaymentGateway.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:java.math.BigDecimal"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentGateway.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentGateway"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentGateway",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 17,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentGateway#authorize(java.lang.String,java.math.BigDecimal)"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/lang/String;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.PaymentGateway",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 27,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 6,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.lang.String"
+  },
+  {
+   "attributes": {
+    "bindingKey": "Ljava/math/BigDecimal;",
+    "resolution": "JDT_BINDING"
+   },
+   "from": "type:com.acme.checkout.PaymentGateway",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 46,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 6,
+    "resolver": "JDT_BINDING"
+   },
+   "to": "type:java.math.BigDecimal"
+  },
+  {
+   "attributes": {},
+   "from": "repo:sample-commerce",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "file:src/main/java/com/acme/checkout/PaymentService.java"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentService.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   },
+   "to": "package:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/PaymentService.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.stereotype.Service"
+  },
+  {
+   "attributes": {
+    "static": "false"
+   },
+   "from": "file:src/main/java/com/acme/checkout/PaymentService.java",
+   "kind": "IMPORTS",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   },
+   "to": "external:org.springframework.transaction.annotation.Transactional"
+  },
+  {
+   "attributes": {},
+   "from": "file:src/main/java/com/acme/checkout/PaymentService.java",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentService"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentService",
+   "kind": "DECLARES",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 9,
+    "resolver": "JDT_AST"
+   },
+   "to": "type:com.acme.checkout.PaymentService#authorize()"
+  },
+  {
+   "attributes": {},
+   "from": "type:com.acme.checkout.PaymentService#authorize()",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 9,
+    "resolver": "JDT_AST"
+   },
+   "to": "transaction:type:com.acme.checkout.PaymentService#authorize()"
+  },
+  {
+   "attributes": {
+    "resolution": "spring-security"
+   },
+   "from": "guard:PreAuthorize:hasRole('BILLING_ADMIN')",
+   "kind": "CONFIGURES",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "SPRING_FRAMEWORK_MODEL"
+   },
+   "to": "type:com.acme.billing.BillingAdminController#ledger()"
+  },
+  {
+   "attributes": {
+    "resolution": "value"
+   },
+   "from": "property:billing.endpoint",
+   "kind": "CONFIGURES",
+   "provenance": {
+    "column": 20,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 18,
+    "resolver": "SPRING_FRAMEWORK_MODEL"
+   },
+   "to": "type:com.acme.billing.BillingAdminController.field:endpoint"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.audit",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 6,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.audit.AuditTrail"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.billing",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 15,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.billing.BillingAdminController"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.billing",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 12,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.billing.BillingLedger"
+  },
+  {
+   "attributes": {
+    "resolution": "module-coupling",
+    "weight": "2"
+   },
+   "from": "module:com.acme.billing",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 0,
+    "confidence": 1.0,
+    "file": "",
+    "line": 0,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "module:com.acme.audit"
+  },
+  {
+   "attributes": {
+    "resolution": "module-coupling",
+    "weight": "1"
+   },
+   "from": "module:com.acme.billing",
+   "kind": "DEPENDS_ON",
+   "provenance": {
+    "column": 0,
+    "confidence": 1.0,
+    "file": "",
+    "line": 0,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "module:com.acme.checkout"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 5,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.CheckoutController"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 5,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.CheckoutService"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 5,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.OrderRepository"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 7,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.PaymentController"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 5,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.PaymentEventConsumer"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 5,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.PaymentGateway"
+  },
+  {
+   "attributes": {
+    "resolution": "module-layout"
+   },
+   "from": "module:com.acme.checkout",
+   "kind": "CONTAINS",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 7,
+    "resolver": "MODULE_LAYOUT"
+   },
+   "to": "type:com.acme.checkout.PaymentService"
+  },
+  {
+   "attributes": {
+    "role": "entry-point"
+   },
+   "from": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "endpoint:GET:/billing/ledger"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:com.acme.billing.BillingAdminController#ledger()"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:com.acme.billing.BillingLedger#summary(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:com.acme.audit.AuditTrail#record(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:java.lang.Class#getSimpleName()"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:java.lang.Object#getClass()"
+  },
+  {
+   "attributes": {
+    "role": "entry-point"
+   },
+   "from": "workflow:endpoint:POST:/payments/authorize",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "endpoint:POST:/payments/authorize"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:POST:/payments/authorize",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:com.acme.checkout.PaymentController#authorize()"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:endpoint:POST:/payments/authorize",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:com.acme.checkout.PaymentService#authorize()"
+  },
+  {
+   "attributes": {
+    "role": "entry-point"
+   },
+   "from": "workflow:topic:<dynamic-topic>",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 17,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "topic:<dynamic-topic>"
+  },
+  {
+   "attributes": {
+    "role": "step"
+   },
+   "from": "workflow:topic:<dynamic-topic>",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 17,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   },
+   "to": "type:com.acme.checkout.PaymentEventConsumer#consume(java.lang.String)"
+  },
+  {
+   "attributes": {
+    "role": "entry-point"
+   },
+   "from": "capability:billing",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.85,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "CAPABILITY_GROUPING"
+   },
+   "to": "endpoint:GET:/billing/ledger"
+  },
+  {
+   "attributes": {
+    "role": "entry-point"
+   },
+   "from": "capability:payments",
+   "kind": "PARTICIPATES_IN",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.85,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "CAPABILITY_GROUPING"
+   },
+   "to": "endpoint:POST:/payments/authorize"
+  }
+ ],
+ "nodes": [
+  {
+   "attributes": {},
+   "id": "repo:sample-commerce",
+   "kind": "REPOSITORY",
+   "name": "sample-commerce",
+   "provenance": {
+    "column": 0,
+    "confidence": 1.0,
+    "file": "",
+    "line": 0,
+    "resolver": "FILESYSTEM"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.stereotype.Service",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.stereotype.Service",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "classpath-type"
+   },
+   "id": "type:java.lang.String",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "java.lang.String",
+   "provenance": {
+    "column": 26,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/audit/AuditTrail.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/audit/AuditTrail.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "package:com.acme.audit",
+   "kind": "PACKAGE",
+   "name": "com.acme.audit",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.Service": "",
+    "annotations": "Service",
+    "type": "class"
+   },
+   "id": "type:com.acme.audit.AuditTrail",
+   "kind": "SERVICE",
+   "name": "com.acme.audit.AuditTrail",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "arity": "1"
+   },
+   "id": "type:com.acme.audit.AuditTrail#record(java.lang.String)",
+   "kind": "METHOD",
+   "name": "record",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/audit/AuditTrail.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.beans.factory.annotation.Value",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.beans.factory.annotation.Value",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.security.access.prepost.PreAuthorize",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.security.access.prepost.PreAuthorize",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.web.bind.annotation.GetMapping",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.web.bind.annotation.GetMapping",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.web.bind.annotation.RequestMapping",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.web.bind.annotation.RequestMapping",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.web.bind.annotation.RestController",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.web.bind.annotation.RestController",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.Service": "",
+    "annotations": "Service",
+    "doc": "Depends on two other packages on purpose: module coupling with a single target cannot expose an ordering bug, and ordering bugs are exactly what the determinism gate is for",
+    "type": "class"
+   },
+   "id": "type:com.acme.billing.BillingLedger",
+   "kind": "SERVICE",
+   "name": "com.acme.billing.BillingLedger",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 12,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "arity": "1"
+   },
+   "id": "type:com.acme.billing.BillingLedger#summary(java.lang.String)",
+   "kind": "METHOD",
+   "name": "summary",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 16,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "BillingLedger"
+   },
+   "id": "type:com.acme.billing.BillingAdminController.field:ledger",
+   "kind": "FIELD",
+   "name": "ledger",
+   "provenance": {
+    "column": 33,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 20,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.Value": "",
+    "annotation.Value.value": "${billing.endpoint:http://localhost:9000}",
+    "annotations": "Value",
+    "declaredType": "String"
+   },
+   "id": "type:com.acme.billing.BillingAdminController.field:endpoint",
+   "kind": "FIELD",
+   "name": "endpoint",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 18,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/billing/BillingAdminController.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/billing/BillingAdminController.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "package:com.acme.billing",
+   "kind": "PACKAGE",
+   "name": "com.acme.billing",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.RequestMapping": "",
+    "annotation.RequestMapping.value": "/billing",
+    "annotation.RestController": "",
+    "annotations": "RestController,RequestMapping",
+    "doc": "Exists so the fixture exercises a security guard, a configuration property, and a second package",
+    "type": "class"
+   },
+   "id": "type:com.acme.billing.BillingAdminController",
+   "kind": "CONTROLLER",
+   "name": "com.acme.billing.BillingAdminController",
+   "provenance": {
+    "column": 14,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 15,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.GetMapping": "",
+    "annotation.GetMapping.value": "/ledger",
+    "annotation.PreAuthorize": "",
+    "annotation.PreAuthorize.value": "hasRole('BILLING_ADMIN')",
+    "annotations": "PreAuthorize,GetMapping",
+    "arity": "0"
+   },
+   "id": "type:com.acme.billing.BillingAdminController#ledger()",
+   "kind": "METHOD",
+   "name": "ledger",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "httpMethod": "GET"
+   },
+   "id": "endpoint:GET:/billing/ledger",
+   "kind": "ENDPOINT",
+   "name": "GET /billing/ledger",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:com.acme.audit.AuditTrail",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "com.acme.audit.AuditTrail",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:com.acme.checkout.PaymentGateway",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "com.acme.checkout.PaymentGateway",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.PaymentGateway",
+   "kind": "TYPE",
+   "name": "com.acme.checkout.PaymentGateway",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "AuditTrail"
+   },
+   "id": "type:com.acme.billing.BillingLedger.field:audit",
+   "kind": "FIELD",
+   "name": "audit",
+   "provenance": {
+    "column": 30,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 13,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "arity": "0",
+    "bindingKey": "Ljava/lang/Class;.getSimpleName()Ljava/lang/String;",
+    "resolved": "true"
+   },
+   "id": "type:java.lang.Class#getSimpleName()",
+   "kind": "METHOD",
+   "name": "getSimpleName",
+   "provenance": {
+    "column": 29,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "arity": "0",
+    "bindingKey": "Ljava/lang/Object;.getClass()Ljava/lang/Class<*>;",
+    "resolved": "true"
+   },
+   "id": "type:java.lang.Object#getClass()",
+   "kind": "METHOD",
+   "name": "getClass",
+   "provenance": {
+    "column": 29,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 17,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "PaymentGateway"
+   },
+   "id": "type:com.acme.billing.BillingLedger.field:gateway",
+   "kind": "FIELD",
+   "name": "gateway",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 14,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/billing/BillingLedger.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/billing/BillingLedger.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingLedger.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:java.math.BigDecimal",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "java.math.BigDecimal",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.CheckoutService",
+   "kind": "TYPE",
+   "name": "com.acme.checkout.CheckoutService",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "classpath-type"
+   },
+   "id": "type:java.math.BigDecimal",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "java.math.BigDecimal",
+   "provenance": {
+    "column": 47,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 8,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "arity": "2"
+   },
+   "id": "type:com.acme.checkout.CheckoutService#execute(java.lang.String,java.math.BigDecimal)",
+   "kind": "METHOD",
+   "name": "execute",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 9,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "CheckoutService"
+   },
+   "id": "type:com.acme.checkout.CheckoutController.field:checkoutService",
+   "kind": "FIELD",
+   "name": "checkoutService",
+   "provenance": {
+    "column": 35,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/CheckoutController.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/CheckoutController.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "package:com.acme.checkout",
+   "kind": "PACKAGE",
+   "name": "com.acme.checkout",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.CheckoutController",
+   "kind": "TYPE",
+   "name": "com.acme.checkout.CheckoutController",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "arity": "2"
+   },
+   "id": "type:com.acme.checkout.CheckoutController#checkout(java.lang.String,java.math.BigDecimal)",
+   "kind": "METHOD",
+   "name": "checkout",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutController.java",
+    "line": 8,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.OrderRepository",
+   "kind": "TYPE",
+   "name": "com.acme.checkout.OrderRepository",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "arity": "2"
+   },
+   "id": "type:com.acme.checkout.PaymentGateway#authorize(java.lang.String,java.math.BigDecimal)",
+   "kind": "METHOD",
+   "name": "authorize",
+   "provenance": {
+    "column": 17,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "PaymentGateway"
+   },
+   "id": "type:com.acme.checkout.CheckoutService.field:payments",
+   "kind": "FIELD",
+   "name": "payments",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "arity": "2"
+   },
+   "id": "type:com.acme.checkout.OrderRepository#save(java.lang.String,java.math.BigDecimal)",
+   "kind": "METHOD",
+   "name": "save",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 6,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "OrderRepository"
+   },
+   "id": "type:com.acme.checkout.CheckoutService.field:orders",
+   "kind": "FIELD",
+   "name": "orders",
+   "provenance": {
+    "column": 35,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/CheckoutService.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/CheckoutService.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/CheckoutService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/OrderRepository.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/OrderRepository.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/OrderRepository.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.web.bind.annotation.PostMapping",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.web.bind.annotation.PostMapping",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.Service": "",
+    "annotations": "Service",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.PaymentService",
+   "kind": "SERVICE",
+   "name": "com.acme.checkout.PaymentService",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.Transactional": "",
+    "annotations": "Transactional",
+    "arity": "0"
+   },
+   "id": "type:com.acme.checkout.PaymentService#authorize()",
+   "kind": "METHOD",
+   "name": "authorize",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 9,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "declaredType": "PaymentService"
+   },
+   "id": "type:com.acme.checkout.PaymentController.field:payments",
+   "kind": "FIELD",
+   "name": "payments",
+   "provenance": {
+    "column": 34,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 8,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/PaymentController.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/PaymentController.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.RestController": "",
+    "annotations": "RestController",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.PaymentController",
+   "kind": "CONTROLLER",
+   "name": "com.acme.checkout.PaymentController",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.PostMapping": "",
+    "annotation.PostMapping.value": "/payments/authorize",
+    "annotations": "PostMapping",
+    "arity": "0"
+   },
+   "id": "type:com.acme.checkout.PaymentController#authorize()",
+   "kind": "METHOD",
+   "name": "authorize",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "httpMethod": "POST"
+   },
+   "id": "endpoint:POST:/payments/authorize",
+   "kind": "ENDPOINT",
+   "name": "POST /payments/authorize",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.kafka.annotation.KafkaListener",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.kafka.annotation.KafkaListener",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 3,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotations": "",
+    "type": "class"
+   },
+   "id": "type:com.acme.checkout.PaymentEventConsumer",
+   "kind": "TYPE",
+   "name": "com.acme.checkout.PaymentEventConsumer",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 5,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation.KafkaListener": "",
+    "annotation.KafkaListener.topics": "payment-authorized",
+    "annotations": "KafkaListener",
+    "arity": "1"
+   },
+   "id": "type:com.acme.checkout.PaymentEventConsumer#consume(java.lang.String)",
+   "kind": "METHOD",
+   "name": "consume",
+   "provenance": {
+    "column": 17,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "topic:<dynamic-topic>",
+   "kind": "TOPIC",
+   "name": "<dynamic-topic>",
+   "provenance": {
+    "column": 17,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/PaymentGateway.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/PaymentGateway.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentGateway.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "reason": "import"
+   },
+   "id": "external:org.springframework.transaction.annotation.Transactional",
+   "kind": "EXTERNAL_SYMBOL",
+   "name": "org.springframework.transaction.annotation.Transactional",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 4,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "file:src/main/java/com/acme/checkout/PaymentService.java",
+   "kind": "FILE",
+   "name": "src/main/java/com/acme/checkout/PaymentService.java",
+   "provenance": {
+    "column": 1,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 1,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {},
+   "id": "transaction:type:com.acme.checkout.PaymentService#authorize()",
+   "kind": "TRANSACTION",
+   "name": "authorize transaction",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/checkout/PaymentService.java",
+    "line": 9,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "annotation": "PreAuthorize",
+    "expression": "hasRole('BILLING_ADMIN')"
+   },
+   "id": "guard:PreAuthorize:hasRole('BILLING_ADMIN')",
+   "kind": "SECURITY_GUARD",
+   "name": "PreAuthorize hasRole('BILLING_ADMIN')",
+   "provenance": {
+    "column": 19,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "style": "value"
+   },
+   "id": "property:billing.endpoint",
+   "kind": "CONFIGURATION_PROPERTY",
+   "name": "billing.endpoint",
+   "provenance": {
+    "column": 20,
+    "confidence": 1.0,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 18,
+    "resolver": "JDT_AST"
+   }
+  },
+  {
+   "attributes": {
+    "efferentCoupling": "0",
+    "types": "1"
+   },
+   "id": "module:com.acme.audit",
+   "kind": "MODULE",
+   "name": "com.acme.audit",
+   "provenance": {
+    "column": 0,
+    "confidence": 1.0,
+    "file": "",
+    "line": 0,
+    "resolver": "MODULE_LAYOUT"
+   }
+  },
+  {
+   "attributes": {
+    "efferentCoupling": "3",
+    "types": "2"
+   },
+   "id": "module:com.acme.billing",
+   "kind": "MODULE",
+   "name": "com.acme.billing",
+   "provenance": {
+    "column": 0,
+    "confidence": 1.0,
+    "file": "",
+    "line": 0,
+    "resolver": "MODULE_LAYOUT"
+   }
+  },
+  {
+   "attributes": {
+    "efferentCoupling": "0",
+    "types": "7"
+   },
+   "id": "module:com.acme.checkout",
+   "kind": "MODULE",
+   "name": "com.acme.checkout",
+   "provenance": {
+    "column": 0,
+    "confidence": 1.0,
+    "file": "",
+    "line": 0,
+    "resolver": "MODULE_LAYOUT"
+   }
+  },
+  {
+   "attributes": {
+    "entryPoint": "endpoint:GET:/billing/ledger",
+    "steps": "5",
+    "touches": ""
+   },
+   "id": "workflow:endpoint:GET:/billing/ledger",
+   "kind": "WORKFLOW",
+   "name": "GET /billing/ledger",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/billing/BillingAdminController.java",
+    "line": 24,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   }
+  },
+  {
+   "attributes": {
+    "entryPoint": "endpoint:POST:/payments/authorize",
+    "steps": "2",
+    "touches": ""
+   },
+   "id": "workflow:endpoint:POST:/payments/authorize",
+   "kind": "WORKFLOW",
+   "name": "POST /payments/authorize",
+   "provenance": {
+    "column": 19,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentController.java",
+    "line": 11,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   }
+  },
+  {
+   "attributes": {
+    "entryPoint": "topic:<dynamic-topic>",
+    "steps": "1",
+    "touches": "topic:<dynamic-topic>"
+   },
+   "id": "workflow:topic:<dynamic-topic>",
+   "kind": "WORKFLOW",
+   "name": "<dynamic-topic>",
+   "provenance": {
+    "column": 17,
+    "confidence": 0.9,
+    "file": "src/main/java/com/acme/checkout/PaymentEventConsumer.java",
+    "line": 7,
+    "resolver": "WORKFLOW_TRAVERSAL"
+   }
+  },
+  {
+   "attributes": {
+    "entities": "",
+    "entryPoints": "1"
+   },
+   "id": "capability:billing",
+   "kind": "BUSINESS_CAPABILITY",
+   "name": "billing",
+   "provenance": {
+    "column": 0,
+    "confidence": 0.85,
+    "file": "",
+    "line": 0,
+    "resolver": "CAPABILITY_GROUPING"
+   }
+  },
+  {
+   "attributes": {
+    "entities": "",
+    "entryPoints": "1"
+   },
+   "id": "capability:payments",
+   "kind": "BUSINESS_CAPABILITY",
+   "name": "payments",
+   "provenance": {
+    "column": 0,
+    "confidence": 0.85,
+    "file": "",
+    "line": 0,
+    "resolver": "CAPABILITY_GROUPING"
+   }
+  }
+ ],
+ "version": "0.3"
+}

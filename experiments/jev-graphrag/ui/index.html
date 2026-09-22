@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev GraphRAG Live</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%237c9cff' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0b0f16; --panel: #111823; --panel-2: #0e141d; --line: #1f2a3a; --text: #e6edf6; --muted: #8b98ab;
+    --accent: #7c9cff; --warn: #f2c94c; --bad: #ff6b81; --good: #3ecf8e;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 var(--sans); }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 16px;
+           border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  header h1 { font-size: 15px; margin: 0 8px 0 0; letter-spacing: .02em; white-space: nowrap; }
+  header h1 b { color: var(--accent); }
+  .field { display: flex; align-items: center; gap: 6px; }
+  .field label { color: var(--muted); font-size: 12px; }
+  input, select, button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+                          border-radius: 6px; padding: 6px 9px; }
+  input#path { width: min(340px, 60vw); font-family: var(--mono); font-size: 12.5px; }
+  button#start { background: var(--accent); color: #0b0f16; border-color: var(--accent); font-weight: 600; cursor: pointer; }
+  button#start:disabled { opacity: .5; cursor: default; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .chip { font-size: 11.5px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted);
+          white-space: nowrap; }
+  .chip.ok { color: var(--good); border-color: #1f4d3a; }
+  .chip.warn { color: var(--warn); border-color: #5a4a1a; }
+  .chip.bad { color: var(--bad); border-color: #5a2230; }
+  #banner { display: none; padding: 6px 16px; font-size: 12.5px; background: #2a2210; color: var(--warn);
+            border-bottom: 1px solid #5a4a1a; }
+  #banner.show { display: block; }
+  #banner.error { background: #2a1016; color: var(--bad); border-color: #5a2230; }
+
+  .stage { position: relative; flex: 1 0 auto; display: grid; grid-template-columns: 30fr 25fr 45fr; min-height: 520px; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .panel { position: relative; border-right: 1px solid var(--line); padding: 12px 14px; display: flex; flex-direction: column;
+           min-width: 0; }
+  .panel:last-child { border-right: 0; }
+  .panel h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .panel .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .legend { margin-top: auto; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--muted);
+            position: relative; z-index: 1; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .legend i.line { border-radius: 0; height: 3px; width: 14px; }
+
+  #card { position: relative; z-index: 1; margin-top: 10px; background: rgba(17, 24, 35, .92); border: 1px solid var(--line);
+          border-radius: 10px; padding: 10px 12px; min-height: 150px; transition: border-color .3s; }
+  #card.live { border-color: #34457a; box-shadow: 0 0 0 1px #34457a55, 0 8px 30px #0006; }
+  #card .top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 11px; }
+  .tag { padding: 1px 7px; border-radius: 4px; background: #1b2638; color: #b8c7e0; font-family: var(--mono); font-size: 10.5px; }
+  .tag.phase { background: #26305a; color: #c7d2ff; }
+  #card .meta { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+  #card .subject { font-weight: 600; margin: 6px 0 2px; font-size: 14px; word-break: break-word; }
+  #card .instr { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .q { margin-top: 6px; }
+  .q .qname { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-bottom: 2px; }
+  .opt { display: grid; grid-template-columns: minmax(70px, 38%) 1fr 38px; gap: 6px; align-items: center; font-size: 11.5px;
+         margin: 2px 0; }
+  .opt .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 10.5px; }
+  .opt .bar { height: 7px; background: #1a2332; border-radius: 4px; overflow: hidden; }
+  .opt .bar b { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .45s cubic-bezier(.2,.8,.2,1); }
+  .opt .pct { text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .opt.win .name, .opt.win .pct { color: var(--text); font-weight: 600; }
+  #card .empty { color: var(--muted); font-size: 12.5px; padding: 14px 0; }
+  #ticker { position: relative; z-index: 1; margin-top: 8px; font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+            height: 100px; overflow: hidden; }
+  #ticker div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ticker b { color: var(--text); font-weight: 500; }
+
+  #lens { flex: 1; min-height: 190px; }
+  .counter { position: relative; z-index: 1; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
+  #tip { position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 300px; background: #0e141dee;
+         border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  #tip .t { font-weight: 600; } #tip .m { color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+
+  footer { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 16px; border-top: 1px solid var(--line);
+           background: var(--panel-2); font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  footer b { color: var(--text); font-weight: 500; }
+  footer a { color: var(--accent); }
+  #grade { flex-basis: 100%; display: none; }
+  #grade.show { display: block; }
+
+  @media (max-width: 820px) {
+    .stage { grid-template-columns: 1fr; grid-template-rows: 230px auto 540px; }
+    #lens { flex: none; height: 180px; min-height: 0; }
+    .panel { border-right: 0; border-bottom: 1px solid var(--line); }
+    .chips { margin-left: 0; }
+    input#path { width: 100%; }
+    .field.path { flex: 1 1 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .opt .bar b { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Jev</b> · GraphRAG live</h1>
+  <div class="field path"><label for="path">Repository</label><input id="path" spellcheck="false"></div>
+  <div class="field"><label for="mode">Judge</label>
+    <select id="mode">
+      <option value="jev">Jev (live, cached)</option>
+      <option value="standin">Stand-in rules (not Jev)</option>
+      <option value="dryrun">Dry run (save requests)</option>
+    </select></div>
+  <div class="field"><label for="pace">Pace</label>
+    <select id="pace">
+      <option value="cinematic">Cinematic</option>
+      <option value="fast">Fast</option>
+      <option value="instant">Real time</option>
+    </select></div>
+  <div class="field"><label><input type="checkbox" id="source" checked> send source</label></div>
+  <button id="start">Start</button>
+  <div class="chips"><span class="chip" id="keychip">key: …</span><span class="chip" id="judgechip">idle</span></div>
+</header>
+<div id="banner"></div>
+
+<main class="stage" id="stage">
+  <canvas id="fx"></canvas>
+  <section class="panel" id="left">
+    <h2>Tree-sitter output</h2>
+    <div class="sub">every AST node, as it is parsed</div>
+    <div class="counter" id="astcount">waiting</div>
+    <div class="legend" id="astlegend"></div>
+  </section>
+  <section class="panel" id="mid">
+    <h2>Jev filter</h2>
+    <div class="sub">only meaning questions pass through here; syntax goes around it</div>
+    <div id="card"><div class="empty">Press Start. Syntax facts go straight into the graph; questions about roles,
+      relationships and communities go through the filter.</div></div>
+    <div id="ticker"></div>
+    <div id="lens" aria-hidden="true"></div>
+  </section>
+  <section class="panel" id="right">
+    <h2>Graph</h2>
+    <div class="sub">nodes by role · edges by relationship · shaded areas are communities</div>
+    <div class="legend" id="graphlegend"></div>
+  </section>
+</main>
+<div id="tip"></div>
+<footer>
+  <span>files <b id="s-files">0</b></span>
+  <span>AST nodes <b id="s-nodes">0</b></span>
+  <span>parse <b id="s-parse">-</b></span>
+  <span>questions <b id="s-q">0/0</b></span>
+  <span>avg latency <b id="s-lat">-</b></span>
+  <span>input tokens <b id="s-tok">0</b></span>
+  <span>est. cost <b id="s-cost">$0</b></span>
+  <span id="s-out"></span>
+  <div id="grade"></div>
+</footer>
+
+<script>
+"use strict";
+const AST_COLORS = ["#6c8cff", "#3fc1c9", "#a0e7e5", "#ffb86b", "#c792ea", "#5c6773", "#34405a", "#7a869a"];
+const ROLE_COLORS = { CONTROLLER: "#4f8ef7", SERVICE: "#2bb673", REPOSITORY: "#f2a93b", ENTITY: "#b07cf2",
+  CONSUMER: "#f25f8b", GATEWAY: "#29c4d6", CONFIGURATION: "#9aa5b1", OTHER: "#6b7785" };
+const REL_COLORS = { DEPENDS_ON: "#7fb2ff", CALLS: "#5ed0a0", CREATES: "#f2c94c", PERSISTS: "#f2994a",
+  PUBLISHES: "#eb5757", USES_TYPE: "#8892a0", NONE: "#ff6b81" };
+const KIND_COLORS = { PACKAGE: "#3d4a5e", ENDPOINT: "#e0e6f0", TOPIC: "#f25f8b" };
+const COMMUNITY_COLORS = ["#4f8ef7", "#2bb673", "#f2a93b", "#b07cf2", "#29c4d6", "#f25f8b", "#9aa5b1", "#f2c94c"];
+const PACES = {
+  cinematic: { ast: 90, entity: 45, rel: 25, pull: 650, reveal: 520, emit: 520, community: 180 },
+  fast: { ast: 30, entity: 12, rel: 6, pull: 220, reveal: 180, emit: 160, community: 60 },
+  instant: { ast: 0, entity: 0, rel: 0, pull: 60, reveal: 40, emit: 40, community: 0 },
+};
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (id) => document.getElementById(id);
+const canvas = $("fx"), ctx = canvas.getContext("2d");
+let W = 0, H = 0, DPR = 1, regions = {};
+
+let categories = ["declaration", "expression", "identifier", "literal", "type", "comment", "token", "other"];
+let particles = [], nodes = new Map(), edges = [], communities = new Map(), questions = new Map();
+let queue = [], busy = false, source = null, running = false, filterGlow = 0, filterColor = "#7c9cff", time = 0;
+let stats = { files: 0, nodes: 0, asked: 0, answered: 0, latency: [], tokens: 0 };
+let hover = null;
+
+/* ---------- layout ---------- */
+function measure() {
+  const stage = $("stage").getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = stage.width; H = stage.height;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const rect = (id) => { const r = $(id).getBoundingClientRect();
+    return { x: r.left - stage.left, y: r.top - stage.top, w: r.width, h: r.height }; };
+  const left = rect("left"), mid = rect("mid"), right = rect("right"), lens = rect("lens");
+  const leftTop = rect("astcount"), leftBottom = rect("astlegend"), top = right.y + 64, bottom = rect("graphlegend").y - 10;
+  const radius = Math.max(26, Math.min(lens.w * 0.3, lens.h * 0.32, 86));
+  const ring = { x: lens.x + lens.w / 2, y: lens.y + lens.h * 0.44, r: radius, labelY: lens.y + lens.h - 6 };
+  regions = { left: { x: left.x + 12, y: leftTop.y + leftTop.h + 8, w: left.w - 24, h: leftBottom.y - leftTop.y - leftTop.h - 18 },
+              mid, ring, graph: { x: right.x + 16, y: top, w: right.w - 32, h: Math.max(80, bottom - top) } };
+}
+let lastLeft = null;
+function rehome() {
+  const L = regions.left; if (!lastLeft) { lastLeft = { ...L }; return; }
+  if (L.x === lastLeft.x && L.y === lastLeft.y && L.w === lastLeft.w && L.h === lastLeft.h) return;
+  for (const p of particles) { p.hx = L.x + (p.hx - lastLeft.x) / (lastLeft.w || 1) * L.w; p.hy = L.y + (p.hy - lastLeft.y) / (lastLeft.h || 1) * L.h; }
+  lastLeft = { ...L };
+}
+window.addEventListener("resize", () => { measure(); rehome(); });
+// The question card changes height with each question; the ring and regions must follow it.
+if (window.ResizeObserver) { const ro = new ResizeObserver(() => { measure(); rehome(); });
+  ["card", "stage", "banner"].forEach((id) => ro.observe(document.getElementById(id))); }
+
+/* ---------- legends ---------- */
+function legends() {
+  $("astlegend").innerHTML = categories.map((c, i) => `<span><i style="background:${AST_COLORS[i]}"></i>${c}</span>`).join("");
+  $("graphlegend").innerHTML =
+    Object.entries(ROLE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k.toLowerCase()}</span>`).join("") +
+    `<span><i style="background:#2a3444;border:1px solid #5a6a80"></i>not judged</span>` +
+    Object.entries(REL_COLORS).filter(([k]) => k !== "NONE")
+      .map(([k, c]) => `<span><i class="line" style="background:${c}"></i>${k.toLowerCase()}</span>`).join("") +
+    `<span><i class="line" style="background:#3a4658"></i>syntax</span>`;
+}
+
+/* ---------- particles ---------- */
+function rand(a, b) { return a + Math.random() * (b - a); }
+function spawnAst(file, sample, totalNodes) {
+  const budget = Math.max(0, 2600 - particles.length);
+  const step = Math.max(1, Math.ceil(sample.length / Math.max(1, Math.min(budget, 420))));
+  const r = regions.left;
+  for (let i = 0; i < sample.length; i += step) {
+    particles.push({ x: r.x + rand(0, r.w * 0.08), y: r.y + rand(0, r.h), vx: rand(2, 5), vy: rand(-0.6, 0.6),
+      hx: r.x + rand(0, 1) * r.w, hy: r.y + rand(0, 1) * r.h,
+      color: AST_COLORS[sample[i]] || AST_COLORS[7], cat: sample[i], file, state: "noise", size: sample[i] === 6 ? 1.1 : 1.7,
+      alpha: sample[i] === 6 ? 0.45 : 0.9, born: time });
+  }
+}
+function take(files, count) {
+  const picked = [];
+  for (const f of files) {
+    for (const p of particles) {
+      if (picked.length >= count * (files.indexOf(f) + 1) / files.length) break;
+      if (p.state === "noise" && p.file === f && p.cat !== 6) picked.push(p);
+    }
+  }
+  for (const p of particles) { if (picked.length >= count) break; if (p.state === "noise" && !picked.includes(p)) picked.push(p); }
+  return picked;
+}
+function pullToFilter(files, count) {
+  const ring = regions.ring, picked = take(files, count);
+  picked.forEach((p, i) => { p.state = "toFilter"; p.angle = rand(0, Math.PI * 2); p.orbit = rand(0.2, 0.85) * ring.r;
+    p.delay = time + i * 12; p.speed = rand(0.05, 0.09); });
+  return picked;
+}
+function emitTo(batch, color, target) {
+  batch.forEach((p, i) => { p.state = "sorted"; p.color = color; p.alpha = 1; p.size = 2.2; p.target = target;
+    p.delay = time + i * 10; p.speed = rand(0.06, 0.1); });
+}
+function bypass(file, target, count) {
+  const picked = take([file], count);
+  picked.forEach((p, i) => { p.state = "bypass"; p.target = target; p.delay = time + i * 16; p.color = "#56657c";
+    p.t = 0; p.x0 = p.x; p.y0 = p.y; });
+}
+function targetPoint(target) {
+  if (!target) return null;
+  if (target.node) { const n = nodes.get(target.node); return n ? { x: n.x, y: n.y, node: n } : null; }
+  if (target.edge) { const a = nodes.get(target.edge[0]), b = nodes.get(target.edge[1]);
+    return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : null; }
+  if (target.community) { const c = communities.get(target.community); return c && c.cx ? { x: c.cx, y: c.cy } : null; }
+  return null;
+}
+function stepParticles() {
+  const L = regions.left, ring = regions.ring;
+  for (const p of particles) {
+    if (p.delay && time < p.delay) continue;
+    if (p.state === "noise") {
+      p.vx += rand(-0.22, 0.22) + (p.hx - p.x) * 0.004; p.vy += rand(-0.22, 0.22) + (p.hy - p.y) * 0.004;
+      p.vx *= 0.93; p.vy *= 0.93; p.x += p.vx; p.y += p.vy;
+      if (p.x < L.x) { p.x = L.x; p.vx = Math.abs(p.vx); } if (p.x > L.x + L.w) { p.x = L.x + L.w; p.vx = -Math.abs(p.vx); }
+      if (p.y < L.y) { p.y = L.y; p.vy = Math.abs(p.vy); } if (p.y > L.y + L.h) { p.y = L.y + L.h; p.vy = -Math.abs(p.vy); }
+    } else if (p.state === "toFilter" || p.state === "inFilter") {
+      p.angle += 0.045; const tx = ring.x + Math.cos(p.angle) * p.orbit, ty = ring.y + Math.sin(p.angle) * p.orbit;
+      p.x += (tx - p.x) * p.speed; p.y += (ty - p.y) * p.speed;
+      if (p.state === "toFilter" && Math.hypot(tx - p.x, ty - p.y) < 6) p.state = "inFilter";
+    } else if (p.state === "sorted" || p.state === "held") {
+      const t = targetPoint(p.target);
+      if (!t) { p.state = "held"; continue; }
+      p.x += (t.x - p.x) * p.speed; p.y += (t.y - p.y) * p.speed;
+      if (Math.hypot(t.x - p.x, t.y - p.y) < 4) { p.dead = true; if (t.node) t.node.pulse = 1; }
+    } else if (p.state === "bypass") {
+      const t = targetPoint(p.target);
+      if (!t) { p.dead = true; continue; }
+      p.t = Math.min(1, p.t + 0.018);
+      const cx = ring.x, cy = ring.labelY - 14, u = 1 - p.t;
+      p.x = u * u * p.x0 + 2 * u * p.t * cx + p.t * p.t * t.x; p.y = u * u * p.y0 + 2 * u * p.t * cy + p.t * p.t * t.y;
+      if (p.t >= 1) { p.dead = true; if (t.node) t.node.pulse = Math.max(t.node.pulse, 0.5); }
+    }
+  }
+  if (particles.some((p) => p.dead)) particles = particles.filter((p) => !p.dead);
+}
+
+/* ---------- graph ---------- */
+function addNode(e) {
+  const g = regions.graph;
+  if (!nodes.has(e.id)) {
+    nodes.set(e.id, { id: e.id, kind: e.type, title: e.title, x: g.x + g.w / 2 + rand(-40, 40), y: g.y + g.h / 2 + rand(-40, 40),
+      vx: 0, vy: 0, role: null, pulse: 0.8, data: e });
+  }
+  const n = nodes.get(e.id); n.data = e;
+  if (e.role) { n.role = e.role; n.pulse = 1; }
+  return n;
+}
+function stepGraph() {
+  const g = regions.graph, list = [...nodes.values()];
+  const cx = g.x + g.w / 2, cy = g.y + g.h / 2;
+  const scale = Math.max(0.3, Math.min(1.2, (g.w * g.h) / (560 * 560)));
+  const spread = Math.min(260, Math.max(g.w, g.h) * 0.45);
+  for (const c of communities.values()) {
+    const members = c.members.map((m) => nodes.get(m)).filter(Boolean);
+    if (members.length) { c.cx = members.reduce((s, n) => s + n.x, 0) / members.length; c.cy = members.reduce((s, n) => s + n.y, 0) / members.length; }
+  }
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    for (let j = i + 1; j < list.length; j++) {
+      const b = list[j]; let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy + 0.01;
+      if (d2 > 160000) continue;
+      const f = 2600 * scale / d2, d = Math.sqrt(d2); dx /= d; dy /= d;
+      a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+    }
+    a.vx += (cx - a.x) * 0.0022; a.vy += (cy - a.y) * 0.0022;
+  }
+  for (const e of edges) {
+    const a = nodes.get(e.source), b = nodes.get(e.target); if (!a || !b || e.type === "NONE") continue;
+    const want = (e.origin === "syntax" ? 80 : 110) * Math.sqrt(scale), k = e.origin === "syntax" ? 0.004 : 0.008;
+    const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, f = (d - want) * k;
+    a.vx += dx / d * f; a.vy += dy / d * f; b.vx -= dx / d * f; b.vy -= dy / d * f;
+  }
+  const cs = [...communities.values()].filter((c) => c.cx);
+  for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) {
+    const a = cs[i], b = cs[j], dx = a.cx - b.cx, dy = a.cy - b.cy, d = Math.hypot(dx, dy) || 1;
+    if (d > spread) continue;
+    const f = (spread - d) * 0.0025;
+    for (const m of a.members) { const n = nodes.get(m); if (n) { n.vx += dx / d * f; n.vy += dy / d * f; } }
+    for (const m of b.members) { const n = nodes.get(m); if (n) { n.vx -= dx / d * f; n.vy -= dy / d * f; } }
+  }
+  for (const c of communities.values()) {
+    for (const m of c.members) { const n = nodes.get(m); if (n && c.cx) { n.vx += (c.cx - n.x) * 0.004; n.vy += (c.cy - n.y) * 0.004; } }
+  }
+  for (const n of list) {
+    n.vx *= 0.82; n.vy *= 0.82; n.x += n.vx; n.y += n.vy;
+    const half = n.kind === "PACKAGE" ? 6 : Math.min(g.w / 2 - 2, (n.labelW || 60) / 2 + 2);
+    n.x = Math.max(g.x + half, Math.min(g.x + g.w - half, n.x)); n.y = Math.max(g.y + 12, Math.min(g.y + g.h - 18, n.y));
+    n.pulse = Math.max(0, n.pulse - 0.02);
+  }
+}
+function radius(n) { return n.kind === "TYPE" ? 9 : n.kind === "PACKAGE" ? 5 : 6; }
+function nodeColor(n) { return n.kind === "TYPE" ? (n.role ? ROLE_COLORS[n.role] || "#6b7785" : "#2a3444") : KIND_COLORS[n.kind] || "#6b7785"; }
+
+/* ---------- drawing ---------- */
+function drawRing() {
+  const r = regions.ring; if (!r) return;
+  filterGlow = Math.max(0, filterGlow - 0.012);
+  ctx.save();
+  const grad = ctx.createRadialGradient(r.x, r.y, r.r * 0.2, r.x, r.y, r.r * 1.6);
+  grad.addColorStop(0, hexA(filterColor, 0.10 + filterGlow * 0.25)); grad.addColorStop(1, hexA(filterColor, 0));
+  ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(r.x, r.y, r.r * 1.6, 0, Math.PI * 2); ctx.fill();
+  for (let k = 0; k < 3; k++) {
+    ctx.beginPath(); ctx.setLineDash([4 + k * 3, 8 + k * 4]); ctx.lineDashOffset = -time * (0.02 + k * 0.012) * (k % 2 ? -1 : 1);
+    ctx.strokeStyle = hexA(filterColor, 0.35 + filterGlow * 0.5 - k * 0.08); ctx.lineWidth = 1.4 - k * 0.3;
+    ctx.arc(r.x, r.y, r.r * (1 - k * 0.14), 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#8b98ab"; ctx.font = "600 10px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("JEV", r.x, r.y + 3.5);
+  ctx.fillStyle = "#56657c"; ctx.font = "10px system-ui";
+  ctx.fillText("syntax bypass", r.x, r.labelY);
+  ctx.restore();
+}
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; }
+function drawGraph() {
+  for (const c of communities.values()) {
+    const members = c.members.map((m) => nodes.get(m)).filter(Boolean); if (!members.length || !c.cx) continue;
+    const color = COMMUNITY_COLORS[c.index % COMMUNITY_COLORS.length];
+    const rr = Math.max(26, ...members.map((n) => Math.hypot(n.x - c.cx, n.y - c.cy) + 24));
+    ctx.fillStyle = hexA(color, c.label ? 0.08 : 0.04); ctx.strokeStyle = hexA(color, c.label ? 0.35 : 0.15);
+    ctx.setLineDash(c.label ? [] : [3, 5]); ctx.beginPath(); ctx.arc(c.cx, c.cy, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    if (c.label) { ctx.fillStyle = hexA(color, 0.9); ctx.font = "600 11px system-ui"; ctx.textAlign = "center";
+      ctx.fillText(`${c.label}${c.cohesion != null ? ` · ${c.cohesion.toFixed(1)}/3` : ""}`, c.cx, c.cy - rr - 5); }
+  }
+  for (const e of edges) {
+    const a = nodes.get(e.source), b = nodes.get(e.target); if (!a || !b) continue;
+    if (e.origin === "syntax") {
+      ctx.strokeStyle = "#2c3748"; ctx.lineWidth = 1; ctx.setLineDash(e.type === "CONTAINS" ? [2, 4] : []);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]); continue;
+    }
+    if (e.type === "NONE") continue;
+    const color = REL_COLORS[e.type] || "#8892a0", conf = e.confidence ?? 1;
+    ctx.strokeStyle = hexA(color, 0.35 + 0.6 * conf); ctx.lineWidth = 1 + 2 * conf; ctx.setLineDash(e.status === "uncertain" ? [5, 4] : []);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+    const ang = Math.atan2(b.y - a.y, b.x - a.x), tx = b.x - Math.cos(ang) * (radius(b) + 3), ty = b.y - Math.sin(ang) * (radius(b) + 3);
+    ctx.fillStyle = hexA(color, 0.9); ctx.beginPath(); ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - Math.cos(ang - 0.45) * 8, ty - Math.sin(ang - 0.45) * 8); ctx.lineTo(tx - Math.cos(ang + 0.45) * 8, ty - Math.sin(ang + 0.45) * 8);
+    ctx.fill();
+  }
+  for (const n of nodes.values()) {
+    const r = radius(n), color = nodeColor(n);
+    if (n.pulse > 0) { ctx.fillStyle = hexA(n.role ? ROLE_COLORS[n.role] || "#7c9cff" : "#7c9cff", n.pulse * 0.35);
+      ctx.beginPath(); ctx.arc(n.x, n.y, r + 10 * n.pulse, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = color; ctx.strokeStyle = n === hover ? "#fff" : (n.kind === "TYPE" && !n.role ? "#5a6a80" : "#0b0f16");
+    ctx.lineWidth = n === hover ? 2 : 1.2; ctx.beginPath();
+    if (n.kind === "ENDPOINT" || n.kind === "TOPIC") { ctx.moveTo(n.x, n.y - r - 1); ctx.lineTo(n.x + r + 1, n.y); ctx.lineTo(n.x, n.y + r + 1); ctx.lineTo(n.x - r - 1, n.y); ctx.closePath(); }
+    else ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    if (n.kind !== "PACKAGE") { ctx.font = `${n.kind === "TYPE" ? 11 : 10}px system-ui`; ctx.textAlign = "center";
+      if (!n.labelW) n.labelW = ctx.measureText(n.title).width;
+      ctx.lineWidth = 3; ctx.strokeStyle = "rgba(11,15,22,.85)"; ctx.strokeText(n.title, n.x, n.y + r + 13);
+      ctx.fillStyle = n.kind === "TYPE" ? "#c9d4e5" : "#8b98ab"; ctx.fillText(n.title, n.x, n.y + r + 13); }
+  }
+}
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+function frame(ts) {
+  time = ts; ctx.clearRect(0, 0, W, H);
+  stepGraph(); stepParticles();
+  drawGraph(); drawRing(); drawParticles();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- the question card ---------- */
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function shortId(id) { return id.includes("|") ? id.split("|").map(shortId).join(" → ") : id.replace(/^(type|community):/, "").split(".").pop(); }
+function renderQuestion(q) {
+  const qs = Object.entries(q.questions);
+  const first = qs[0][1];
+  let html = `<div class="top"><span class="tag phase">${esc(q.phase)}</span>` +
+    qs.map(([, v]) => `<span class="tag">${v.type}</span>`).join("") + `<span class="meta" id="qmeta">asking…</span></div>` +
+    `<div class="subject">${esc(q.phase === "community" ? "community " + shortId(q.subject) : shortId(q.subject))}</div>` +
+    `<div class="instr">${esc(typeof first.instructions === "string" ? first.instructions : "")}</div>`;
+  for (const [name, v] of qs) {
+    html += `<div class="q"><div class="qname">${esc(name)} · ${v.type}</div>`;
+    const opts = v.type === "choice" ? Object.keys(v.criteria) : v.type === "score" ? v.criteria.map((_, i) => String(i)) : ["yes"];
+    for (const o of opts) {
+      const color = REL_COLORS[o] || ROLE_COLORS[o] || "#7c9cff";
+      html += `<div class="opt" data-q="${esc(name)}" data-o="${esc(o)}"><span class="name" title="${esc(v.type === "score" ? v.criteria[+o] : o)}">${esc(o)}</span>` +
+        `<span class="bar"><b style="background:${color}"></b></span><span class="pct">·</span></div>`;
+    }
+    html += "</div>";
+  }
+  $("card").innerHTML = html; $("card").classList.add("live");
+}
+function revealAnswers(ev) {
+  const meta = $("qmeta");
+  if (!ev.answers) { meta.textContent = ev.error ? "error" : "request saved - no answer"; meta.style.color = "var(--warn)"; return; }
+  meta.textContent = `${ev.judge === "jev" ? "jev" : ev.judge}${ev.model ? " · " + ev.model : ""} · ` +
+    (ev.cached ? "cache" : ev.latency_ms ? `${Math.round(ev.latency_ms)} ms` : "rules");
+  for (const [name, a] of Object.entries(ev.answers)) {
+    let probs;
+    if (a.type === "noul") probs = { yes: a.noul };
+    else probs = a.probabilities;
+    const winner = a.type === "choice" ? a.choice : a.type === "score" ? String(Math.round(a.score)) : null;
+    document.querySelectorAll(`.opt[data-q="${CSS.escape(name)}"]`).forEach((row) => {
+      const p = probs[row.dataset.o] ?? 0;
+      row.querySelector("b").style.width = `${Math.round(p * 100)}%`;
+      row.querySelector(".pct").textContent = `${Math.round(p * 100)}%`;
+      if (row.dataset.o === winner || (a.type === "noul" && a.noul >= 0.5)) row.classList.add("win");
+    });
+  }
+}
+function tick(ev) {
+  const t = $("ticker"), line = document.createElement("div");
+  let txt = "saved";
+  if (ev.error) txt = "error";
+  else if (ev.answers) txt = Object.entries(ev.answers).map(([k, a]) => `${k}=${a.type === "choice" ? a.choice : a.type === "noul" ? a.noul.toFixed(2) : a.score.toFixed(1)}`).join(" ");
+  line.innerHTML = `${esc(ev.phase)} <b>${esc(shortId(ev.subject))}</b> ${esc(txt)}`;
+  t.prepend(line); while (t.children.length > 7) t.lastChild.remove();
+}
+
+/* ---------- event playback ---------- */
+function pace() { return PACES[$("pace").value] || PACES.cinematic; }
+function answerColor(ev) {
+  if (!ev.answers) return "#f2c94c";
+  const a = Object.values(ev.answers)[0];
+  if (a.type === "choice") return ROLE_COLORS[a.choice] || REL_COLORS[a.choice] || COMMUNITY_COLORS[0];
+  return "#7c9cff";
+}
+function answerTarget(ev) {
+  if (ev.phase === "role") return { node: ev.subject };
+  if (ev.phase === "relation") return { edge: ev.subject.split("|") };
+  return { community: ev.subject };
+}
+function handle(ev) {
+  const P = pace();
+  switch (ev.type) {
+    case "run_start":
+      categories = ev.categories || categories; legends();
+      $("judgechip").textContent = ev.judge_label; $("judgechip").className = "chip " + (ev.judge === "jev" ? "ok" : "warn");
+      banner(ev.judge === "standin-rules" ? "Stand-in rules are answering, not Jev: probabilities are all-or-nothing. Add a key and pick Jev to see real judgments." :
+             ev.judge === "dry-run" ? "Dry run: each question's exact request is saved to requests.jsonl; nothing is sent and nothing is answered." : "");
+      $("s-out").innerHTML = `saving to <b>${esc(ev.out_dir.split(/[\\/]/).slice(-3).join("/"))}</b>`;
+      return 0;
+    case "ast":
+      stats.files++; stats.nodes += ev.nodes; spawnAst(ev.file, ev.sample, ev.nodes);
+      $("astcount").textContent = `${ev.file.split("/").pop()} · ${ev.nodes} nodes · ${ev.ms} ms`;
+      updateStats(); return P.ast;
+    case "parse_done":
+      $("s-parse").textContent = `${ev.ms} ms`;
+      $("astcount").textContent = `${ev.files} files · ${ev.nodes} nodes · ${ev.types} types · parsed in ${ev.ms} ms`;
+      return 0;
+    case "entity": {
+      const n = addNode(ev.entity);
+      if (ev.entity.file) bypass(ev.entity.file, { node: n.id }, 4);
+      return P.entity;
+    }
+    case "relationship": {
+      const r = ev.relationship;
+      if (!nodes.has(r.source) || !nodes.has(r.target)) return 0;
+      edges = edges.filter((e) => !(e.source === r.source && e.target === r.target && e.origin === r.origin && e.type === r.type));
+      edges.push(r); return r.origin === "syntax" ? P.rel : 0;
+    }
+    case "question":
+      questions.set(ev.qid, ev); stats.asked++; updateStats(); return 0;
+    case "answer": {
+      const q = questions.get(ev.qid);
+      if (q) renderQuestion(q);
+      filterColor = "#7c9cff"; filterGlow = 1;
+      const batch = pullToFilter(q ? q.files : [], ev.phase === "community" ? 26 : 18);
+      setTimeout(() => {
+        revealAnswers(ev); filterColor = answerColor(ev); filterGlow = 1;
+        if (ev.answers) { stats.answered++; if (!ev.cached && ev.latency_ms) stats.latency.push(ev.latency_ms);
+          if (!ev.cached) stats.tokens += ev.input_tokens || 0; }
+        updateStats(); tick(ev);
+        setTimeout(() => { if (ev.answers) emitTo(batch, answerColor(ev), answerTarget(ev));
+          else batch.forEach((p) => { p.state = "inFilter"; p.color = "#f2c94c"; }); }, P.reveal);
+      }, P.pull);
+      return P.pull + P.reveal + P.emit;
+    }
+    case "entity_update": addNode(ev.entity); return 0;
+    case "community": {
+      const c = ev.community, prior = communities.get(c.id);
+      communities.set(c.id, { ...(prior || {}), ...c, index: prior ? prior.index : communities.size });
+      return P.community;
+    }
+    case "done":
+      running = false; $("start").disabled = false; $("card").classList.remove("live");
+      showDone(ev); return 0;
+    case "error":
+      banner(ev.message, true);
+      if (ev.fatal) { running = false; $("start").disabled = false; stop(); }
+      return 0;
+  }
+  return 0;
+}
+function pump() {
+  if (busy || !queue.length) return;
+  const ev = queue.shift(); busy = true;
+  const wait = handle(ev) || 0;
+  setTimeout(() => { busy = false; pump(); }, reduceMotion ? Math.min(wait, 150) : wait);
+}
+function updateStats() {
+  $("s-files").textContent = stats.files; $("s-nodes").textContent = stats.nodes;
+  $("s-q").textContent = `${stats.answered}/${stats.asked}`;
+  $("s-lat").textContent = stats.latency.length ? `${Math.round(stats.latency.reduce((a, b) => a + b, 0) / stats.latency.length)} ms` : "-";
+  $("s-tok").textContent = stats.tokens; $("s-cost").textContent = `$${(stats.tokens * 0.042 / 1e6).toFixed(6)}`;
+}
+function showDone(ev) {
+  const g = ev.grade, s = ev.stats, el = $("grade");
+  const pct = (v) => v == null ? "n/a" : `${Math.round(v * 100)}%`;
+  let html = `done · ${s.entities} entities · ${s.relationships} relationships · ${s.communities} communities` +
+    ` · <a href="/out/${encodeURIComponent(ev.out_dir.split(/[\\/]/).pop())}/graphrag.json" target="_blank">graphrag.json</a>`;
+  if (g) html += ` · <a href="/out/${encodeURIComponent(ev.out_dir.split(/[\\/]/).pop())}/report.md" target="_blank">report.md</a>` +
+    `<br>vs compiler: roles <b>${g.roles.correct}/${g.roles.scored}</b> · DEPENDS_ON P ${pct(g.depends_on.precision)} R ${pct(g.depends_on.recall)}` +
+    ` · invokes P ${pct(g.invokes.precision)} R ${pct(g.invokes.recall)} · candidate coverage ${pct(g.candidate_coverage)}`;
+  el.innerHTML = html; el.classList.add("show");
+}
+function banner(text, error) { const b = $("banner"); b.textContent = text; b.className = text ? "show" + (error ? " error" : "") : ""; measure(); }
+
+/* ---------- controls ---------- */
+function reset() {
+  particles = []; nodes = new Map(); edges = []; communities = new Map(); questions = new Map(); queue = []; busy = false;
+  stats = { files: 0, nodes: 0, asked: 0, answered: 0, latency: [], tokens: 0 };
+  $("ticker").innerHTML = ""; $("grade").classList.remove("show"); updateStats();
+  $("card").innerHTML = `<div class="empty">Parsing…</div>`;
+}
+function stop() { if (source) { source.close(); source = null; } }
+function start() {
+  stop(); reset(); measure(); running = true; $("start").disabled = true; banner("");
+  const params = new URLSearchParams({ path: $("path").value.trim(), mode: $("mode").value, source: $("source").checked ? "1" : "0" });
+  source = new EventSource(`/api/run?${params}`);
+  source.onmessage = (m) => { const ev = JSON.parse(m.data); queue.push(ev); if (ev.type === "done" || (ev.type === "error" && ev.fatal)) stop(); pump(); };
+  source.onerror = () => { if (running && source) { stop(); if (!queue.some((e) => e.type === "done")) { queue.push({ type: "error", fatal: true, message: "Lost the connection to the local server." }); pump(); } } };
+}
+$("start").addEventListener("click", start);
+$("stage").addEventListener("mousemove", (e) => {
+  const r = $("stage").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  hover = null;
+  for (const n of nodes.values()) if (Math.hypot(n.x - x, n.y - y) < radius(n) + 4) hover = n;
+  const tip = $("tip");
+  if (!hover) { tip.style.display = "none"; return; }
+  const d = hover.data || {};
+  let html = `<div class="t">${esc(hover.title)}</div><div class="m">${esc(hover.kind)}${d.file ? " · " + esc(d.file) + ":" + d.line : ""}</div>`;
+  if (d.role_probabilities) {
+    const top = Object.entries(d.role_probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    html += `<div class="m" style="margin-top:4px">role (${esc(d.role_judge || "")}): ` + top.map(([k, v]) => `${k.toLowerCase()} ${Math.round(v * 100)}%`).join(" · ") + "</div>";
+  }
+  const rels = edges.filter((x) => x.origin !== "syntax" && (x.source === hover.id || x.target === hover.id));
+  if (rels.length) html += `<div class="m" style="margin-top:4px">` + rels.map((x) => `${shortId(x.source)} ${x.type} ${shortId(x.target)} (${(x.confidence ?? 1).toFixed(2)})`).map(esc).join("<br>") + "</div>";
+  tip.innerHTML = html; tip.style.display = "block";
+  tip.style.left = Math.min(window.innerWidth - 310, e.clientX + 14) + "px"; tip.style.top = (e.clientY + 14) + "px";
+});
+$("stage").addEventListener("mouseleave", () => { hover = null; $("tip").style.display = "none"; });
+
+async function init() {
+  legends(); measure(); requestAnimationFrame(frame);
+  try {
+    const s = await (await fetch("/api/status")).json();
+    $("path").value = s.default_repo;
+    const chip = $("keychip");
+    if (s.key_present) { chip.textContent = `key: found · ${s.model}`; chip.className = "chip ok"; $("mode").value = "jev"; }
+    else if (s.cached_answers) { chip.textContent = `key: missing · ${s.cached_answers} cached answers`; chip.className = "chip warn"; $("mode").value = "jev"; }
+    else { chip.textContent = "key: missing"; chip.className = "chip bad"; $("mode").value = "standin"; }
+    chip.title = `Put TYPESAFE_API_KEY in ${s.key_file}`;
+    if (!s.key_present) banner(`No Jev key yet: put TYPESAFE_API_KEY=... in ${s.key_file} (read on every run, no restart). Until then, try the stand-in or dry run.`);
+  } catch { banner("Cannot reach the local server - start it with: python server.py", true); }
+}
+init();
+</script>
+</body>
+</html>
