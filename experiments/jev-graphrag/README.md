@@ -48,13 +48,24 @@ Read the exact requests before spending a token: `QUESTIONS.md` holds one real r
 
 ## Where the API key goes
 
-```bash
-cp .env.example .env     # then set TYPESAFE_API_KEY=... in experiments/jev-graphrag/.env
-```
+**In the page (simplest).** Start `python server.py`, open http://127.0.0.1:8765, paste the key into
+**Jev API key** and press **Use key**. Press **Test key** to make one real call (the role question for
+one class, about 2,000 input tokens) before a full run.
 
-`.env` is git-ignored and read again on every run, so the server needs no restart. Exporting
-`TYPESAFE_API_KEY` in the shell works too. Set `TYPESAFE_DEFAULT_MODEL` to pin a model instead of
-using `jev-latest`.
+- The page sends the key once, in a request body, to the server on your own computer (127.0.0.1).
+- The server keeps it in memory only: not written to disk, not logged, never sent back to the page
+  (the page sees only its last four characters), and forgotten when the server stops.
+- The server accepts a key only from its own page, so another website open in your browser cannot
+  plant one or spend your quota.
+- **remember on this computer** (off by default) keeps the key in this browser's storage so it is
+  re-sent after a reload. **Forget** clears it from the server and the browser.
+
+**Or in a file.** `copy .env.example .env` (`cp` on Mac/Linux) and set `TYPESAFE_API_KEY=...` in
+`experiments/jev-graphrag/.env`. It is git-ignored and read on every run. A key pasted into the page
+wins over the file. `python check_jev.py` runs the same one-call test from the terminal.
+
+If the key is rejected or `api.typesafe.ai` cannot be reached, a run stops after the first call with
+one message instead of sending every question.
 
 ## Run it
 
@@ -63,6 +74,7 @@ cd experiments/jev-graphrag
 python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
+python check_jev.py                              # optional: one real call to test the key in .env
 python server.py                                 # live view: http://127.0.0.1:8765
 python run.py ../../fixtures/sample-commerce --mode jev      # or: the same from the command line
 python -m pytest -q tests

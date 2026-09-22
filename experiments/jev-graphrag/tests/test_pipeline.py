@@ -238,3 +238,90 @@ def test_test_folders_are_skipped_unless_asked(tmp_path):
     (tmp_path / "src/test/java/ATest.java").write_text("class ATest {}")
     assert [p.name for p in extract.java_files(tmp_path)] == ["A.java"]
     assert sorted(p.name for p in extract.java_files(tmp_path, include_tests=True)) == ["A.java", "ATest.java"]
+
+
+def _serve(monkeypatch, tmp_path):
+    import threading
+    from http.server import ThreadingHTTPServer
+    import server
+    monkeypatch.setattr("jevgraph.judges.ENV_FILE", tmp_path / "absent.env")
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setattr(server, "OUT", tmp_path)
+    server.PAGE_KEY.set(None)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return server, httpd, f"127.0.0.1:{httpd.server_address[1]}"
+
+
+def _post(host, path, body, origin=True, content_type="application/json"):
+    import http.client
+    conn = http.client.HTTPConnection(host)
+    headers = {"Content-Type": content_type}
+    if origin:
+        headers["Origin"] = origin if isinstance(origin, str) else f"http://{host}"
+    conn.request("POST", path, json.dumps(body), headers)
+    response = conn.getresponse()
+    return response.status, response.read().decode()
+
+
+def test_a_pasted_key_is_accepted_only_from_the_page_and_never_sent_back(monkeypatch, tmp_path):
+    server, httpd, host = _serve(monkeypatch, tmp_path)
+    secret = "tsk-live-0123456789abcdef"
+    try:
+        assert _post(host, "/api/key", {"key": secret}, origin=False)[0] == 403  # no Origin: not our page
+        assert _post(host, "/api/key", {"key": secret}, origin="http://evil.example")[0] == 403
+        assert _post(host, "/api/key", {"key": secret}, content_type="text/plain")[0] == 403  # a plain form post
+        assert server.PAGE_KEY.get() is None
+        assert _post(host, "/api/key", {"key": "has space"})[0] == 400
+        status, body = _post(host, "/api/key", {"key": secret})
+        assert status == 200 and secret not in body and json.loads(body)["key_ends"] == "cdef"
+        assert server.PAGE_KEY.get() == secret
+        import urllib.request
+        assert secret not in urllib.request.urlopen(f"http://{host}/api/status").read().decode()
+        status, body = _post(host, "/api/key", {"clear": True})
+        assert status == 200 and json.loads(body)["key_present"] is False and server.PAGE_KEY.get() is None
+    finally:
+        httpd.shutdown()
+
+
+def test_the_key_test_runs_the_real_question_through_the_sdk(monkeypatch, tmp_path):
+    from jevgraph.probe import probe
+    fake = FakeJev()
+    models = {"models": [{"name": "jev-latest", "description": "d", "release_date": "2026-09-15"}]}
+    transport = httpx2.MockTransport(lambda r: httpx2.Response(200, json=models) if r.url.path.endswith("/models") else fake(r))
+    result = probe("k-test", "jev-test", "https://api.typesafe.ai", transport)
+    assert result["ok"] and fake.calls == 1 and set(result["answers"]) == {"role", "fits_a_role", "name_misleads"}
+    assert "k-test" not in json.dumps(result)
+    server, httpd, host = _serve(monkeypatch, tmp_path)
+    try:
+        status, body = _post(host, "/api/check-key", {})
+        assert status == 200 and json.loads(body)["ok"] is False and "paste" in json.loads(body)["message"].lower()
+    finally:
+        httpd.shutdown()
+
+
+def test_a_pasted_key_wins_over_the_env_file(monkeypatch, tmp_path):
+    from jevgraph.pipeline import make_judge
+    env = tmp_path / ".env"
+    env.write_text("﻿TYPESAFE_API_KEY=from-file\n", encoding="utf-8")  # with the BOM Notepad adds
+    monkeypatch.setattr("jevgraph.judges.ENV_FILE", env)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    judge, problem = make_judge("jev", tmp_path, tmp_path, api_key="from-page")
+    assert problem is None and judge._client_args["api_key"] == "from-page"
+    judge, problem = make_judge("jev", tmp_path, tmp_path)
+    assert problem is None and judge._client_args["api_key"] == "from-file"
+
+
+def test_a_rejected_key_stops_the_run_after_one_call(tmp_path):
+    calls = []
+
+    def reject(request):
+        calls.append(request)
+        return httpx2.Response(401, json={"detail": "invalid api key"})
+
+    judge = JevJudge(AnswerCache(tmp_path / "jev_cache.jsonl"), "bad-key", "jev-test",
+                     base_url="https://api.typesafe.ai", transport=httpx2.MockTransport(reject))
+    evs = events(tmp_path, judge=judge, workers=1)
+    assert evs[-1]["type"] == "error" and evs[-1]["fatal"] and "rejected the key" in evs[-1]["message"]
+    assert len(calls) == 1  # the SDK does not retry a 401, and the run sends nothing more
+    assert not any(e["type"] == "done" for e in evs)

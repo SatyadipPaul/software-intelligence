@@ -44,6 +44,7 @@ class Result:
     judge: str
     model: str | None = None
     error: str | None = None
+    fatal: bool = False  # the key or the connection is wrong, so every further call would fail too
 
 
 class AnswerCache:
@@ -124,13 +125,24 @@ class JevJudge:
         hit = self.cache.get(key)
         if hit is not None:
             return Result(hit["answers"], hit["latency_ms"], hit["input_tokens"], True, self.name, hit.get("model"))
-        from typesafe_sdk import TypeSafeError
+        from typesafe_sdk import (TypeSafeAPIConnectionError, TypeSafeAuthenticationError, TypeSafeError,
+                                  TypeSafePermissionDeniedError)
+        try:
+            client = self._client()  # the SDK validates the key's format here
+        except (TypeSafeError, ValueError) as error:
+            return Result(None, 0, 0, False, self.name, fatal=True, error=f"That key cannot be used: {error}")
         started = time.perf_counter()
         try:
-            response = self._client().system_one(ask.state, ask.questions)
-        except TypeSafeError as error:
+            response = client.system_one(ask.state, ask.questions)
+        except (TypeSafeAuthenticationError, TypeSafePermissionDeniedError) as error:
+            return Result(None, 0, 0, False, self.name, fatal=True,
+                          error=f"Jev rejected the key ({type(error).__name__}). Check it and press Use key again.")
+        except TypeSafeAPIConnectionError as error:
+            return Result(None, 0, 0, False, self.name, fatal=True,
+                          error=f"Could not reach api.typesafe.ai ({error}). Check your internet connection, VPN or proxy.")
+        except (TypeSafeError, ValueError) as error:  # ValueError: the SDK refuses a malformed key before sending
             return Result(None, (time.perf_counter() - started) * 1000, 0, False, self.name,
-                          error=f"{type(error).__name__}: {error}")
+                          fatal=isinstance(error, ValueError), error=f"{type(error).__name__}: {error}")
         latency = (time.perf_counter() - started) * 1000
         answers = {name: answer.model_dump(mode="json") for name, answer in response.answers.items()}
         tokens = response.usage.input_tokens or 0

@@ -30,6 +30,10 @@ RUN_FILES = ["events", "ast", "entities", "relationships", "text_units", "questi
              "communities", "requests"]
 
 
+class _Stop(Exception):
+    """Raised inside a run when the judge cannot work at all (bad key, no connection)."""
+
+
 class Writer:
     """Appends one JSON line per record and flushes it, so a stopped run leaves everything so far."""
 
@@ -55,7 +59,7 @@ class Writer:
             handle.close()
 
 
-def make_judge(mode: str, out_dir: Path, out_root: Path = OUT):
+def make_judge(mode: str, out_dir: Path, out_root: Path = OUT, api_key: str | None = None):
     env = load_env()
     model = env.get("TYPESAFE_DEFAULT_MODEL", "jev-latest")
     if mode == "standin":
@@ -63,11 +67,11 @@ def make_judge(mode: str, out_dir: Path, out_root: Path = OUT):
     if mode == "dryrun":
         return DryRunJudge(out_dir / "requests.jsonl", model), None
     if mode == "jev":
-        key = env.get("TYPESAFE_API_KEY")
+        key = api_key or env.get("TYPESAFE_API_KEY")  # a key pasted into the page wins over .env
         cache = AnswerCache(out_root / "jev_cache.jsonl")
         if not key and not cache.entries:
-            return None, ("No TYPESAFE_API_KEY found. Put it in experiments/jev-graphrag/.env "
-                          "(see .env.example) or export it, then run again - or pick the stand-in or dry-run mode.")
+            return None, ("No Jev API key yet. Paste it into the key box at the top of the page and press Use key "
+                          "(or put TYPESAFE_API_KEY=... in experiments/jev-graphrag/.env) - or pick the stand-in or dry run.")
         return JevJudge(cache, key or "cache-only-no-key", model, env.get("TYPESAFE_BASE_URL")), None
     return None, f"Unknown mode {mode!r}; use jev, standin or dryrun."
 
@@ -106,7 +110,8 @@ def _auto_truth(repo: Path, target: Path, include_tests: bool) -> subprocess.Pop
 
 
 def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth: Path | None = None,
-        workers: int = 4, judge=None, out_root: Path = OUT, budget: Budget | None = None) -> Iterator[dict]:
+        workers: int = 4, judge=None, out_root: Path = OUT, budget: Budget | None = None,
+        api_key: str | None = None) -> Iterator[dict]:
     budget = budget or Budget()
     early: list[dict] = []  # events from before the output folder is known
     source = fetch.parse(str(repo), REPO_ROOT) if not isinstance(repo, Path) else repo
@@ -137,7 +142,7 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
         return event
 
     if judge is None:
-        judge, problem = make_judge(mode, out_dir, out_root)
+        judge, problem = make_judge(mode, out_dir, out_root, api_key)
         if problem:
             yield emit({"type": "error", "fatal": True, "message": problem})
             writer.close()
@@ -264,6 +269,11 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
             futures = {pool.submit(judge.ask, ask): ask for ask in ready}
             for future in as_completed(futures):
                 ask, result = futures[future], future.result()
+                if result.fatal:  # every other call would fail the same way: stop instead of sending them all
+                    for pending in futures:
+                        pending.cancel()
+                    yield ask, None, emit({"type": "error", "fatal": True, "message": result.error})
+                    raise _Stop
                 if result.error:
                     stats["errors"] += 1
                 elif result.answers is not None:
@@ -278,97 +288,102 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
                 writer.append("answers", record)
                 yield ask, result, emit({"type": "answer", **record})
 
-    # Round 1: the role of each class, with its neighbourhood as context.
-    inferred_roles: dict[str, dict] = {}
-    role_asks = []
-    for declared in (types[t] for t in rank[:budget.roles]):
-        uses, used_by = neighbours(declared, pairs, types)
-        role_asks.append(role_ask(declared, uses, used_by, ctx, with_source))
-    for ask, result, event in ask_all(role_asks):
-        yield event
-        if result is None or not result.answers:
-            continue
-        a = result.answers
-        role = a["role"]
-        inferred_roles[ask.subject] = {"value": role["choice"], "confidence": round(role["confidence"], 3),
-                                       "fits_a_role": round(a["fits_a_role"]["noul"], 3), "judged_by": result.judge}
-        entities[ask.subject].update(role=role["choice"], role_confidence=role["confidence"],
-                                     role_probabilities=role["probabilities"], fits_a_role=a["fits_a_role"]["noul"],
-                                     name_misleads=a["name_misleads"]["noul"], role_judge=result.judge)
-        writer.append("entities", entities[ask.subject])
-        yield emit({"type": "entity_update", "entity": entities[ask.subject]})
-
-    # Round 2: what each proven link means. The essential answer becomes the edge weight GraphRAG uses.
-    weights: dict[tuple[str, str], float] = {(c.source, c.target): 0.5 for c in pairs}
-    essential: dict[tuple[str, str], float] = {}
-    for ask, result, event in ask_all([relation_ask(c, types, proven[(c.source, c.target)], ctx, with_source)
-                                       for c in judged_pairs]):
-        yield event
-        if result is None or not result.answers:
-            continue
-        source, target = ask.subject.split("|")
-        a = result.answers
-        weights[(source, target)] = essential[(source, target)] = a["essential"]["noul"]
-        for kind in sorted(proven[(source, target)]):
-            edge = relationships[(source, target, kind)]
-            yield relationship({**edge, "weight": a["essential"]["noul"], "essential": a["essential"]["noul"],
-                                "judged_by": result.judge}, update=True)
-        for question, kind in (("persists", "PERSISTS"), ("publishes", "PUBLISHES")):
-            if a[question]["noul"] >= 0.5:
-                yield relationship({"source": source, "target": target, "type": kind, "origin": result.judge,
-                                    "confidence": a[question]["noul"], "weight": a[question]["noul"],
-                                    "evidence": ask.state["evidence"]})
-        yield emit({"type": "pair_judged", "source": source, "target": target,
-                    "answers": {k: v["noul"] for k, v in a.items()}})
-
-    # Round 3: communities are found by an algorithm and described by the judge.
-    graph = nx.Graph()
-    graph.add_nodes_from(types)
-    for (source, target), weight in weights.items():
-        if weight > 0:
-            previous = graph.get_edge_data(source, target, {}).get("weight", 0)
-            graph.add_edge(source, target, weight=previous + weight)
-    groups = sorted((sorted(g) for g in nx.community.louvain_communities(graph, weight="weight", seed=42)),
-                    key=lambda g: (-len(g), g))
-    communities = [{"id": f"community:{number}", "level": 0, "members": members, "size": len(members),
-                    "label": None, "judged": False} for number, members in enumerate(groups)]
-    position = {t: i for i, t in enumerate(rank)}
-    chosen = sorted((c for c in communities if focus & set(c["members"])),
-                    key=lambda c: (-len(focus & set(c["members"])), -c["size"], c["id"]))[:budget.communities]
-    asks = []
-    for community in chosen:
-        inside_set = set(community["members"])
-        # Sorted: answers arrive in completion order, and an unsorted list would change the request - and miss the cache.
-        inside, outside = [], []
-        for (s, t), kinds in sorted(proven.items()):
-            if s not in inside_set and t not in inside_set:
+    try:
+        # Round 1: the role of each class, with its neighbourhood as context.
+        inferred_roles: dict[str, dict] = {}
+        role_asks = []
+        for declared in (types[t] for t in rank[:budget.roles]):
+            uses, used_by = neighbours(declared, pairs, types)
+            role_asks.append(role_ask(declared, uses, used_by, ctx, with_source))
+        for ask, result, event in ask_all(role_asks):
+            yield event
+            if result is None or not result.answers:
                 continue
-            row = {"from": types[s].name, "to": types[t].name, "kinds": sorted(kinds),
-                   "essential": None if (s, t) not in essential else round(essential[(s, t)], 3)}
-            (inside if s in inside_set and t in inside_set else outside).append(row)
-        members = sorted(community["members"], key=lambda m: position[m])  # judged classes first
-        asks.append(community_ask(community["id"], [types[m] for m in members], inferred_roles, inside, outside, ctx))
-        community["judged"] = True
-        yield emit({"type": "community", "community": community})
-    by_id = {c["id"]: c for c in communities}
-    for ask in asks:  # a group offering a single name needs no Choice: that name is the label
-        if "label" not in ask.questions:
-            names = list(label_candidates([types[m] for m in by_id[ask.subject]["members"]]))
-            by_id[ask.subject]["label"] = names[0] if names else None
-    for ask, result, event in ask_all(asks):
-        yield event
-        if result is None or not result.answers:
-            continue
-        a = result.answers
-        community = by_id[ask.subject]
-        if "label" in a:
-            community.update(label=a["label"]["choice"], label_confidence=a["label"]["confidence"],
-                             label_probabilities=a["label"]["probabilities"])
-        community.update(single_theme=a["single_theme"]["noul"], business_capability=a["business_capability"]["noul"],
-                         cohesion=a["cohesion"]["score"] if "cohesion" in a else None, judge=result.judge)
-        yield emit({"type": "community", "community": community})
-    for community in communities:
-        writer.append("communities", community)
+            a = result.answers
+            role = a["role"]
+            inferred_roles[ask.subject] = {"value": role["choice"], "confidence": round(role["confidence"], 3),
+                                           "fits_a_role": round(a["fits_a_role"]["noul"], 3), "judged_by": result.judge}
+            entities[ask.subject].update(role=role["choice"], role_confidence=role["confidence"],
+                                         role_probabilities=role["probabilities"], fits_a_role=a["fits_a_role"]["noul"],
+                                         name_misleads=a["name_misleads"]["noul"], role_judge=result.judge)
+            writer.append("entities", entities[ask.subject])
+            yield emit({"type": "entity_update", "entity": entities[ask.subject]})
+
+        # Round 2: what each proven link means. The essential answer becomes the edge weight GraphRAG uses.
+        weights: dict[tuple[str, str], float] = {(c.source, c.target): 0.5 for c in pairs}
+        essential: dict[tuple[str, str], float] = {}
+        for ask, result, event in ask_all([relation_ask(c, types, proven[(c.source, c.target)], ctx, with_source)
+                                           for c in judged_pairs]):
+            yield event
+            if result is None or not result.answers:
+                continue
+            source, target = ask.subject.split("|")
+            a = result.answers
+            weights[(source, target)] = essential[(source, target)] = a["essential"]["noul"]
+            for kind in sorted(proven[(source, target)]):
+                edge = relationships[(source, target, kind)]
+                yield relationship({**edge, "weight": a["essential"]["noul"], "essential": a["essential"]["noul"],
+                                    "judged_by": result.judge}, update=True)
+            for question, kind in (("persists", "PERSISTS"), ("publishes", "PUBLISHES")):
+                if a[question]["noul"] >= 0.5:
+                    yield relationship({"source": source, "target": target, "type": kind, "origin": result.judge,
+                                        "confidence": a[question]["noul"], "weight": a[question]["noul"],
+                                        "evidence": ask.state["evidence"]})
+            yield emit({"type": "pair_judged", "source": source, "target": target,
+                        "answers": {k: v["noul"] for k, v in a.items()}})
+
+        # Round 3: communities are found by an algorithm and described by the judge.
+        graph = nx.Graph()
+        graph.add_nodes_from(types)
+        for (source, target), weight in weights.items():
+            if weight > 0:
+                previous = graph.get_edge_data(source, target, {}).get("weight", 0)
+                graph.add_edge(source, target, weight=previous + weight)
+        groups = sorted((sorted(g) for g in nx.community.louvain_communities(graph, weight="weight", seed=42)),
+                        key=lambda g: (-len(g), g))
+        communities = [{"id": f"community:{number}", "level": 0, "members": members, "size": len(members),
+                        "label": None, "judged": False} for number, members in enumerate(groups)]
+        position = {t: i for i, t in enumerate(rank)}
+        chosen = sorted((c for c in communities if focus & set(c["members"])),
+                        key=lambda c: (-len(focus & set(c["members"])), -c["size"], c["id"]))[:budget.communities]
+        asks = []
+        for community in chosen:
+            inside_set = set(community["members"])
+            # Sorted: answers arrive in completion order, and an unsorted list would change the request - and miss the cache.
+            inside, outside = [], []
+            for (s, t), kinds in sorted(proven.items()):
+                if s not in inside_set and t not in inside_set:
+                    continue
+                row = {"from": types[s].name, "to": types[t].name, "kinds": sorted(kinds),
+                       "essential": None if (s, t) not in essential else round(essential[(s, t)], 3)}
+                (inside if s in inside_set and t in inside_set else outside).append(row)
+            members = sorted(community["members"], key=lambda m: position[m])  # judged classes first
+            asks.append(community_ask(community["id"], [types[m] for m in members], inferred_roles, inside, outside, ctx))
+            community["judged"] = True
+            yield emit({"type": "community", "community": community})
+        by_id = {c["id"]: c for c in communities}
+        for ask in asks:  # a group offering a single name needs no Choice: that name is the label
+            if "label" not in ask.questions:
+                names = list(label_candidates([types[m] for m in by_id[ask.subject]["members"]]))
+                by_id[ask.subject]["label"] = names[0] if names else None
+        for ask, result, event in ask_all(asks):
+            yield event
+            if result is None or not result.answers:
+                continue
+            a = result.answers
+            community = by_id[ask.subject]
+            if "label" in a:
+                community.update(label=a["label"]["choice"], label_confidence=a["label"]["confidence"],
+                                 label_probabilities=a["label"]["probabilities"])
+            community.update(single_theme=a["single_theme"]["noul"], business_capability=a["business_capability"]["noul"],
+                             cohesion=a["cohesion"]["score"] if "cohesion" in a else None, judge=result.judge)
+            yield emit({"type": "community", "community": community})
+        for community in communities:
+            writer.append("communities", community)
+
+    except _Stop:
+        writer.close()
+        return
 
     # Assemble, grade, report.
     latencies = stats.pop("latency_ms")

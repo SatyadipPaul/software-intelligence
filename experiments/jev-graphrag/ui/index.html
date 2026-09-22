@@ -32,6 +32,15 @@
   .chip.ok { color: var(--good); border-color: #1f4d3a; }
   .chip.warn { color: var(--warn); border-color: #5a4a1a; }
   .chip.bad { color: var(--bad); border-color: #5a2230; }
+  #keybar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 16px;
+            border-bottom: 1px solid var(--line); background: #0d131c; font-size: 12.5px; }
+  #keybar > label { color: var(--muted); font-size: 12px; }
+  #keybar label.remember { display: inline-flex; gap: 5px; align-items: center; }
+  input#apikey { width: min(300px, 70vw); font-family: var(--mono); font-size: 12.5px; }
+  #keybar button { cursor: pointer; }
+  #keybar button:disabled { opacity: .5; cursor: default; }
+  #keystatus { color: var(--muted); font-size: 12px; }
+  #keystatus.ok { color: var(--good); } #keystatus.bad { color: var(--bad); }
   #banner { display: none; padding: 6px 16px; font-size: 12.5px; background: #2a2210; color: var(--warn);
             border-bottom: 1px solid #5a4a1a; }
   #banner.show { display: block; }
@@ -126,6 +135,15 @@
   <button id="start">Start</button>
   <div class="chips"><span class="chip" id="keychip">key: …</span><span class="chip" id="judgechip">idle</span></div>
 </header>
+<div id="keybar">
+  <label for="apikey">Jev API key</label>
+  <input id="apikey" type="password" autocomplete="off" spellcheck="false" placeholder="paste your TypeSafe key here">
+  <button id="usekey" type="button">Use key</button>
+  <button id="testkey" type="button" title="One real Jev call (about 2,000 input tokens) with the experiment's own role question">Test key</button>
+  <button id="forgetkey" type="button">Forget</button>
+  <label class="remember"><input type="checkbox" id="remember"> remember on this computer</label>
+  <span id="keystatus">The key goes only to the local server on this computer, which keeps it in memory.</span>
+</div>
 <div id="banner"></div>
 
 <main class="stage" id="stage">
@@ -529,7 +547,8 @@ function handle(ev) {
   const P = pace();
   switch (ev.type) {
     case "fetch":
-      $("card").innerHTML = `<div class="empty">${esc(ev.message || ev.stage)}</div>`;
+      if (!ev.message) return 0;  // "ready" carries only the local path
+      $("card").innerHTML = `<div class="empty">${esc(ev.message)}</div>`;
       if (ev.message) { const line = document.createElement("div"); line.textContent = ev.message; $("ticker").prepend(line); }
       return 0;
     case "budget":
@@ -673,17 +692,75 @@ $("stage").addEventListener("mousemove", (e) => {
 });
 $("stage").addEventListener("mouseleave", () => { hover = null; $("tip").style.display = "none"; });
 
+/* ---------- the Jev key: sent once to the local server, never kept in the page ---------- */
+function storage(action, value) {  // localStorage may be unavailable (private windows); never let that break the page
+  try {
+    if (action === "get") return localStorage.getItem("jevKey");
+    if (action === "set") localStorage.setItem("jevKey", value); else localStorage.removeItem("jevKey");
+  } catch { return null; }
+}
+function keyStatus(text, kind) { const el = $("keystatus"); el.textContent = text; el.className = kind || ""; }
+function showKeyChip(s) {
+  const chip = $("keychip");
+  if (s.key_present) {
+    chip.textContent = `key: ${s.key_source === "page" ? "pasted" : "from .env"}${s.key_ends ? " · …" + s.key_ends : ""}`;
+    chip.className = "chip ok";
+  } else if (s.cached_answers) { chip.textContent = `key: none · ${s.cached_answers} cached answers`; chip.className = "chip warn"; }
+  else { chip.textContent = "key: none"; chip.className = "chip bad"; }
+}
+async function post(path, body) {
+  const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return { ok: response.ok, data: await response.json() };
+}
+async function useKey(silent) {
+  const key = $("apikey").value.trim() || (silent ? storage("get") : "");
+  if (!key) { keyStatus("Paste a key first.", "bad"); return false; }
+  try {
+    const { ok, data } = await post("/api/key", { key });
+    if (!ok) { keyStatus(data.error || "The server refused the key.", "bad"); return false; }
+    $("apikey").value = "";  // the page does not keep it; the local server does
+    if ($("remember").checked) storage("set", key); else storage("remove");
+    showKeyChip(data); $("mode").value = "jev";
+    keyStatus(`Key set${data.key_ends ? " (ends …" + data.key_ends + ")" : ""}. Press Test key to try one real call, or Start.`, "ok");
+    if (!running) banner("");
+    return true;
+  } catch { keyStatus("Cannot reach the local server - is python server.py still running?", "bad"); return false; }
+}
+async function testKey() {
+  if ($("apikey").value.trim() && !(await useKey(false))) return;
+  $("testkey").disabled = true; keyStatus("Asking Jev one question…", "");
+  try {
+    const { data } = await post("/api/check-key", {});
+    keyStatus(data.message || data.error || "No answer.", data.ok ? "ok" : "bad");
+    if (data.ok) {
+      measure();
+      renderQuestion({ phase: "key test", subject: "type:" + data.subject, questions: data.questions });
+      revealAnswers({ answers: data.answers, judge: "jev", model: data.model, latency_ms: data.latency_ms, cached: false });
+    }
+  } catch { keyStatus("Cannot reach the local server - is python server.py still running?", "bad"); }
+  $("testkey").disabled = false;
+}
+async function forgetKey() {
+  storage("remove"); $("remember").checked = false; $("apikey").value = "";
+  try { const { data } = await post("/api/key", { clear: true }); showKeyChip(data); } catch { /* server gone: nothing held */ }
+  keyStatus("Forgotten by the server and this browser.", "");
+}
+$("usekey").addEventListener("click", () => useKey(false));
+$("testkey").addEventListener("click", testKey);
+$("forgetkey").addEventListener("click", forgetKey);
+$("apikey").addEventListener("keydown", (e) => { if (e.key === "Enter") useKey(false); });
+$("remember").addEventListener("change", () => { if (!$("remember").checked) storage("remove"); });
+
 async function init() {
   legends(); measure(); requestAnimationFrame(frame);
   try {
     const s = await (await fetch("/api/status")).json();
     $("path").value = s.default_repo;
-    const chip = $("keychip");
-    if (s.key_present) { chip.textContent = `key: found · ${s.model}`; chip.className = "chip ok"; $("mode").value = "jev"; }
-    else if (s.cached_answers) { chip.textContent = `key: missing · ${s.cached_answers} cached answers`; chip.className = "chip warn"; $("mode").value = "jev"; }
-    else { chip.textContent = "key: missing"; chip.className = "chip bad"; $("mode").value = "standin"; }
-    chip.title = `Put TYPESAFE_API_KEY in ${s.key_file}`;
-    if (!s.key_present) banner(`No Jev key yet: put TYPESAFE_API_KEY=... in ${s.key_file} (read on every run, no restart). Until then, try the stand-in or dry run.`);
+    showKeyChip(s);
+    $("mode").value = s.key_present || s.cached_answers ? "jev" : "standin";
+    if (storage("get")) { $("remember").checked = true; if (!s.key_present || s.key_source !== "page") await useKey(true); }
+    else if (!s.key_present) keyStatus("No key yet. Paste it here and press Use key; until then the stand-in rules or a dry run work without one.", "");
+    else keyStatus(`Using the key from ${s.key_source === "page" ? "this page" : ".env"}${s.key_ends ? " (ends …" + s.key_ends + ")" : ""}.`, "ok");
   } catch { banner("Cannot reach the local server - start it with: python server.py", true); }
 }
 init();
