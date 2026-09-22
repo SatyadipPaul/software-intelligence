@@ -158,7 +158,7 @@ questions of one.
 <dependency>
   <groupId>io.github.satyadippaul</groupId>
   <artifactId>pipeline</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -448,7 +448,7 @@ The local-first Maven plugin is built in `apps/maven-plugin`. It is on Maven Cen
 <plugin>
   <groupId>io.github.satyadippaul</groupId>
   <artifactId>repo-intel-maven-plugin</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
   <executions>
     <execution><phase>verify</phase><goals><goal>analyze</goal></goals></execution>
   </executions>
@@ -458,7 +458,7 @@ The local-first Maven plugin is built in `apps/maven-plugin`. It is on Maven Cen
 It writes `target/repo-intel/repo-graph.json` using the Maven project's resolved compile classpath. The impact goal additionally writes text, graph JSON, and SARIF reports. For an explicit impact gate:
 
 ```powershell
-mvn io.github.satyadippaul:repo-intel-maven-plugin:0.2.0:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
+mvn io.github.satyadippaul:repo-intel-maven-plugin:0.3.0:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
 ```
 
 The plugin does not require Docker, a hosted graph, or source-code upload.
