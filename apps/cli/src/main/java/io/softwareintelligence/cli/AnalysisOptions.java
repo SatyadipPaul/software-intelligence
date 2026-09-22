@@ -4,6 +4,7 @@ import io.softwareintelligence.model.CodeGraph;
 import io.softwareintelligence.model.GraphSnapshot;
 import io.softwareintelligence.pipeline.ClasspathDiscovery;
 import io.softwareintelligence.pipeline.RepositoryModel;
+import io.softwareintelligence.session.AnalysisSession;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -56,6 +57,18 @@ final class AnalysisOptions {
      */
     CodeGraph analyze(Path repository) throws IOException {
         if (isGraphFile(repository)) return GraphSnapshot.read(repository);
+        AnalysisSession.Request request = request(repository);
+        return new RepositoryModel().build(request.repository(), request.classpath(), request.includeTests(), request.layers());
+    }
+
+    /**
+     * Everything these options say about how to build a graph, without building it.
+     *
+     * <p>Shared by {@link #analyze}, which builds once and exits, and by {@code serve}, which hands
+     * it to a session that rebuilds whenever the source moves. One method, so the two cannot
+     * disagree about what a flag means.
+     */
+    AnalysisSession.Request request(Path repository) throws IOException {
         List<Path> entries = classpathEntries();
         if (entries.isEmpty() && discover) {
             ClasspathDiscovery.Discovered discovered = ClasspathDiscovery.discover(repository);
@@ -78,7 +91,7 @@ final class AnalysisOptions {
                 .withArchitecture(!noArchitecture)
                 .withTestVocabulary(testVocabulary)
                 .withCommitVocabulary(commitVocabulary);
-        return new RepositoryModel().build(repository, entries, !noTests, layers);
+        return new AnalysisSession.Request(repository, entries, !noTests, layers);
     }
 
     /** The repository a command should use when it takes one positional, which it may omit. */

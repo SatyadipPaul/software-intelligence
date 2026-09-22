@@ -7,6 +7,8 @@ import io.softwareintelligence.model.GraphQueries;
 import io.softwareintelligence.model.ImpactReport;
 import picocli.CommandLine;
 
+import io.softwareintelligence.model.GraphNode;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.io.File;
 import java.util.Arrays;
@@ -37,22 +39,26 @@ final class ImpactCommand implements Callable<Integer> {
         Target target = options.target(first, second, "symbol", this);
         CodeGraph graph = options.analyze(target.repository());
         var subject = Symbols.resolve(graph, target.subject(), this);
-        ImpactReport impact = GraphQueries.impact(graph, subject, depth);
-        System.out.printf("IMPACT: %s (%s)%n", subject.name(), subject.kind());
-        System.out.printf("Direct: %d | Transitive: %d | Depth: %d%n", impact.direct().size(), impact.transitive().size(), depth);
-        print("DIRECT", impact.direct());
-        print("TRANSITIVE", impact.transitive());
-        if (risk) System.out.print(System.lineSeparator() + RiskScore.explain(RiskScore.assess(graph, impact)));
+        report(graph, subject, depth, risk, System.out);
         return 0;
     }
 
+    /** Prints the impact of changing {@code subject}. Shared with the server; see AskCommand.answer. */
+    static void report(CodeGraph graph, GraphNode subject, int depth, boolean risk, PrintStream out) {
+        ImpactReport impact = GraphQueries.impact(graph, subject, depth);
+        out.printf("IMPACT: %s (%s)%n", subject.name(), subject.kind());
+        out.printf("Direct: %d | Transitive: %d | Depth: %d%n", impact.direct().size(), impact.transitive().size(), depth);
+        print("DIRECT", impact.direct(), out);
+        print("TRANSITIVE", impact.transitive(), out);
+        if (risk) out.print(System.lineSeparator() + RiskScore.explain(RiskScore.assess(graph, impact)));
+    }
 
-    private static void print(String section, java.util.List<ImpactReport.ImpactPath> paths) {
+    private static void print(String section, java.util.List<ImpactReport.ImpactPath> paths, PrintStream out) {
         if (paths.isEmpty()) return;
-        System.out.println(section + " EVIDENCE:");
+        out.println(section + " EVIDENCE:");
         for (ImpactReport.ImpactPath path : paths) {
             GraphEdge finalEdge = path.evidence().get(path.evidence().size() - 1);
-            System.out.printf("  - %s [%s] via %s at %s:%d (confidence %.2f)%n", path.target().name(), path.target().kind(), finalEdge.kind(),
+            out.printf("  - %s [%s] via %s at %s:%d (confidence %.2f)%n", path.target().name(), path.target().kind(), finalEdge.kind(),
                     finalEdge.provenance().file(), finalEdge.provenance().line(), finalEdge.provenance().confidence());
         }
     }

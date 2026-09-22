@@ -37,6 +37,10 @@ import java.util.Objects;
  * costs seconds, while not rebuilding when it was necessary answers questions about code that is no
  * longer there, and says nothing to suggest the answer is stale.
  *
+ * <p><b>One input is not covered.</b> With commit vocabulary switched on, the graph reads git
+ * history, and a commit changes that history without changing a source byte. Such a session keeps
+ * the vocabulary it was opened with until a source file changes. The layer is off by default.
+ *
  * <h2>Threading</h2>
  *
  * <p>Not thread-safe. A server handling concurrent requests must confine an instance to one thread

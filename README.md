@@ -109,6 +109,7 @@ repo-intel architecture                   modules, centrality, communities, work
 repo-intel ask "<question>"               retrieval + traversal, every claim verified or withheld
 repo-intel index -o tree.json             derive the navigable index tree, and pin it to a file
 repo-intel navigate "<q>" --session s     walk that tree one level at a time, for an assistant
+repo-intel serve                          hold the graph warm and answer an assistant over MCP
 repo-intel snapshot -o snap.json          durable snapshot for later comparison
 repo-intel diff snap.json                 what changed, and the risk of each changed symbol
 repo-intel evaluate questions.tsv         score against a grounded question set
@@ -193,6 +194,46 @@ CodeGraph reloaded = GraphSnapshot.read(Path.of("repo-graph.json"));
 **On large repositories, build the graph once and keep it.** Analysing jackson-databind takes about
 28 seconds and reloading its 134 MB graph about 4, so a program that rebuilds per question spends
 nearly all of its time in setup — see [the timings](docs/cli-ergonomics-plan.md).
+
+## Serving it to an assistant
+
+`repo-intel serve` holds one repository's graph in memory and answers an assistant over the
+[Model Context Protocol](https://modelcontextprotocol.io/) on stdio. The graph is analysed once and
+rebuilt only when a source file changes, so every question after the first costs milliseconds
+instead of a fresh analysis.
+
+```json
+{
+  "mcpServers": {
+    "repo-intel": {
+      "command": "repo-intel",
+      "args": ["serve", "-C", "/path/to/your/repo"],
+      "env": { "JAVA_OPTS": "-Xmx1536m" }
+    }
+  }
+}
+```
+
+| Tool | What it does |
+| --- | --- |
+| `ask` | A question in plain language; every claim in the answer cites a file and line |
+| `impact` | What is affected if a symbol changes, with the evidence for each dependency |
+| `context` | The minimum evidence packet for a symbol, as JSON |
+| `navigate_start`, `navigate_choose` | The assistant steers the descent itself, card by card, and gets the verified answer where it lands |
+| `status` | Which repository is loaded, and whether its source has changed |
+
+Measured over the protocol on jackson-databind (1386 files): the first question waits for the
+analysis, about 20 seconds; every later one takes 74–102 ms. The same question from the command
+line takes 11 seconds even with a cached graph — see
+[the measurement](docs/benchmarks/warm-session-2026-09-22.md).
+
+Before each answer the server checks whether the source has moved, by content rather than
+timestamps, and rebuilds if it has; the answer says when that happened. It never answers from a
+graph it knows to be stale — if the rebuild fails, the call fails. Open descents are discarded on a
+rebuild, because their cards describe the previous graph.
+
+**Heap:** analysing about 1,400 source files needs 1 GB; a warm session on that repository retains
+under 300 MB. Size `-Xmx` for the analysis, not for what is held.
 
 ## Retrieval: ranking, or navigation
 

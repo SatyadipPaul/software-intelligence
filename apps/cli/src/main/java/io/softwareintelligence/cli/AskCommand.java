@@ -13,6 +13,7 @@ import io.softwareintelligence.queryengine.TreeNavigator;
 import io.softwareintelligence.queryengine.VerifiedAnswer;
 import picocli.CommandLine;
 
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +63,11 @@ final class AskCommand implements Callable<Integer> {
     @CommandLine.Option(names = "--explain", description = "Print the descent that produced the anchors")
     private boolean explain;
 
+    /** How an answer is looked for. Carried together so the CLI and the server cannot drift apart. */
+    record Settings(int budget, int retrieve, RetrievalMode retrieval, int maxAnchors, int beam, boolean explain) {
+        static final Settings DEFAULTS = new Settings(1500, 10, RetrievalMode.HYBRID, 1, 4, false);
+    }
+
     @Override public Integer call() throws Exception {
         Target target = options.target(first, second, "question", this);
         repository = target.repository();
@@ -70,46 +76,64 @@ final class AskCommand implements Callable<Integer> {
         Bm25Index index = Bm25Index.over(graph);
         IndexTree tree = retrieval.needsTree() || session != null ? TreeOptions.load(graph, indexFile) : null;
 
-        List<GraphNode> anchors;
-        List<ContextPacket> contexts;
-        QueryPlanner.Plan plan = QueryPlanner.classify(question);
-        Optional<TreeNavigator.Descent> descent = Optional.empty();
-
         if (session != null) {
-            anchors = sessionAnchors(graph, tree);
-            if (anchors.isEmpty()) {
-                System.out.println("That descent has not anchored anywhere yet, so there is nothing to answer from.");
-                return 0;
-            }
-            contexts = anchors.stream().map(node -> GraphQueries.context(graph, node, plan.depth())).toList();
-            System.out.printf("PLAN: %s (depth %d) - anchors chosen by an assistant descent%n", plan.kind(), plan.depth());
+            answerFrom(graph, sessionAnchors(graph, tree), question, budget, System.out);
         } else {
-            QueryPlanner.Answerable answerable = QueryPlanner.plan(graph, index, tree, question,
-                    retrieve, retrieval, maxAnchors, beam);
-            anchors = answerable.anchors();
-            contexts = answerable.contexts();
-            descent = answerable.descent();
-            System.out.printf("PLAN: %s (depth %d) - %s%n", answerable.plan().kind(), answerable.plan().depth(),
-                    answerable.plan().rationale());
-            System.out.printf("RETRIEVAL: %s%s%n", retrieval,
-                    descent.map(found -> ", " + found.cardsRead() + " cards read").orElse(""));
-            System.out.println("RETRIEVED:");
-            answerable.retrieved().forEach(hit -> System.out.printf("  %-60s score=%.3f%n", hit.node().id(), hit.score()));
+            answer(graph, index, tree, question,
+                    new Settings(budget, retrieve, retrieval, maxAnchors, beam, explain), System.out);
         }
+        return 0;
+    }
 
-        if (explain) descent.ifPresent(AskCommand::printDescent);
+    /**
+     * Retrieves anchors for a question and prints the verified answer.
+     *
+     * <p>Takes everything it needs already built, and writes to the stream it is given, because two
+     * callers need it: the command above, which builds a graph per invocation and prints to the
+     * terminal, and the server, which holds them across questions and returns the text to a client.
+     * A second copy of this formatting would be a second place for the answer to be wrong.
+     */
+    static void answer(CodeGraph graph, Bm25Index index, IndexTree tree, String question,
+                       Settings settings, PrintStream out) {
+        QueryPlanner.Answerable answerable = QueryPlanner.plan(graph, index, tree, question,
+                settings.retrieve(), settings.retrieval(), settings.maxAnchors(), settings.beam());
+        Optional<TreeNavigator.Descent> descent = answerable.descent();
+        out.printf("PLAN: %s (depth %d) - %s%n", answerable.plan().kind(), answerable.plan().depth(),
+                answerable.plan().rationale());
+        out.printf("RETRIEVAL: %s%s%n", settings.retrieval(),
+                descent.map(found -> ", " + found.cardsRead() + " cards read").orElse(""));
+        out.println("RETRIEVED:");
+        answerable.retrieved().forEach(hit -> out.printf("  %-60s score=%.3f%n", hit.node().id(), hit.score()));
 
+        if (settings.explain()) descent.ifPresent(found -> printDescent(found, out));
+        conclude(graph, question, answerable.anchors(), answerable.contexts(), settings.budget(), out);
+    }
+
+    /** Prints the verified answer from anchors something else chose: an assistant, through a descent. */
+    static void answerFrom(CodeGraph graph, List<GraphNode> anchors, String question, int budget, PrintStream out) {
+        if (anchors.isEmpty()) {
+            out.println("That descent has not anchored anywhere yet, so there is nothing to answer from.");
+            return;
+        }
+        QueryPlanner.Plan plan = QueryPlanner.classify(question);
+        List<ContextPacket> contexts = anchors.stream().map(node -> GraphQueries.context(graph, node, plan.depth())).toList();
+        out.printf("PLAN: %s (depth %d) - anchors chosen by an assistant descent%n", plan.kind(), plan.depth());
+        conclude(graph, question, anchors, contexts, budget, out);
+    }
+
+    private static void conclude(CodeGraph graph, String question, List<GraphNode> anchors,
+                                 List<ContextPacket> contexts, int budget, PrintStream out) {
         if (anchors.isEmpty() || contexts.isEmpty()) {
-            System.out.println("\nNo symbol in this repository anchors that question, so no answer is given.");
-            return 0;
+            out.println("\nNo symbol in this repository anchors that question, so no answer is given.");
+            return;
         }
 
-        System.out.println("\nANCHORS:");
-        anchors.forEach(anchor -> System.out.println("  " + anchor.id()));
+        out.println("\nANCHORS:");
+        anchors.forEach(anchor -> out.println("  " + anchor.id()));
 
         Set<String> anchorIds = new java.util.LinkedHashSet<>(anchors.stream().map(GraphNode::id).toList());
         ContextPacket packet = QueryPlanner.compress(QueryPlanner.merge(contexts), anchorIds, budget);
-        System.out.printf("%nCONTEXT: subject=%s anchors=%d callers=%d endpoints=%d evidence=%d (~%d tokens, budget %d)%n",
+        out.printf("%nCONTEXT: subject=%s anchors=%d callers=%d endpoints=%d evidence=%d (~%d tokens, budget %d)%n",
                 packet.subject().id(), anchors.size(), packet.callers().size(), packet.endpoints().size(),
                 packet.evidence().size(), QueryPlanner.estimateTokens(packet), budget);
 
@@ -117,9 +141,8 @@ final class AskCommand implements Callable<Integer> {
         // would face. Nothing is printed that the graph cannot support.
         List<VerifiedAnswer.Claim> claims = VerifiedAnswer.claimsFrom(packet, anchorIds);
         VerifiedAnswer.Answer answer = VerifiedAnswer.verify(graph, question, claims);
-        System.out.println();
-        System.out.print(VerifiedAnswer.render(answer));
-        return 0;
+        out.println();
+        out.print(VerifiedAnswer.render(answer));
     }
 
     private List<GraphNode> sessionAnchors(CodeGraph graph, IndexTree tree) throws java.io.IOException {
@@ -131,12 +154,12 @@ final class AskCommand implements Callable<Integer> {
     }
 
     /** The descent, printed as the decisions it was: what was on each card, and what won. */
-    private static void printDescent(TreeNavigator.Descent descent) {
-        System.out.println("\nDESCENT:");
+    private static void printDescent(TreeNavigator.Descent descent, PrintStream out) {
+        out.println("\nDESCENT:");
         for (TreeNavigator.Step step : descent.trace()) {
-            System.out.println("  at " + step.from());
+            out.println("  at " + step.from());
             for (TreeNavigator.Scored scored : step.considered().stream().limit(5).toList()) {
-                System.out.printf("    %s %-52s %.3f  (%s)%n",
+                out.printf("    %s %-52s %.3f  (%s)%n",
                         step.chosen().contains(scored.node().id()) ? "->" : "  ",
                         scored.node().id(), scored.score(), scored.reason());
             }

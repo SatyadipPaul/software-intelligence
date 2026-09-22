@@ -2,8 +2,8 @@ package io.softwareintelligence.cli;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "repo-intel", mixinStandardHelpOptions = true, subcommands = {InspectCommand.class, ImpactCommand.class, ContextCommand.class, ArchitectureCommand.class,
-                AskCommand.class, IndexCommand.class, NavigateCommand.class, SnapshotCommand.class, DiffCommand.class, EvaluateCommand.class, EnrichmentPlanCommand.class, VisualizeCommand.class, QuantizeCommand.class,
+@CommandLine.Command(name = "repo-intel", mixinStandardHelpOptions = true, versionProvider = Main.Version.class, subcommands = {InspectCommand.class, ImpactCommand.class, ContextCommand.class, ArchitectureCommand.class,
+                AskCommand.class, IndexCommand.class, NavigateCommand.class, ServeCommand.class, SnapshotCommand.class, DiffCommand.class, EvaluateCommand.class, EnrichmentPlanCommand.class, VisualizeCommand.class, QuantizeCommand.class,
                 EnrichTargetsCommand.class, EnrichApplyCommand.class},
         description = "Build deterministic, evidence-bearing repository models.",
         // Fifteen commands with no shape to them leaves a first-time reader guessing which one
@@ -52,4 +52,16 @@ public final class Main implements Runnable {
     }
 
     @Override public void run() { new CommandLine(this).usage(System.out); }
+
+    /** The version the jar was built as, read from its manifest; `-V` printed nothing before this. */
+    static final class Version implements CommandLine.IVersionProvider {
+        static String current() {
+            String version = Main.class.getPackage().getImplementationVersion();
+            return version == null ? "development build" : version;
+        }
+
+        @Override public String[] getVersion() {
+            return new String[] {"repo-intel " + current()};
+        }
+    }
 }

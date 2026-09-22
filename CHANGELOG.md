@@ -10,6 +10,36 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
+### Added — `repo-intel serve`, for assistants
+
+- **A Model Context Protocol server over stdio**, holding one repository warm. Tools: `ask`,
+  `impact`, `context`, `navigate_start`/`navigate_choose` and `status`. On jackson-databind the
+  first question waits for the analysis, about 20 s; every later one takes 74–102 ms over the
+  protocol, against 11 s from the command line with a cached graph.
+- **The navigate exchange is native.** The card-by-card descent that previously meant a person
+  copying cards between a terminal and a chat window is two tool calls, and a finished descent
+  returns the verified answer directly. Ids that were not on the cards are still refused.
+- **It never answers from a graph it knows is stale.** Each call checks the source first and
+  rebuilds if it moved, saying so in the answer; if the rebuild fails, the call fails. Open descents
+  are discarded on a rebuild, because their cards describe the previous graph.
+- **No new dependency.** The protocol's JSON is a strict RFC 8259 codec written for it, so nothing
+  reached the allow-list or `THIRD-PARTY-NOTICES.md`.
+- **Heap was measured before the server was written.** A warm session on jackson-databind retains
+  286 MB and needs a 1 GB heap to analyse; a refresh does not raise that floor.
+
+### Fixed
+
+- **A failed rebuild could leave a session reporting itself current.** `AnalysisSession` assigned
+  the new fingerprint before building, so a build that threw left the old graph paired with it and
+  `stale()` answered false. Both are now published together, after the build succeeds; the
+  regression test was confirmed to fail against the old ordering.
+- **Choosing a card's heading said it was never shown.** The root heading is printed on the first
+  card, has no symbol behind it, and was rejected with "not on the cards" — false, and an invitation
+  to try again. It now says it is a heading and to choose a child.
+- **`repo-intel -V` printed nothing.** The jar now carries its version.
+- **Ambiguous-symbol warnings can go somewhere other than stderr**, which a server's client never
+  sees; there they travel inside the answer.
+
 ### Added — a warm session
 
 - **`modules/session`**, holding a graph and everything derived from it across many questions.

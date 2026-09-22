@@ -14,6 +14,7 @@
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>pipeline</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>index-tree</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>query-engine</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.satyadippaul</groupId><artifactId>session</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>evaluation</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>io.github.satyadippaul</groupId><artifactId>visualization</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>info.picocli</groupId><artifactId>picocli</artifactId><version>4.7.6</version></dependency>
@@ -39,7 +40,7 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version>
-        <configuration><archive><manifest><mainClass>io.softwareintelligence.cli.Main</mainClass></manifest></archive></configuration>
+        <configuration><archive><manifest><mainClass>io.softwareintelligence.cli.Main</mainClass><addDefaultImplementationEntries>true</addDefaultImplementationEntries></manifest></archive></configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId><artifactId>maven-shade-plugin</artifactId><version>3.5.3</version>

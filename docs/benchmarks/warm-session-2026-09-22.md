@@ -39,6 +39,19 @@ The same question through the shaded jar, against a cached graph file, from
 Descent itself is 63 ms. A warm session is therefore within a factor of two of the work, where a
 fresh process was within a factor of 177 of it.
 
+## Over the protocol
+
+The same repository, served by `repo-intel serve` at `-Xmx1536m` and driven over stdio by a
+JSON-RPC client, so these include parsing, dispatch and rendering:
+
+| jackson-databind | |
+| --- | ---: |
+| `initialize`, answered while the analysis runs | 282 ms |
+| `status` during the analysis | 1 ms |
+| first `ask`, waiting for the analysis | 19,898 ms |
+| each later `ask` | **74–102 ms** |
+| `impact ObjectMapper`, depth 1 | 224 ms |
+
 ## On the staleness check
 
 56–168 ms on jackson-databind is a read of every `.java` file the analyzer would parse. The spread

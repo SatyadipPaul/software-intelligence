@@ -126,6 +126,12 @@ that an assistant can drive the descent without being able to assert anything. I
 carried out by a human copying cards between a terminal and a chat window. A server is what that
 design was already shaped for; the shell is the smaller win on the same foundation.
 
+**Built: `repo-intel serve`.** The server was chosen, and heap was measured before it was written:
+a warm session on jackson-databind retains 286 MB but needs 1 GB to analyse, and a refresh does not
+raise that floor. Over the protocol each question after the first takes 74–102 ms. No dependency
+was added — the protocol's JSON is a strict RFC 8259 codec in `apps/cli`, in the same spirit as the
+graph reader — so nothing new reached the allow-list or the notices.
+
 ### Phase 4 — the on-disk format, if it still matters
 
 Re-measure after Phase 2. A warm process may have made it irrelevant.
@@ -138,6 +144,14 @@ Re-measure after Phase 2. A warm process may have made it irrelevant.
 - **Heap for a long-lived process is unmeasured.** A shallow `impact` over the jackson-databind
   graph runs in 2 GB. A process holding graph, tree, BM25 and dense indexes for a large repository
   has no measured ceiling yet, and a server without a stated limit is a server that dies at 3 a.m.
+  *Since measured:* 1 GB to analyse jackson-databind, 286 MB retained warm; see
+  [the measurement](benchmarks/warm-session-2026-09-22.md). The dense index is still unmeasured,
+  because the session does not hold one yet.
+- **A commit is invisible to the fingerprint.** With `--commit-vocabulary`, the graph reads git
+  history, and `git commit` changes that history without changing a byte of source. A server started
+  that way keeps the commit vocabulary it began with until some source file changes. Found while
+  wiring `serve`; stated here rather than papered over, because commit vocabulary is off by default
+  and the fix — folding `HEAD` into the fingerprint when that layer is on — is small but not free.
 - **Cache invalidation is the part that can be silently wrong.** Every other item on this list fails
   loudly.
 
