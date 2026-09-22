@@ -17,7 +17,7 @@ import java.util.concurrent.Callable;
  * result forever. It is a command rather than a script because the output is something an operator
  * ships, and a shipped artifact should come out of a tested path.
  */
-@CommandLine.Command(mixinStandardHelpOptions = true, name = "quantize-model",
+@CommandLine.Command(mixinStandardHelpOptions = true, hidden = true, name = "quantize-model",
         description = "Quantize a static embedding model to int8, roughly quartering it on disk.")
 public final class QuantizeCommand implements Callable<Integer> {
 

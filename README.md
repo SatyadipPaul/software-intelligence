@@ -8,13 +8,42 @@ The current 0.1 slice is executable and intentionally evidence-first. It builds 
 
 ## Quick start
 
-Prerequisites: JDK 25 and Maven 3.9+.
+### Install
 
-```powershell
+Download `repo-intel.jar` and the launcher for your platform from the
+[latest release](https://github.com/SatyadipPaul/software-intelligence/releases/latest), put all of
+them in one directory on your `PATH`, and that is the install — the launcher finds the jar beside
+itself.
+
+```bash
+mkdir -p ~/.local/bin && cd ~/.local/bin
+curl -sSLO https://github.com/SatyadipPaul/software-intelligence/releases/latest/download/repo-intel.jar
+curl -sSLO https://github.com/SatyadipPaul/software-intelligence/releases/latest/download/repo-intel
+chmod +x repo-intel
+```
+
+Needs **Java 25 or newer**. The launcher prefers `JAVA_HOME` when it is new enough and falls back
+to `java` on `PATH` when it is not, so a `JAVA_HOME` left pointing at an older JDK does not break
+it. Set `JAVA_OPTS=-Xmx4g` for a large repository.
+
+Then, from inside any Java repository:
+
+```bash
+repo-intel ask "where are payments authorized?"
+repo-intel impact PaymentService --depth 3
+repo-intel architecture
+```
+
+### From a checkout
+
+Prerequisites: JDK 25 and Maven 3.9+. `bin/repo-intel` finds the jar under `apps/cli/target`, so
+nothing needs installing.
+
+```bash
 mvn -q verify
-java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
-java -jar apps/cli/target/repo-intel.jar impact PaymentService -C fixtures/sample-commerce --depth 3
-java -jar apps/cli/target/repo-intel.jar context PaymentService -C fixtures/sample-commerce -o context.json
+bin/repo-intel inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
+bin/repo-intel impact PaymentService -C fixtures/sample-commerce --depth 3
+bin/repo-intel context PaymentService -C fixtures/sample-commerce -o context.json
 ```
 
 The second command writes a graph containing nodes and edges with `resolver`, `confidence`, `file`, `line`, and `column` evidence.
@@ -110,6 +139,59 @@ Every command also accepts **either a repository directory or a `.json` graph**.
 a graph, the source tree is not needed and is never read - query it, visualize it, enrich it, or
 evaluate against it from the file alone. See
 [enriching with a chat assistant](docs/enrichment-with-a-chat-assistant.md) for that workflow.
+
+## Using it as a Java library
+
+The CLI is a thin shell over the modules, and every one of them is published to Maven Central under
+`io.github.satyadippaul`. Depend on `pipeline` to build a graph, and on `query-engine` to ask
+questions of one.
+
+```xml
+<dependency>
+  <groupId>io.github.satyadippaul</groupId>
+  <artifactId>pipeline</artifactId>
+  <version>0.2.0</version>
+</dependency>
+```
+
+```java
+// Every layer, tests included, no classpath.
+CodeGraph graph = new RepositoryModel().build(Path.of("."));
+
+for (GraphEdge edge : graph.edges()) {
+    // Every edge carries where it came from and how sure the analyzer is.
+    Provenance where = edge.provenance();
+    System.out.printf("%s -> %s  [%s, %.2f] %s:%d%n",
+            edge.from(), edge.to(), where.resolver(), where.confidence(), where.file(), where.line());
+}
+```
+
+Layers above deterministic Java analysis are switched individually, so a graph can be built with any
+suffix of the pipeline turned off and the facts underneath stay identical:
+
+```java
+RepositoryModel.Layers layers = RepositoryModel.Layers.all()
+        .withArchitecture(false)        // skip modules, workflows, capabilities
+        .withCommitVocabulary(true);    // read git history; needs a full clone
+
+CodeGraph graph = new RepositoryModel()
+        .build(Path.of("."), ClasspathDiscovery.discover(Path.of(".")).entries(), true, layers);
+```
+
+`Layers.all()` deliberately leaves `testVocabulary` off — it measured *negative* on every corpus
+available here, so it is not part of "all" — and leaves `commitVocabulary` off because it reads git
+history rather than the source at the analysed commit. Both stay switchable; neither is a default.
+
+Writing and reading a graph is `GraphSnapshot`:
+
+```java
+GraphSnapshot.write(graph, Path.of("repo-graph.json"));
+CodeGraph reloaded = GraphSnapshot.read(Path.of("repo-graph.json"));
+```
+
+**On large repositories, build the graph once and keep it.** Analysing jackson-databind takes about
+28 seconds and reloading its 134 MB graph about 4, so a program that rebuilds per question spends
+nearly all of its time in setup — see [the timings](docs/cli-ergonomics-plan.md).
 
 ## Retrieval: ranking, or navigation
 

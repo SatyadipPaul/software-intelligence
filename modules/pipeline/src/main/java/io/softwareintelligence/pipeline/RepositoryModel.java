@@ -39,8 +39,41 @@ public final class RepositoryModel {
      */
     public record Layers(boolean framework, boolean architecture, int workflowDepth,
                          boolean testVocabulary, boolean commitVocabulary) {
+
+        public Layers {
+            if (workflowDepth < 0) {
+                throw new IllegalArgumentException("workflowDepth must not be negative: " + workflowDepth);
+            }
+        }
+
         public static Layers all() { return new Layers(true, true, 8, false, false); }
         public static Layers deterministicOnly() { return new Layers(false, false, 0, false, false); }
+
+        // Five booleans-and-an-int in a fixed order is unreadable at the call site: nothing in
+        // `new Layers(true, true, 8, false, false)` says which layer is which, or that 8 is a
+        // depth. These name the one thing being changed and leave the rest alone.
+
+        public Layers withFramework(boolean enabled) {
+            return new Layers(enabled, architecture, workflowDepth, testVocabulary, commitVocabulary);
+        }
+
+        public Layers withArchitecture(boolean enabled) {
+            return new Layers(framework, enabled, workflowDepth, testVocabulary, commitVocabulary);
+        }
+
+        public Layers withWorkflowDepth(int depth) {
+            return new Layers(framework, architecture, depth, testVocabulary, commitVocabulary);
+        }
+
+        /** See the note above: this measured negative, and is off even in {@link #all()}. */
+        public Layers withTestVocabulary(boolean enabled) {
+            return new Layers(framework, architecture, workflowDepth, enabled, commitVocabulary);
+        }
+
+        /** Needs a repository with its history; refuses a shallow clone. */
+        public Layers withCommitVocabulary(boolean enabled) {
+            return new Layers(framework, architecture, workflowDepth, testVocabulary, enabled);
+        }
     }
 
     private final JavaRepositoryAnalyzer analyzer = new JavaRepositoryAnalyzer();
@@ -64,6 +97,21 @@ public final class RepositoryModel {
 
     public CodeGraph build(Path repository, List<Path> classpath) throws IOException {
         return build(repository, classpath, true, Layers.all());
+    }
+
+    /**
+     * Every layer, no classpath, tests included — the shortest thing that produces a usable graph.
+     *
+     * <pre>{@code
+     * CodeGraph graph = new RepositoryModel().build(Path.of("."));
+     * }</pre>
+     *
+     * <p>Without a classpath, calls into code the analyzer cannot see stay unresolved, and the
+     * graph says so through each edge's {@code resolver} and {@code confidence} rather than by
+     * quietly omitting them. Pass one — see {@link ClasspathDiscovery} — when resolution matters.
+     */
+    public CodeGraph build(Path repository) throws IOException {
+        return build(repository, List.of());
     }
 
     /** Communities are computed on demand rather than recorded, because the strategy is a choice. */

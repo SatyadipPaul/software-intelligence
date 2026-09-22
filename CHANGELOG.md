@@ -10,6 +10,21 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
+### Added — a launcher, and a documented Java API
+
+- **`bin/repo-intel` and `bin/repo-intel.cmd`**, attached to each release beside the jar. Download
+  them into one directory on `PATH` and the command is `repo-intel ask "..."`. The launcher prefers
+  `JAVA_HOME` when it is new enough and falls back to `java` on `PATH` when it is not — a stale
+  `JAVA_HOME` previously produced `LinkageError occurred while loading main class`, which names
+  neither the cause nor the fix. When no JDK 25 is found it says which Java each candidate was.
+- **A "Using it as a Java library" section in the README**, which had none, although every module
+  is published. Its examples are compiled against the built jars rather than written from memory.
+- **`RepositoryModel.build(Path)`** — every layer, no classpath, one argument.
+- **Withers on `RepositoryModel.Layers`**, so a caller writes
+  `Layers.all().withCommitVocabulary(true)` rather than `new Layers(true, true, 8, false, false)`,
+  where nothing says which layer is which or that `8` is a depth. A negative workflow depth is now
+  rejected where it is written instead of silently finding no workflows.
+
 ### Changed — the repository argument is optional
 
 - **Every command defaults to the current directory.** `repo-intel impact PaymentService` is now
@@ -24,6 +39,9 @@ the point of quoting it rather than a headline.
   the question.
 - **`-h` works on subcommands.** `mixinStandardHelpOptions` was set only on the root, so
   `repo-intel impact --help` answered `Unknown option: '--help'`.
+- **`evaluate` and `quantize-model` are hidden from the root listing**, and named in its footer.
+  They develop this tool rather than use it, and were competing with `ask` in a flat list of
+  fifteen. Both still run exactly as before.
 
 ### Fixed
 

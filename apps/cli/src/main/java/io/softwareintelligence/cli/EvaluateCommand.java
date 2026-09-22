@@ -22,7 +22,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(mixinStandardHelpOptions = true, name = "evaluate", description = "Score the engine against a grounded question set.")
+@CommandLine.Command(mixinStandardHelpOptions = true, hidden = true, name = "evaluate", description = "Score the engine against a grounded question set.")
 final class EvaluateCommand implements Callable<Integer> {
     @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
             description = "Java repository or graph file. Omit it to use the current directory.")

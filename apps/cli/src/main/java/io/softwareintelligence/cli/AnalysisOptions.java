@@ -73,7 +73,11 @@ final class AnalysisOptions {
             }
             entries = discovered.entries();
         }
-        RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8, testVocabulary, commitVocabulary);
+        RepositoryModel.Layers layers = RepositoryModel.Layers.all()
+                .withFramework(!noFramework)
+                .withArchitecture(!noArchitecture)
+                .withTestVocabulary(testVocabulary)
+                .withCommitVocabulary(commitVocabulary);
         return new RepositoryModel().build(repository, entries, !noTests, layers);
     }
 

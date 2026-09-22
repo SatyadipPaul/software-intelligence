@@ -5,7 +5,18 @@ import picocli.CommandLine;
 @CommandLine.Command(name = "repo-intel", mixinStandardHelpOptions = true, subcommands = {InspectCommand.class, ImpactCommand.class, ContextCommand.class, ArchitectureCommand.class,
                 AskCommand.class, IndexCommand.class, NavigateCommand.class, SnapshotCommand.class, DiffCommand.class, EvaluateCommand.class, EnrichmentPlanCommand.class, VisualizeCommand.class, QuantizeCommand.class,
                 EnrichTargetsCommand.class, EnrichApplyCommand.class},
-        description = "Build deterministic, evidence-bearing repository models.")
+        description = "Build deterministic, evidence-bearing repository models.",
+        // Fifteen commands with no shape to them leaves a first-time reader guessing which one
+        // answers their question. Two of them exist to develop this tool rather than to use it,
+        // and are hidden above rather than removed - so the footer says they are there.
+        footer = {
+                "",
+                "Commands run in the current directory unless a repository is named:",
+                "  repo-intel ask \"where are payments authorized?\"",
+                "  repo-intel ask /path/to/repo \"...\"      or  -C /path/to/repo",
+                "",
+                "Start with `ask`. Use `repo-intel <command> -h` for a command's own options.",
+                "Also present, for working on this tool itself: evaluate, quantize-model."})
 public final class Main implements Runnable {
     public static void main(String[] args) {
         try {
