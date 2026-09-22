@@ -97,7 +97,7 @@ index within a few hours.
 
 | Artifact | Published |
 | --- | --- |
-| `model`, `analyzer-java`, `framework-spring`, `architecture`, `pipeline`, `index-tree`, `embedding`, `query-engine`, `evaluation`, `visualization` | yes |
+| `model`, `analyzer-java`, `framework-spring`, `architecture`, `pipeline`, `index-tree`, `embedding`, `query-engine`, `session`, `evaluation`, `visualization` | yes |
 | `cli` | yes, as a **thin** jar — the dependencies come from Maven |
 | `repo-intel-maven-plugin` | yes |
 | `repo-intel.jar`, the runnable shaded CLI | **not to Central.** It is attached to the GitHub release instead. |

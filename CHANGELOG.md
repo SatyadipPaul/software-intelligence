@@ -10,6 +10,24 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
+### Added — a warm session
+
+- **`modules/session`**, holding a graph and everything derived from it across many questions.
+  Per question on jackson-databind this is 11,160 ms to about 60 ms — a command-line invocation
+  spends 20 s analysing, 10 s deriving the index tree and 1 s building the retrieval index to do
+  63 ms of work, and none of that is expensive work, only repeated work. Measured in
+  [`docs/benchmarks/warm-session-2026-09-22.md`](docs/benchmarks/warm-session-2026-09-22.md).
+  Nothing uses it yet: it is the foundation the interactive and server surfaces both need, built
+  on its own so that it does not end up buried inside whichever arrives first.
+- **`SourceFingerprint` decides staleness from content, not timestamps.** Sizes and modification
+  times are near-free and wrong in the direction that matters: an editor that restores an mtime, a
+  checkout that preserves one, or a same-length edit inside one filesystem tick each yield
+  "unchanged" about source that changed, after which answers describe code that is no longer there
+  and nothing says so. Digesting the bytes costs 56–168 ms against 30 s of rebuilding. When the
+  question cannot be answered at all, the answer is "stale".
+- **`JavaRepositoryAnalyzer.sourceFiles` is now public**, so the fingerprint asks about exactly the
+  files the analyzer parses rather than keeping a second copy of the rule that could drift from it.
+
 ### Added — a launcher, and a documented Java API
 
 - **`bin/repo-intel` and `bin/repo-intel.cmd`**, attached to each release beside the jar. Download

@@ -102,13 +102,7 @@ public final class JavaRepositoryAnalyzer {
         // on every machine; the path is recorded as an attribute instead.
         graph.upsertNode(new GraphNode(repositoryId, EntityKind.REPOSITORY, repositoryName,
                 Map.of("path", root.toString()), new Provenance("FILESYSTEM", 1.0, "", 0, 0)), true);
-        List<Path> sourceFiles;
-        try (Stream<Path> files = Files.walk(root)) {
-            sourceFiles = files.filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> includeTests || !isTestSource(root, path))
-                    .map(Path::toAbsolutePath).map(Path::normalize)
-                    .sorted(Comparator.comparing(Path::toString)).toList();
-        }
+        List<Path> sourceFiles = sourceFiles(root, includeTests);
         if (sourceFiles.isEmpty()) return graph;
         ASTParser parser = ASTParser.newParser(AST.JLS25);
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
@@ -141,6 +135,23 @@ public final class JavaRepositoryAnalyzer {
         new IntraRepositoryResolver().resolve(graph);
         new DispatchNormalizer().normalize(graph);
         return graph;
+    }
+
+    /**
+     * Exactly the files {@link #analyze} will parse, in a stable order.
+     *
+     * <p>Public because more than one thing has to agree on this set, and two copies of the rule
+     * would drift: anything deciding whether an existing graph is still current has to ask about
+     * the same files the graph was built from, or it will miss a change to a file it did not know
+     * was included.
+     */
+    public static List<Path> sourceFiles(Path root, boolean includeTests) throws IOException {
+        try (Stream<Path> files = Files.walk(root)) {
+            return files.filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> includeTests || !isTestSource(root, path))
+                    .map(Path::toAbsolutePath).map(Path::normalize)
+                    .sorted(Comparator.comparing(Path::toString)).toList();
+        }
     }
 
     private static List<Path> sourceRoots(Path root, List<Path> sourceFiles) {

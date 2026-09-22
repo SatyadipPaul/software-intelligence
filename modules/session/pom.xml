@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>io.github.satyadippaul</groupId><artifactId>software-intelligence</artifactId><version>0.2.0</version><relativePath>../../pom.xml</relativePath></parent>
+  <artifactId>session</artifactId>
+  <url>https://github.com/SatyadipPaul/software-intelligence</url>
+  <name>Warm analysis session</name>
+  <description>Holds a graph and everything derived from it across many questions, and knows when the source has moved on.</description>
+  <!--
+    This is the one place that depends on both halves of the product: pipeline builds a graph, and
+    query-engine derives the structures that answer questions about one. Neither depends on the
+    other, and neither should - putting this in either of them would drag analysis into retrieval
+    or the reverse.
+  -->
+  <dependencies>
+    <dependency><groupId>io.github.satyadippaul</groupId><artifactId>pipeline</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.satyadippaul</groupId><artifactId>query-engine</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>io.github.satyadippaul</groupId><artifactId>index-tree</artifactId><version>${project.version}</version></dependency>
+    <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
+  </dependencies>
+</project>

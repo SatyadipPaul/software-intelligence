@@ -94,13 +94,25 @@ Worth doing because they are right, not because they are fast.
 ### Phase 2 — the session core
 
 One abstraction holding `CodeGraph`, `IndexTree`, `Bm25Index` and the optional dense index, built
-once and invalidated explicitly. Keyed on git HEAD and working-tree cleanliness, failing *towards*
-re-analysis whenever the answer is unclear: a stale graph answers questions about code that is no
-longer there, which is worse than a slow one.
+once and invalidated explicitly, failing *towards* re-analysis whenever the answer is unclear: a
+stale graph answers questions about code that is no longer there, which is worse than a slow one.
+
+> This originally said "keyed on git HEAD and working-tree cleanliness". It is not. Git answers a
+> narrower question than the one being asked — it says nothing about a directory that is not a
+> repository, and `git status` is itself a subprocess and a dependency — and the check turned out to
+> be affordable done exactly: a content digest of the files the analyzer would read costs 56–168 ms
+> on jackson-databind against 30 s of rebuilding. The cheaper key was not needed, so it was not used.
 
 It is built standalone, with no interface attached, because both surfaces in Phase 3 need exactly
 it. A disk cache becomes a component here — and unlike `--index` today, it persists the derived
 tree and the indexes rather than the graph alone.
+
+**Built, in `modules/session`.** Per question on jackson-databind: 11,160 ms to about 60 ms, of
+which the staleness check is nearly all — see [the measurement](benchmarks/warm-session-2026-09-22.md).
+Staleness is decided by digesting the content of every file the analyzer would read, not by
+timestamps and sizes, because the failure timestamps permit is the one in this design that produces
+no error. The disk cache is not built yet; in-process reuse was the larger half and is independent
+of it.
 
 ### Phase 3 — one warm surface
 

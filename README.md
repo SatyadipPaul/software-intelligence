@@ -84,6 +84,7 @@ modules/framework-spring/    Spring, JPA, Kafka, Security, and HTTP-client inter
 modules/architecture/        Modules, centrality, communities, workflows, capabilities, risk
 modules/index-tree/          Derived table of contents: the navigable index over the graph
 modules/query-engine/        BM25 retrieval, tree navigation, planning, budgets, verification
+modules/session/             A warm graph and its derived indexes, and when to rebuild them
 modules/evaluation/          Grounded question format, harness, and scoring
 modules/pipeline/            Layer composition and build classpath discovery
 modules/visualization/       Self-contained HTML view and GraphML/DOT/Cytoscape exports
