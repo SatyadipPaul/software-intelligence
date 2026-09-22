@@ -60,7 +60,8 @@ an unmerged branch publishes code nobody reviewed, at coordinates that can never
 ### 2. Settle the version and the changelog
 
 `pom.xml`'s `<version>` is what gets published, and the workflow refuses a tag that disagrees with
-it, so drop the `-SNAPSHOT` before tagging. In `CHANGELOG.md`, rename `## [Unreleased]` to the
+it, so drop the `-SNAPSHOT` before tagging. Update the version in the README's Maven snippets too — CI fails until the
+README matches `pom.xml`, so it cannot be forgotten. In `CHANGELOG.md`, rename `## [Unreleased]` to the
 version and its release date, open a fresh `## [Unreleased]` above it, and add the two link
 references at the foot of the file.
 
