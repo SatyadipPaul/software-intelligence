@@ -16,18 +16,13 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from jevgraph.judges import AnswerCache, load_env
-from jevgraph.pipeline import OUT, run
+from jevgraph.pipeline import BUDGETS, OUT, Budget, run
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
 DEFAULT_REPO = "fixtures/sample-commerce"
 SERVED = {"graphrag.json": "application/json", "report.md": "text/plain; charset=utf-8"}
 RUN_LOCK = threading.Lock()  # two runs would write the same output files
-
-
-def resolve(path: str) -> Path:
-    candidate = Path(path).expanduser()
-    return candidate if candidate.is_absolute() else (REPO_ROOT / candidate)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -67,8 +62,10 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, b"not found", "text/plain")
 
     def _stream(self, query: dict) -> None:
-        repo = resolve(query.get("path") or DEFAULT_REPO)
+        source = (query.get("path") or DEFAULT_REPO).strip()
         mode = query.get("mode", "standin")
+        preset = BUDGETS.get(query.get("budget", "normal"), BUDGETS["normal"])
+        budget = Budget(preset.roles, preset.links, preset.communities, query.get("tests") == "1", preset.max_files)
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-store")
@@ -83,10 +80,7 @@ class Handler(BaseHTTPRequestHandler):
             send({"type": "error", "fatal": True, "message": "Another run is still going; try again in a moment."})
             return
         try:
-            if not repo.is_dir():
-                send({"type": "error", "fatal": True, "message": f"Not a directory: {repo}"})
-                return
-            for event in run(repo, mode, query.get("source", "1") != "0"):
+            for event in run(source, mode, query.get("source", "1") != "0", budget=budget):
                 send(event)
         except (BrokenPipeError, ConnectionResetError):
             return  # the page was closed or restarted the run

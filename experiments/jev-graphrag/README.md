@@ -68,12 +68,33 @@ python run.py ../../fixtures/sample-commerce --mode jev      # or: the same from
 python -m pytest -q tests
 ```
 
-In the live view, enter a repository path (relative to this repository's root, or absolute), pick
-a judge and press **Start**. On the left, every AST node tree-sitter produced drifts as noise. In
-the middle, particles from the file in question are pulled into the Jev filter, the answer's
-probabilities fill in, and the particles leave in the colour of the answer. On the right, they land
-on the graph, which builds up as the answers arrive. Syntax facts take the lower path around the
-filter, because they never need a model.
+In the live view, paste any of these into **Repository** and press **Start**:
+
+- a local folder (relative to this repository's root, or absolute), for example `fixtures/sample-commerce`;
+- a GitHub URL such as `https://github.com/spring-projects/spring-petclinic`, optionally with
+  `/tree/<branch>/<folder>`;
+- or just `owner/repo`.
+
+A GitHub repository is shallow-cloned once into `out/repos/` (git must be installed) and reused on
+later runs. Private or missing repositories, and repositories with no Java, stop with a message that
+says why and which languages they do contain.
+
+On the left, every AST node tree-sitter produced drifts as noise. In the middle, particles from the
+file in question are pulled into the Jev filter, the answer's probabilities fill in, and the
+particles leave in the colour of the answer. On the right, they land on the graph, which builds up
+as the answers arrive. Syntax facts take the lower path around the filter, because they never need
+a model.
+
+**Budget.** A real repository can have thousands of classes, so the questions are budgeted
+(15, 40 or 120 classes; command line: `--budget small|normal|large|all`). The most connected
+classes go first, then the links among them, then the communities that contain them. Every class
+is still parsed, saved and graded as syntax; only what is sent to Jev is limited, and the page says
+how much was judged. Test folders are skipped unless you tick **tests** (`--include-tests`).
+
+**Grading any repository.** With this repository's Java analyzer built
+(`mvn -q -pl apps/cli -am package -DskipTests`), each run also starts it in the background on the
+same files. That gives a compiler-backed reference graph for any Java repository, not just the
+fixture, and `report.md` grades against it. Without the analyzer, runs still work but aren't graded.
 
 | Judge | What it does |
 |---|---|
@@ -125,8 +146,15 @@ hands the key to the browser.
   because the build environment could not reach `api.typesafe.ai`.
 - Java only. Adding a language means a tree-sitter grammar plus that language's rules for
   declarations and references in `extract.py`.
-- Syntax-level resolution: a receiver's type is resolved through fields, parameters and locals,
-  not through inheritance or return types. Anything it cannot resolve is left out, never guessed.
+- Syntax-level resolution. Names follow Java's scoping rules (nested types, imports, same package),
+  and a call's receiver is typed from fields, parameters, locals, enhanced-for and catch variables,
+  `var x = new T()`, `new T().m()` and static nested types. Inherited methods resolve up the
+  in-repo class hierarchy. Calls on a returned value (`a.b().c()`) and on untyped lambda parameters
+  need a compiler and are left out, never guessed.
+
+  Against the Java analyzer: DEPENDS_ON matches it on the fixture and on spring-petclinic, and is at
+  96% precision / 95% recall on iluwatar/java-design-patterns. CALLS is at 99% precision everywhere,
+  with 44% recall on that repository, because of the calls-on-returned-values limit above.
 - tree-sitter runs in Python on the local server rather than as WebAssembly in the page. Reading a
   local path and keeping the key out of the browser both need the server anyway, it is the same
   tree-sitter core at the same speed, and a single extractor means the view and the saved data

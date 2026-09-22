@@ -62,6 +62,7 @@ class MethodDecl:
     params: list[tuple[str, str]]
     returns: str
     type_names: list[str]  # every type named in the signature or the body's local declarations
+    param_types: list[str]  # each parameter's erased type: List<Order> is List
     annotations: list[Annotation]
     line: int
     invocations: list[Invocation]
@@ -104,7 +105,7 @@ class FileParse:
 
 @dataclass
 class Evidence:
-    kind: str  # field_type | field_new | signature_type | invocation | creation
+    kind: str  # field_type | parameter_type | type_argument | mentions_type | field_new | creation | invocation
     how: str
     line: int
     code: str
@@ -113,7 +114,10 @@ class Evidence:
 
 # Which syntax edge each kind of evidence proves. CALLS additionally needs the invoked method to be
 # one the target itself declares, which `syntax_kinds` checks.
-EDGE_FOR = {"field_type": "DEPENDS_ON", "signature_type": "DEPENDS_ON", "field_new": "CREATES", "creation": "CREATES"}
+# DEPENDS_ON follows the product's Java analyzer exactly: the erased type of a field or a parameter.
+# Generic arguments, return types and locals are evidence for the judge to read, not edges.
+EDGE_FOR = {"field_type": "DEPENDS_ON", "parameter_type": "DEPENDS_ON", "field_new": "CREATES", "creation": "CREATES",
+            "type_argument": None, "mentions_type": None}
 
 
 @dataclass
@@ -190,20 +194,38 @@ def annotations_of(declaration: Node) -> list[Annotation]:
 
 
 def _locals(body: Node | None) -> dict[str, str]:
+    """Every variable a method body declares with a type syntax can see: locals (including `var x =
+    new T()`), enhanced-for variables, catch parameters and try-with-resources."""
     names = {}
     if body is None:
         return names
     for node in walk(body):
-        if node.type == "local_variable_declaration":
+        if node.type in ("local_variable_declaration", "resource"):
             declared = type_names(node.child_by_field_name("type"))
-            for declarator in node.children_by_field_name("declarator"):
-                if declared:
-                    names[text(declarator.child_by_field_name("name"))] = declared[0]
+            declarators = node.children_by_field_name("declarator") or [node]
+            for declarator in declarators:
+                kind = declared[0] if declared else None
+                value = declarator.child_by_field_name("value")
+                if kind == "var" and value is not None and value.type == "object_creation_expression":
+                    created = type_names(value.child_by_field_name("type"))
+                    kind = created[0] if created else None
+                if kind and kind != "var":
+                    names[text(declarator.child_by_field_name("name"))] = kind
+        elif node.type == "enhanced_for_statement":
+            declared = type_names(node.child_by_field_name("type"))
+            if declared and declared[0] != "var":
+                names[text(node.child_by_field_name("name"))] = declared[0]
+        elif node.type == "catch_formal_parameter":
+            caught = [c for c in node.children if c.type == "catch_type"]
+            declared = type_names(caught[0]) if caught else []
+            if len(declared) == 1:  # a multi-catch has no single type
+                names[text(node.child_by_field_name("name"))] = declared[0]
     return names
 
 
 def _method(node: Node, field_types: dict[str, str]) -> MethodDecl:
     params = []
+    param_types: list[str] = []
     signature_types = type_names(node.child_by_field_name("type"))
     parameters = node.child_by_field_name("parameters")
     if parameters is not None:
@@ -211,7 +233,10 @@ def _method(node: Node, field_types: dict[str, str]) -> MethodDecl:
             if parameter.type in ("formal_parameter", "spread_parameter"):
                 parameter_type = parameter.child_by_field_name("type")
                 params.append((text(parameter_type), text(parameter.child_by_field_name("name"))))
-                signature_types += type_names(parameter_type)
+                names = type_names(parameter_type)
+                signature_types += names
+                if names:
+                    param_types.append(names[0])
     body = node.child_by_field_name("body")
     local_types = _locals(body)
     scope = {**field_types, **{name: (type_names_from_text(kind) or [kind])[0] for kind, name in params}, **local_types}
@@ -222,10 +247,19 @@ def _method(node: Node, field_types: dict[str, str]) -> MethodDecl:
                 receiver_node = inner.child_by_field_name("object")
                 receiver = text(receiver_node) if receiver_node is not None else None
                 receiver_type = None
-                if receiver_node is not None and receiver_node.type == "identifier":
+                if receiver_node is not None and receiver_node.type in ("this", "super"):
+                    receiver = None  # a call on the class itself or its parents, like an unqualified call
+                elif receiver_node is not None and receiver_node.type == "identifier":
                     receiver_type = scope.get(receiver) or (receiver if receiver[:1].isupper() else None)
                 elif receiver_node is not None and receiver_node.type == "field_access":
-                    receiver_type = scope.get(text(receiver_node.child_by_field_name("field")))
+                    field_text = text(receiver_node)
+                    if field_text.startswith("this."):
+                        receiver_type = scope.get(text(receiver_node.child_by_field_name("field")))
+                    elif all(part[:1].isupper() for part in field_text.split(".")):
+                        receiver_type = field_text  # Outer.Inner.staticMethod()
+                elif receiver_node is not None and receiver_node.type == "object_creation_expression":
+                    created = type_names(receiver_node.child_by_field_name("type"))
+                    receiver_type = created[0] if created else None  # new Gate().evaluate()
                 invocations.append(Invocation(receiver, receiver_type, text(inner.child_by_field_name("name")),
                                               inner.start_point[0] + 1))
             elif inner.type == "object_creation_expression":
@@ -237,6 +271,7 @@ def _method(node: Node, field_types: dict[str, str]) -> MethodDecl:
         params=params,
         returns=text(node.child_by_field_name("type")) or ("<init>" if node.type == "constructor_declaration" else ""),
         type_names=sorted(set(signature_types + list(local_types.values()))),
+        param_types=param_types,
         annotations=annotations_of(node),
         line=node.start_point[0] + 1,
         invocations=invocations,
@@ -263,6 +298,14 @@ def _type(node: Node, package: str, outer: str | None, path: str, source: bytes,
             extends += type_names(child)
 
     fields: list[FieldDecl] = []
+    components: list[MethodDecl] = []
+    if node.type == "record_declaration":  # each component is a field with an implicit accessor
+        for component in (node.child_by_field_name("parameters") or node).named_children:
+            if component.type == "formal_parameter":
+                kind = component.child_by_field_name("type")
+                name_text = text(component.child_by_field_name("name"))
+                fields.append(FieldDecl(name_text, text(kind), type_names(kind), [], component.start_point[0] + 1, None))
+                components.append(MethodDecl(name_text, [], text(kind), [], [], [], component.start_point[0] + 1, [], []))
     body = node.child_by_field_name("body")
     nested: list[TypeDecl] = []
     member_nodes = body.named_children if body is not None else []
@@ -279,7 +322,8 @@ def _type(node: Node, package: str, outer: str | None, path: str, source: bytes,
                                         type_names(declared), annotations_of(member), member.start_point[0] + 1, creates))
     field_types = {f.name: (f.type_names or [f.type])[0] for f in fields}
     methods = [_method(member, field_types) for member in member_nodes
-               if member.type in ("method_declaration", "constructor_declaration")]
+               if member.type in ("method_declaration", "constructor_declaration", "compact_constructor_declaration")]
+    methods += [c for c in components if c.name not in {m.name for m in methods}]
     for member in member_nodes:
         if member.type in TYPE_DECLARATIONS:
             nested += _type(member, package, qualified, path, source, imports)
@@ -315,9 +359,29 @@ def parse_file(root: Path, file: Path, parser: Parser) -> FileParse:
                      source.count(b"\n") + 1)
 
 
-def java_files(root: Path) -> list[Path]:
-    skip = {".git", "target", "build", "node_modules", ".gradle", "out"}
-    return sorted(p for p in root.rglob("*.java") if not (set(p.relative_to(root).parts) & skip))
+SKIP_DIRS = {".git", "target", "build", "node_modules", ".gradle", "out", ".idea", "generated", "generated-sources"}
+TEST_DIRS = {"test", "tests", "androidTest", "testFixtures", "integrationTest", "it"}
+MAX_FILE_BYTES = 1_000_000  # larger .java files are almost always generated
+LANGUAGES = {".py": "Python", ".js": "JavaScript", ".ts": "TypeScript", ".tsx": "TypeScript", ".go": "Go",
+             ".rs": "Rust", ".rb": "Ruby", ".php": "PHP", ".cs": "C#", ".kt": "Kotlin", ".scala": "Scala",
+             ".swift": "Swift", ".c": "C", ".cpp": "C++", ".java": "Java"}
+
+
+def java_files(root: Path, include_tests: bool = False) -> list[Path]:
+    skip = SKIP_DIRS | (set() if include_tests else TEST_DIRS)
+    return sorted(p for p in root.rglob("*.java")
+                  if not (set(p.relative_to(root).parts[:-1]) & skip) and p.stat().st_size <= MAX_FILE_BYTES)
+
+
+def languages(root: Path, limit: int = 20000) -> list[tuple[str, int]]:
+    """The languages a repository is written in, by file count - for saying why nothing was parsed."""
+    counts: dict[str, int] = {}
+    for i, p in enumerate(root.rglob("*")):
+        if i >= limit:
+            break
+        if p.suffix in LANGUAGES and not (set(p.relative_to(root).parts) & SKIP_DIRS):
+            counts[LANGUAGES[p.suffix]] = counts.get(LANGUAGES[p.suffix], 0) + 1
+    return sorted(counts.items(), key=lambda kv: -kv[1])
 
 
 def new_parser() -> Parser:
@@ -334,20 +398,56 @@ class TypeIndex:
             self.by_simple.setdefault(declared.name, []).append(qualified)
 
     def resolve(self, simple: str, context: TypeDecl) -> str | None:
+        """Java's own scoping order: member types of this class and its enclosing classes, then a
+        single-type import, then the same package, then on-demand imports. A name imported from
+        outside the repository, or visible from nowhere, resolves to nothing - never to a same-named
+        class elsewhere in the repository."""
+        if not simple:
+            return None
+        head, _, rest = simple.partition(".")  # Outer.Inner written in code
+        enclosing = context.qualified
+        while enclosing:
+            if f"{enclosing}.{head}" in self.types:
+                return self._member(f"{enclosing}.{head}", rest)
+            if context.package and enclosing == context.package:
+                break
+            enclosing = enclosing.rpartition(".")[0]
         for imported in context.imports:
-            if imported.endswith("." + simple) and imported in self.types:
-                return imported
-        same_package = f"{context.package}.{simple}" if context.package else simple
+            if imported.endswith("." + head) and not imported.endswith(".*"):
+                return self._member(imported, rest) if imported in self.types else None
+        same_package = f"{context.package}.{head}" if context.package else head
         if same_package in self.types:
-            return same_package
-        nested = f"{context.qualified}.{simple}"
-        if nested in self.types:
-            return nested
+            return self._member(same_package, rest)
         for imported in context.imports:
-            if imported.endswith(".*") and f"{imported[:-2]}.{simple}" in self.types:
-                return f"{imported[:-2]}.{simple}"
-        matches = self.by_simple.get(simple, [])
-        return matches[0] if len(matches) == 1 else None
+            if imported.endswith(".*") and f"{imported[:-2]}.{head}" in self.types:
+                return self._member(f"{imported[:-2]}.{head}", rest)
+        return None
+
+    def _member(self, qualified: str, rest: str) -> str | None:
+        target = f"{qualified}.{rest}" if rest else qualified
+        return target if target in self.types else None
+
+    def declaring(self, qualified: str, method: str, depth: int = 10) -> str | None:
+        """The in-repository type that declares `method`, starting at `qualified` and walking up its
+        superclasses and interfaces. None when the declaration is outside the repository."""
+        seen: set[str] = set()
+        frontier = [qualified]
+        while frontier and depth > 0:
+            depth -= 1
+            following = []
+            for current in frontier:
+                if current in seen or current not in self.types:
+                    continue
+                seen.add(current)
+                declared = self.types[current]
+                if any(m.name == method for m in declared.methods):
+                    return current
+                for parent in declared.extends + declared.implements:
+                    resolved = self.resolve(parent, declared)
+                    if resolved:
+                        following.append(resolved)
+            frontier = following
+        return None
 
 
 def _line(declared: TypeDecl, line: int) -> str:
@@ -360,26 +460,44 @@ def candidates(index: TypeIndex) -> list[Candidate]:
     """Every (A, B) where A's source names in-repository type B, with each place it does so."""
     found: dict[tuple[str, str], list[Evidence]] = {}
 
-    def add(source: TypeDecl, simple: str, kind: str, how: str, line: int, method: str | None = None):
-        target = index.resolve(simple, source)
+    def add(source: TypeDecl, simple: str, kind: str, how: str, line: int, method: str | None = None,
+            resolved: str | None = None):
+        target = resolved or index.resolve(simple, source)
         if target is None or target == source.qualified:
             return
         found.setdefault((source.id, "type:" + target), []).append(Evidence(kind, how, line, _line(source, line), method))
 
     for declared in index.types.values():
         for f in declared.fields:
-            for simple in f.type_names:
-                add(declared, simple, "field_type", f"field `{f.name}` has type {simple}", f.line)
+            for i, simple in enumerate(f.type_names):
+                if i == 0:
+                    add(declared, simple, "field_type", f"field `{f.name}` has type {simple}", f.line)
+                else:
+                    add(declared, simple, "type_argument", f"field `{f.name}` holds {simple} inside {f.type}", f.line)
             if f.creates:
                 add(declared, f.creates, "field_new", f"field `{f.name}` is initialised with new {f.creates}()", f.line)
         for m in declared.methods:
-            for simple in m.type_names:
-                add(declared, simple, "signature_type", f"method `{m.name}` names type {simple} in its signature or locals", m.line)
+            for simple in m.param_types:
+                add(declared, simple, "parameter_type", f"method `{m.name}` takes a {simple} parameter", m.line)
+            for simple in sorted(set(m.type_names) - set(m.param_types)):
+                add(declared, simple, "mentions_type", f"method `{m.name}` names type {simple} in its return type, generics or locals", m.line)
             for invocation in m.invocations:
                 if invocation.receiver_type:
                     add(declared, invocation.receiver_type, "invocation",
                         f"method `{m.name}` calls `{invocation.receiver}.{invocation.method}(...)`", invocation.line,
                         invocation.method)
+                    # An inherited method is called on the class that declares it.
+                    receiver = index.resolve(invocation.receiver_type, declared)
+                    owner = index.declaring(receiver, invocation.method) if receiver else None
+                    if owner and owner != receiver:
+                        add(declared, "", "invocation",
+                            f"method `{m.name}` calls inherited `{invocation.receiver}.{invocation.method}(...)`",
+                            invocation.line, invocation.method, resolved=owner)
+                elif invocation.receiver is None and not any(x.name == invocation.method for x in declared.methods):
+                    owner = index.declaring(declared.qualified, invocation.method)
+                    if owner and owner != declared.qualified:
+                        add(declared, "", "invocation", f"method `{m.name}` calls inherited `{invocation.method}(...)`",
+                            invocation.line, invocation.method, resolved=owner)
             for created, line in m.creations:
                 add(declared, created, "creation", f"method `{m.name}` constructs new {created}()", line)
     return [Candidate(s, t, evidence) for (s, t), evidence in sorted(found.items())]
@@ -418,7 +536,7 @@ def syntax_kinds(candidate: Candidate, target: TypeDecl) -> dict[str, list[Evide
         if e.kind == "invocation":
             if e.method in declared:
                 kinds.setdefault("CALLS", []).append(e)
-        else:
+        elif EDGE_FOR.get(e.kind):
             kinds.setdefault(EDGE_FOR[e.kind], []).append(e)
     return kinds
 

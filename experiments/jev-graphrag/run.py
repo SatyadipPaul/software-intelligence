@@ -9,14 +9,18 @@ import argparse
 import sys
 from pathlib import Path
 
-from jevgraph.pipeline import run
+from jevgraph.pipeline import BUDGETS, Budget, run
 
 HERE = Path(__file__).resolve().parent
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("repo", nargs="?", default=str(HERE.parent.parent / "fixtures" / "sample-commerce"))
+    parser.add_argument("repo", nargs="?", default=str(HERE.parent.parent / "fixtures" / "sample-commerce"),
+                        help="a local folder, https://github.com/owner/repo[/tree/branch[/path]], or owner/repo")
+    parser.add_argument("--budget", choices=[*BUDGETS, "all"], default="normal",
+                        help="how many classes/links/communities go to the judge (normal: 40/60/12)")
+    parser.add_argument("--include-tests", action="store_true", help="also read test folders")
     parser.add_argument("--mode", choices=["jev", "standin", "dryrun"], default="standin")
     parser.add_argument("--no-source", action="store_true", help="send structure only, never source text")
     parser.add_argument("--truth", type=Path, help="JDT graph to grade against (default: truth/<repo>.graph.json)")
@@ -24,10 +28,17 @@ def main() -> int:
     args = parser.parse_args()
 
     status = 0
-    for event in run(Path(args.repo), args.mode, not args.no_source, args.truth, args.workers):
+    budget = Budget.unlimited() if args.budget == "all" else BUDGETS[args.budget]
+    budget = Budget(budget.roles, budget.links, budget.communities, args.include_tests, budget.max_files)
+    for event in run(args.repo, args.mode, not args.no_source, args.truth, args.workers, budget=budget):
         kind = event["type"]
         if kind == "run_start":
             print(f"judge: {event['judge_label']} | {event['files']} files | output -> {event['out_dir']}")
+        elif kind in ("fetch", "reference"):
+            print(event["message"]) if event.get("message") else None
+        elif kind == "budget":
+            print(f"judge budget: {event['classes_judged']} of {event['classes']} classes, "
+                  f"{event['links_judged']} of {event['links']} links, up to {event['max_communities']} communities")
         elif kind == "parse_done":
             print(f"tree-sitter: {event['files']} files, {event['nodes']} AST nodes, {event['types']} types in {event['ms']} ms")
         elif kind == "answer":

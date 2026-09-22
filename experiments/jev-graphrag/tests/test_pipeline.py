@@ -184,3 +184,57 @@ def test_refused_questions_are_never_sent(tmp_path, monkeypatch):
     sent = [json.loads(l)["qid"] for l in (tmp_path / "sample-commerce" / "requests.jsonl").read_text().splitlines()]
     assert sent and not any(qid.startswith("relation:") for qid in sent)
     assert evs[-1]["stats"]["refused"] == 7
+
+
+def test_pasted_sources_are_read_safely():
+    from jevgraph.fetch import GitHubSource, parse
+    base = HERE.parent.parent
+    assert parse("fixtures/sample-commerce", base) == FIXTURE
+    assert parse("https://github.com/spring-projects/spring-petclinic", base) == GitHubSource("spring-projects", "spring-petclinic")
+    assert parse("github.com/o/r.git", base) == GitHubSource("o", "r")
+    assert parse("https://github.com/o/r/tree/main/src/app", base) == GitHubSource("o", "r", "main", "src/app")
+    assert parse("o/r", base) == GitHubSource("o", "r")
+    for bad in ["https://github.com/o/r/tree/main/../../etc", "; rm -rf /", "https://gitlab.com/a/b", ""]:
+        assert parse(bad, base) is None, bad
+
+
+def _index(tmp_path, files: dict[str, str]):
+    for path, code in files.items():
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_text(code)
+    parses = [extract.parse_file(tmp_path, f, extract.new_parser()) for f in extract.java_files(tmp_path)]
+    return extract.TypeIndex(parses), extract.candidates(extract.TypeIndex(parses))
+
+
+def test_names_resolve_by_java_scoping_not_by_any_same_named_class(tmp_path):
+    index, pairs = _index(tmp_path, {
+        "a/Map.java": "package a; public class Map { }",
+        "b/User.java": "package b; import java.util.Map; class User { Map<String, String> m; Node n; static class Node { } }",
+        "b/Node.java": "package b; class Node { }",
+    })
+    found = {(c.source, c.target) for c in pairs}
+    assert ("type:b.User", "type:a.Map") not in found  # java.util.Map is imported; a.Map is not visible
+    assert ("type:b.User", "type:b.User.Node") in found  # the nested type shadows b.Node
+    assert ("type:b.User", "type:b.Node") not in found
+
+
+def test_inherited_calls_and_erased_dependencies_match_the_analyzer(tmp_path):
+    index, pairs = _index(tmp_path, {
+        "p/Base.java": "package p; class Base { int id() { return 1; } }",
+        "p/Owner.java": "package p; class Owner extends Base { int twice() { return id() * 2; } }",
+        "p/Pet.java": "package p; import java.util.List; class Pet { List<Owner> owners; Owner first; int f(Owner o) { return o.id(); } }",
+    })
+    types = index.types
+    kinds = {(c.source, c.target): set(extract.syntax_kinds(c, types[c.target[5:]])) for c in pairs}
+    assert "CALLS" in kinds[("type:p.Owner", "type:p.Base")]  # unqualified call to an inherited method
+    assert "CALLS" in kinds[("type:p.Pet", "type:p.Base")]  # o.id() lands on the declaring class
+    assert "DEPENDS_ON" in kinds[("type:p.Pet", "type:p.Owner")]  # field and parameter types
+
+
+def test_test_folders_are_skipped_unless_asked(tmp_path):
+    (tmp_path / "src/main/java").mkdir(parents=True)
+    (tmp_path / "src/test/java").mkdir(parents=True)
+    (tmp_path / "src/main/java/A.java").write_text("class A {}")
+    (tmp_path / "src/test/java/ATest.java").write_text("class ATest {}")
+    assert [p.name for p in extract.java_files(tmp_path)] == ["A.java"]
+    assert sorted(p.name for p in extract.java_files(tmp_path, include_tests=True)) == ["A.java", "ATest.java"]

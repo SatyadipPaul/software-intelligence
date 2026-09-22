@@ -23,6 +23,10 @@ from typesafe_sdk import Choice, Noul, Score
 from .extract import Candidate, TypeDecl, endpoints
 
 MAX_SOURCE_CHARS = 6000
+# Caps that keep every request well inside Jev's context window on large repositories. Whatever is cut
+# is counted in the state ("..._not_shown"), so the model knows the list is partial.
+MAX_METHODS, MAX_FIELDS, MAX_NEIGHBOURS = 60, 40, 25
+MAX_MEMBERS, MAX_RELATIONS, MAX_OUTSIDE = 25, 60, 40
 GRAPH_BEING_BUILT = ("A knowledge graph of this codebase for answering questions about it: nodes are classes, "
                      "edges are relationships between classes, and groups of classes are business capabilities.")
 
@@ -98,26 +102,36 @@ def type_card(declared: TypeDecl, with_source: bool) -> dict[str, Any]:
         "annotations": [f"@{a.name}({a.args})" if a.args else f"@{a.name}" for a in declared.annotations],
         "extends": declared.extends,
         "implements": declared.implements,
-        "fields": [{"name": f.name, "type": f.type, "annotations": [a.name for a in f.annotations]} for f in declared.fields],
+        "fields": [{"name": f.name, "type": f.type, "annotations": [a.name for a in f.annotations]}
+                   for f in declared.fields[:MAX_FIELDS]],
         "methods": [{"name": m.name, "parameters": [f"{t} {n}" for t, n in m.params], "returns": m.returns,
                      "annotations": [f"@{a.name}({a.args})" if a.args else f"@{a.name}" for a in m.annotations]}
-                    for m in declared.methods],
+                    for m in declared.methods[:MAX_METHODS]],
     }
+    if len(declared.fields) > MAX_FIELDS:
+        card["fields_not_shown"] = str(len(declared.fields) - MAX_FIELDS)
+    if len(declared.methods) > MAX_METHODS:
+        card["methods_not_shown"] = str(len(declared.methods) - MAX_METHODS)
     if with_source:
         card["code"] = declared.source[:MAX_SOURCE_CHARS]
     return card
 
 
 def neighbours(declared: TypeDecl, pairs: list[Candidate], types: dict[str, TypeDecl]) -> tuple[list, list]:
-    """Who this type uses and who uses it, from syntax: observed facts, not judgments."""
+    """Who this type uses and who uses it, from syntax: observed facts, not judgments. The most
+    evidenced first; past the cap a final entry says how many were left out."""
     uses, used_by = [], []
-    for c in pairs:
-        how = sorted({e.how for e in c.evidence})
+    for c in sorted(pairs, key=lambda c: -len(c.evidence)):
+        how = sorted({e.how for e in c.evidence})[:6]
         if c.source == declared.id:
             uses.append({"class": types[c.target].name, "how": how})
         elif c.target == declared.id:
             used_by.append({"class": types[c.source].name, "how": how})
-    return uses, used_by
+
+    def cap(rows: list) -> list:
+        return rows if len(rows) <= MAX_NEIGHBOURS else rows[:MAX_NEIGHBOURS] + [
+            {"class": f"{len(rows) - MAX_NEIGHBOURS} more classes not shown", "how": []}]
+    return cap(uses), cap(used_by)
 
 
 # ---------------------------------------------------------------- stand-in rules (NOT Jev)
@@ -266,7 +280,8 @@ def label_candidates(members: list[TypeDecl]) -> dict[str, str]:
                 note(root, "route" if entry["kind"] == "ENDPOINT" else "topic", path, 2, prefer=True)
         for stem in set(_stems(declared.name)):
             note(stem, "class names", declared.name, 1)
-    ranked = sorted(score, key=lambda k: (-score[k], display[k]))[:8]
+    # A word from the code that reads as a catch-all ("unknown", "misc") would be one; leave it out.
+    ranked = sorted((k for k in score if display[k].upper() not in CATCH_ALL), key=lambda k: (-score[k], display[k]))[:8]
     return {display[k]: "Named by " + "; ".join(f"{origin} {', '.join(sorted(values))}"
                                                   for origin, values in sorted(origins[k].items()))
             for k in ranked}
@@ -275,11 +290,18 @@ def label_candidates(members: list[TypeDecl]) -> dict[str, str]:
 def community_ask(cid: str, members: list[TypeDecl], inferred_roles: dict[str, dict], relations: list[dict],
                   outside: list[dict], ctx: dict) -> Ask:
     labels = label_candidates(members)
+    hidden = max(0, len(members) - MAX_MEMBERS)
+    members = members[:MAX_MEMBERS]  # the caller puts the members that matter most first
     member_cards = [{"class": m.name, "package": m.package,
                      "inferred_role": inferred_roles.get(m.id),  # an earlier answer, not an observed fact
                      "methods": [x.name for x in m.methods],
                      "entry_points": [e["name"] for e in endpoints(m)]} for m in members]
-    state = {"context": ctx, "members": member_cards, "relations": relations, "links_outside": outside}
+    state = {"context": ctx, "members": member_cards, "relations": relations[:MAX_RELATIONS],
+             "links_outside": outside[:MAX_OUTSIDE]}
+    for key, count in (("members_not_shown", hidden), ("relations_not_shown", len(relations) - MAX_RELATIONS),
+                       ("links_outside_not_shown", len(outside) - MAX_OUTSIDE)):
+        if count > 0:
+            state[key] = str(count)
     questions: dict[str, Any] = {}
     stand_in: dict[str, dict] = {}
     if len(labels) >= 2:  # a choice between one option is not a question worth asking

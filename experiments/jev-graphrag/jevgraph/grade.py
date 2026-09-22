@@ -35,6 +35,11 @@ def _short(pair) -> str:
     return " → ".join(p.split(".")[-1] for p in pair)
 
 
+def _listing(pairs, limit: int = 15) -> str:
+    shown = ", ".join(_short(p) for p in pairs[:limit])
+    return shown + (f" and {len(pairs) - limit} more" if len(pairs) > limit else "")
+
+
 def _p(value) -> str:
     return "-" if value is None else f"{value:.2f}"
 
@@ -45,8 +50,14 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
     truth_kind = {n["id"]: n["kind"] for n in truth["nodes"] if n["id"] in in_repo}
     consumers = {_owner(e["from"]) for e in truth["edges"] if e["kind"] == "CONSUMES"}
 
+    def constructor(member_id: str) -> bool:  # type:a.B#B(...) - the analyzer counts `new B()` as a call
+        owner, _, member = member_id.partition("#")
+        return member.split("(")[0] in (owner.rsplit(".", 1)[-1], "<init>")
+
     def truth_pairs(kind: str) -> set:
-        pairs = {(_owner(e["from"]), _owner(e["to"])) for e in truth["edges"] if e["kind"] == kind}
+        # CALLS here means calling a method the target declares; constructor calls are CREATES.
+        pairs = {(_owner(e["from"]), _owner(e["to"])) for e in truth["edges"]
+                 if e["kind"] == kind and not (kind == "CALLS" and constructor(e["to"]))}
         return {p for p in pairs if p[0] in in_repo and p[1] in in_repo and p[0] != p[1]}
 
     rels = graphrag["relationships"]
@@ -66,6 +77,8 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
     rows, scored, correct = [], 0, 0
     types = {e["id"]: e for e in graphrag["entities"] if e["type"] == "TYPE"}
     for entity in types.values():
+        if entity.get("role") is None and not entity.get("focus", True):
+            continue  # not sent to the judge: nothing to grade or to show
         expected = TRUTH_ROLES.get(truth_kind.get(entity["id"], ""))
         if expected is None and entity["id"] in consumers:
             expected = "MESSAGE_CONSUMER"
@@ -102,9 +115,13 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
               f"| CALLS | {_pct(calls['precision'])} | {_pct(calls['recall'])} | {calls['correct']} / {calls['predicted']} / {calls['truth']} |", ""]
     for name, result in (("DEPENDS_ON", depends), ("CALLS", calls)):
         if result["false_positives"]:
-            lines.append(f"- {name} found only by the parser: " + ", ".join(_short(p) for p in result["false_positives"]))
+            lines.append(f"- {name} found only by the parser: " + _listing(result["false_positives"]))
         if result["missed"]:
-            lines.append(f"- {name} missed by the parser: " + ", ".join(_short(p) for p in result["missed"]))
+            lines.append(f"- {name} missed by the parser: " + _listing(result["missed"]))
+    budget = graphrag.get("budget")
+    if budget:
+        lines += [f"- Sent to the judge: {budget['classes_judged']} of {budget['classes']} classes (most connected first) "
+                  f"and {budget['links_judged']} of {budget['links']} links; everything else is graded here as syntax only."]
     lines += [f"- Entry points found only by tree-sitter: {sorted(ours - theirs) or 'none'}; "
               f"only by the analyzer: {sorted(theirs - ours) or 'none'}", "",
               "## The judge: roles", "",
@@ -127,6 +144,8 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
               "|---|---|---|---|---|---|"]
     communities = []
     for c in graphrag["communities"]:
+        if not c.get("judged", True):
+            continue
         members = [m.split(".")[-1] for m in c["members"]]
         match = (c.get("label") or "") in known
         communities.append({"members": members, "label": c.get("label"), "matches_analyzer_name": match})

@@ -23,7 +23,7 @@
   .field label { color: var(--muted); font-size: 12px; }
   input, select, button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
                           border-radius: 6px; padding: 6px 9px; }
-  input#path { width: min(340px, 60vw); font-family: var(--mono); font-size: 12.5px; }
+  input#path { width: min(330px, 60vw); font-family: var(--mono); font-size: 12.5px; }
   button#start { background: var(--accent); color: #0b0f16; border-color: var(--accent); font-weight: 600; cursor: pointer; }
   button#start:disabled { opacity: .5; cursor: default; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
@@ -101,7 +101,8 @@
 <body>
 <header>
   <h1><b>Jev</b> · GraphRAG live</h1>
-  <div class="field path"><label for="path">Repository</label><input id="path" spellcheck="false"></div>
+  <div class="field path"><label for="path">Repository</label><input id="path" spellcheck="false"
+    placeholder="local folder, https://github.com/owner/repo, or owner/repo" title="A local folder, a GitHub URL (optionally /tree/branch/path), or owner/repo"></div>
   <div class="field"><label for="mode">Judge</label>
     <select id="mode">
       <option value="jev">Jev (live, cached)</option>
@@ -114,7 +115,14 @@
       <option value="fast">Fast</option>
       <option value="instant">Real time</option>
     </select></div>
+  <div class="field"><label for="budget">Budget</label>
+    <select id="budget" title="How many classes / links / communities are sent to the judge. Everything is still parsed and saved.">
+      <option value="small">15 classes</option>
+      <option value="normal" selected>40 classes</option>
+      <option value="large">120 classes</option>
+    </select></div>
   <div class="field"><label><input type="checkbox" id="source" checked> send source</label></div>
+  <div class="field"><label><input type="checkbox" id="tests"> tests</label></div>
   <button id="start">Start</button>
   <div class="chips"><span class="chip" id="keychip">key: …</span><span class="chip" id="judgechip">idle</span></div>
 </header>
@@ -139,6 +147,7 @@
   <section class="panel" id="right">
     <h2>Graph</h2>
     <div class="sub">nodes by role · edges by relationship · shaded areas are communities</div>
+    <div class="counter" id="budgetline"></div>
     <div class="legend" id="graphlegend"></div>
   </section>
 </main>
@@ -178,7 +187,7 @@ let categories = ["declaration", "expression", "identifier", "literal", "type", 
 let particles = [], nodes = new Map(), edges = [], communities = new Map(), questions = new Map();
 let queue = [], busy = false, source = null, running = false, filterGlow = 0, filterColor = "#7c9cff", time = 0;
 let stats = { files: 0, nodes: 0, asked: 0, answered: 0, latency: [], tokens: 0 };
-let hover = null;
+let hover = null, totalFiles = 1, hidden = 0;
 
 /* ---------- layout ---------- */
 function measure() {
@@ -190,10 +199,13 @@ function measure() {
   const rect = (id) => { const r = $(id).getBoundingClientRect();
     return { x: r.left - stage.left, y: r.top - stage.top, w: r.width, h: r.height }; };
   const left = rect("left"), mid = rect("mid"), right = rect("right"), lens = rect("lens");
-  const leftTop = rect("astcount"), leftBottom = rect("astlegend"), top = right.y + 64, bottom = rect("graphlegend").y - 10;
+  const leftTop = rect("astcount"), leftBottom = rect("astlegend"), bottom = rect("graphlegend").y - 10;
+  const top = rect("budgetline").y + rect("budgetline").h + 26;  // room for a community label above the top row
   const radius = Math.max(26, Math.min(lens.w * 0.3, lens.h * 0.32, 86));
   const ring = { x: lens.x + lens.w / 2, y: lens.y + lens.h * 0.44, r: radius, labelY: lens.y + lens.h - 6 };
-  regions = { left: { x: left.x + 12, y: leftTop.y + leftTop.h + 8, w: left.w - 24, h: leftBottom.y - leftTop.y - leftTop.h - 18 },
+  const clip = { x: right.x + 1, y: rect("budgetline").y + rect("budgetline").h + 2, w: right.w - 2,
+                 h: rect("graphlegend").y - 4 - (rect("budgetline").y + rect("budgetline").h + 2) };
+  regions = { clip, left: { x: left.x + 12, y: leftTop.y + leftTop.h + 8, w: left.w - 24, h: leftBottom.y - leftTop.y - leftTop.h - 18 },
               mid, ring, graph: { x: right.x + 16, y: top, w: right.w - 32, h: Math.max(80, bottom - top) } };
 }
 let lastLeft = null;
@@ -375,6 +387,12 @@ function drawRing() {
 }
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${Math.max(0, Math.min(1, a))})`; }
 function drawGraph() {
+  const c0 = regions.clip;
+  ctx.save(); ctx.beginPath(); ctx.rect(c0.x, c0.y, c0.w, c0.h); ctx.clip();
+  drawGraphInside();
+  ctx.restore();
+}
+function drawGraphInside() {
   for (const c of communities.values()) {
     const members = c.members.map((m) => nodes.get(m)).filter(Boolean); if (!members.length || !c.cx) continue;
     const color = COMMUNITY_COLORS[c.index % COMMUNITY_COLORS.length];
@@ -383,7 +401,8 @@ function drawGraph() {
     ctx.setLineDash(c.label ? [] : [3, 5]); ctx.beginPath(); ctx.arc(c.cx, c.cy, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.setLineDash([]);
     if (c.label) { ctx.fillStyle = hexA(color, 0.9); ctx.font = "600 11px system-ui"; ctx.textAlign = "center";
-      ctx.fillText(`${c.label}${c.cohesion != null ? ` · ${c.cohesion.toFixed(1)}/3` : ""}`, c.cx, c.cy - rr - 5); }
+      const g = regions.graph, ly = Math.max(regions.clip.y + 12, c.cy - rr - 5);
+      ctx.fillText(`${c.label}${c.cohesion != null ? ` · ${c.cohesion.toFixed(1)}/3` : ""}`, Math.max(g.x + 30, Math.min(g.x + g.w - 30, c.cx)), ly); }
   }
   const pairs = new Map();
   for (const e of edges) {
@@ -400,6 +419,8 @@ function drawGraph() {
     drawLink(a, b, e, REL_COLORS[e.type] || "#8892a0", 0, 0.9);
   }
   for (const e of pairs.values()) drawLink(nodes.get(e.source), nodes.get(e.target), e, REL_COLORS[e.type], 1, null);
+  let entryCount = 0;
+  for (const n of nodes.values()) if (n.kind === "ENDPOINT" || n.kind === "TOPIC") entryCount++;
   for (const n of nodes.values()) {
     const r = radius(n), color = nodeColor(n);
     if (n.pulse > 0) { ctx.fillStyle = hexA(n.role ? ROLE_COLORS[n.role] || "#7c9cff" : "#7c9cff", n.pulse * 0.35);
@@ -409,7 +430,8 @@ function drawGraph() {
     if (n.kind === "ENDPOINT" || n.kind === "TOPIC") { ctx.moveTo(n.x, n.y - r - 1); ctx.lineTo(n.x + r + 1, n.y); ctx.lineTo(n.x, n.y + r + 1); ctx.lineTo(n.x - r - 1, n.y); ctx.closePath(); }
     else ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
-    if (n.kind !== "PACKAGE") { ctx.font = `${n.kind === "TYPE" ? 11 : 10}px system-ui`; ctx.textAlign = "center";
+    const entries = n.kind === "ENDPOINT" || n.kind === "TOPIC";
+    if (n.kind !== "PACKAGE" && (!entries || entryCount <= 8 || n === hover)) { ctx.font = `${n.kind === "TYPE" ? 11 : 10}px system-ui`; ctx.textAlign = "center";
       if (!n.labelW) n.labelW = ctx.measureText(n.title).width;
       ctx.lineWidth = 3; ctx.strokeStyle = "rgba(11,15,22,.85)"; ctx.strokeText(n.title, n.x, n.y + r + 13);
       ctx.fillStyle = n.kind === "TYPE" ? "#c9d4e5" : "#8b98ab"; ctx.fillText(n.title, n.x, n.y + r + 13); }
@@ -506,7 +528,20 @@ function answerTarget(ev) {
 function handle(ev) {
   const P = pace();
   switch (ev.type) {
+    case "fetch":
+      $("card").innerHTML = `<div class="empty">${esc(ev.message || ev.stage)}</div>`;
+      if (ev.message) { const line = document.createElement("div"); line.textContent = ev.message; $("ticker").prepend(line); }
+      return 0;
+    case "budget":
+      $("budgetline").textContent = ev.classes_judged < ev.classes || ev.links_judged < ev.links
+        ? `judging the ${ev.classes_judged} most connected of ${ev.classes} classes · ${ev.links_judged} of ${ev.links} links · up to ${ev.max_communities} communities`
+        : `judging all ${ev.classes} classes and ${ev.links} links`;
+      return 0;
+    case "reference": {
+      const line = document.createElement("div"); line.textContent = ev.message; $("ticker").prepend(line); return 0;
+    }
     case "run_start":
+      totalFiles = Math.max(1, ev.files);
       categories = ev.categories || categories; legends();
       $("judgechip").textContent = ev.judge_label; $("judgechip").className = "chip " + (ev.judge === "jev" ? "ok" : "warn");
       banner(ev.judge === "standin-rules" ? "Stand-in rules are answering, not Jev: probabilities are all-or-nothing. Add a key and pick Jev to see real judgments." :
@@ -516,12 +551,14 @@ function handle(ev) {
     case "ast":
       stats.files++; stats.nodes += ev.nodes; spawnAst(ev.file, ev.sample, ev.nodes);
       $("astcount").textContent = `${ev.file.split("/").pop()} · ${ev.nodes} nodes · ${ev.ms} ms`;
-      updateStats(); return P.ast;
+      updateStats(); return Math.min(P.ast, 3500 / totalFiles);
     case "parse_done":
       $("s-parse").textContent = `${ev.ms} ms`;
       $("astcount").textContent = `${ev.files} files · ${ev.nodes} nodes · ${ev.types} types · parsed in ${ev.ms} ms`;
       return 0;
     case "entity": {
+      if (ev.entity.focus === false) { hidden++; return 0; }
+      if (ev.entity.type === "PACKAGE" && [...nodes.values()].filter((x) => x.kind === "PACKAGE").length >= 12) return 0;
       const n = addNode(ev.entity);
       if (ev.entity.file) bypass(ev.entity.file, { node: n.id }, 4);
       return P.entity;
@@ -565,6 +602,7 @@ function handle(ev) {
       running = false; $("start").disabled = false; $("card").classList.remove("live");
       showDone(ev); return 0;
     case "error":
+      if (!ev.fatal) { const line = document.createElement("div"); line.style.color = "var(--bad)"; line.textContent = ev.message; $("ticker").prepend(line); return 0; }
       banner(ev.message, true);
       if (ev.fatal) { running = false; $("start").disabled = false; stop(); }
       return 0;
@@ -592,6 +630,7 @@ function showDone(ev) {
     `<br>parser vs compiler: DEPENDS_ON <b>${g.syntax_depends_on.correct}/${g.syntax_depends_on.truth}</b> · CALLS <b>${g.syntax_calls.correct}/${g.syntax_calls.truth}</b>` +
     ` · judge vs compiler: roles <b>${g.roles.correct}/${g.roles.scored}</b> · persists/publishes false alarms <b>${g.persists_false_positives + g.publishes_false_positives}</b>` +
     (s.refused ? ` · <span style="color:var(--bad)">${s.refused} questions refused by the check</span>` : "");
+  if (!g) html += `<br>no reference graph for this repository, so nothing is graded (build the Java analyzer to grade any repository; see README)`;
   el.innerHTML = html; el.classList.add("show");
 }
 function banner(text, error) { const b = $("banner"); b.textContent = text; b.className = text ? "show" + (error ? " error" : "") : ""; measure(); }
@@ -600,13 +639,14 @@ function banner(text, error) { const b = $("banner"); b.textContent = text; b.cl
 function reset() {
   particles = []; nodes = new Map(); edges = []; communities = new Map(); questions = new Map(); queue = []; busy = false;
   stats = { files: 0, nodes: 0, asked: 0, answered: 0, latency: [], tokens: 0 };
-  $("ticker").innerHTML = ""; $("grade").classList.remove("show"); updateStats();
+  $("ticker").innerHTML = ""; $("grade").classList.remove("show"); $("budgetline").textContent = ""; hidden = 0; updateStats();
   $("card").innerHTML = `<div class="empty">Parsing…</div>`;
 }
 function stop() { if (source) { source.close(); source = null; } }
 function start() {
   stop(); reset(); measure(); running = true; $("start").disabled = true; banner("");
-  const params = new URLSearchParams({ path: $("path").value.trim(), mode: $("mode").value, source: $("source").checked ? "1" : "0" });
+  const params = new URLSearchParams({ path: $("path").value.trim(), mode: $("mode").value, source: $("source").checked ? "1" : "0",
+    budget: $("budget").value, tests: $("tests").checked ? "1" : "0" });
   source = new EventSource(`/api/run?${params}`);
   source.onmessage = (m) => { const ev = JSON.parse(m.data); queue.push(ev); if (ev.type === "done" || (ev.type === "error" && ev.fatal)) stop(); pump(); };
   source.onerror = () => { if (running && source) { stop(); if (!queue.some((e) => e.type === "done")) { queue.push({ type: "error", fatal: true, message: "Lost the connection to the local server." }); pump(); } } };

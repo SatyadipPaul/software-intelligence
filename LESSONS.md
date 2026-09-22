@@ -14,3 +14,6 @@ How to look next time. One line each, tagged by field.
 | AI / question design | Don't ask a model what syntax already proves; audit every question against "could the parser answer this?" before sending it. |
 | Code / UI checks | Restart any long-running local server after changing its Python before running browser checks; a stale server serves old-format data and the page fails in ways that look like UI bugs. |
 | UI / labels | When one display field (a tooltip's "essential") is reused for different edge kinds, label each kind's number by what it means; check tooltips on every edge type, not just the first. |
+| Code / scale | Test on a large real input (thousands of files) before calling a pipeline done; the fixture hid 6,576 model questions, a 30 MB event stream and over-long requests. |
+| Code / grading | Before grading against a reference, read the reference's own code for its exact definition (here: DEPENDS_ON = erased field and parameter types, own nested types included, tests excluded) and match its scope; otherwise the score measures the mismatch, not the work. |
+| Code / name resolution | Resolve names by the language's real scoping rules; a "unique simple name anywhere" fallback silently links unrelated classes (java.util.Map to an in-repo Map). |
