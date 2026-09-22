@@ -14,17 +14,37 @@ proves?
             every piece saved as it arrives ─▶ out/<repo>/*.jsonl, graphrag.json, report.md
 ```
 
-Jev is asked only what syntax cannot settle:
+**Syntax proves what it can, and Jev is asked only the rest.** tree-sitter supplies declarations,
+imports, inheritance, routes and topics, plus DEPENDS_ON (a type is named), CREATES (`new`) and
+CALLS (a resolved call to a method the target declares). None of those reach Jev.
 
-| Judgment | Primitive | Asked about |
-|---|---|---|
-| Architectural role | Choice: controller, service, repository, entity, consumer, gateway, configuration, other | each type |
-| Kind of relationship | Choice: depends_on, calls, creates, persists, publishes, uses_type, none | each pair where A names B in code |
-| Does A invoke B's own operations? | Noul | each such pair |
-| Community label, cohesion, business capability | Choice + Score + Noul | each group Louvain finds |
+| Round | Question | Primitive | Why this shape |
+|---|---|---|---|
+| Role of each class | `role` | Choice | One role per class. Keys are the product's own node types (CONTROLLER, SERVICE, REPOSITORY_COMPONENT, ENTITY, CONFIGURATION) plus MESSAGE_CONSUMER, EXTERNAL_CLIENT and UTILITY, each with a description and signs to look for |
+| | `fits_a_role` | Noul | A Choice always names a winner, so "none of these" is asked separately |
+| | `name_misleads` | Noul | The name promises something the code does not do, for example a Repository that stores nothing |
+| What each proven link means | `essential` | Noul | Does A delegate part of its job to B? This becomes the edge **weight** GraphRAG and community detection use |
+| | `persists`, `publishes` | Noul each | Several can be true at once, so one Noul per relationship type, never a Choice |
+| What each community is | `label` | Choice | Only names the code offers, each with where it comes from; skipped when only one name exists |
+| | `single_theme` | Noul | The "no name fits" check |
+| | `cohesion` | Score | Four concrete, ordered levels; skipped for a one-class group |
+| | `business_capability` | Noul | A capability for users, as opposed to plumbing |
 
-Declarations, imports, inheritance, HTTP routes and topic names come from tree-sitter and never
-reach Jev.
+Every request carries the same `context`: repository, language, the frameworks its imports reveal,
+and what graph is being built. Earlier answers reach later rounds only as `inferred_role`, never
+mixed in with observed facts.
+
+**The question check.** `lint()` runs before anything is sent, and a question that fails it is
+refused, never sent. It checks that:
+
+- every Noul defines both its yes and no outcomes;
+- every Score has at least three ordered levels;
+- no Choice has a catch-all option;
+- every option has a description;
+- every part of the state a question points at (`` `type.code` ``, `inspect: [...]`) exists in the state sent with it.
+
+Read the exact requests before spending a token: `QUESTIONS.md` holds one real request per round
+(regenerate it with `python explain_questions.py`), and `--mode dryrun` saves all of them.
 
 ## Where the API key goes
 

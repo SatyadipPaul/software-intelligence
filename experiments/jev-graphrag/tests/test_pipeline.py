@@ -5,6 +5,7 @@ import httpx2
 import pytest
 
 from jevgraph import extract
+from jevgraph import questions as q
 from jevgraph.judges import AnswerCache, JevJudge
 from jevgraph.pipeline import run
 
@@ -36,8 +37,10 @@ def test_standin_run_writes_every_file_and_grades(tmp_path):
         assert (out / name).exists(), name
     grade = evs[-1]["grade"]
     assert (grade["roles"]["correct"], grade["roles"]["scored"]) == (6, 6)
-    assert grade["depends_on"]["correct"] == grade["depends_on"]["truth"] == 7
-    assert grade["invokes"]["correct"] == grade["invokes"]["truth"] == 6
+    assert grade["syntax_depends_on"]["correct"] == grade["syntax_depends_on"]["truth"] == grade["syntax_depends_on"]["predicted"] == 7
+    assert grade["syntax_calls"]["correct"] == grade["syntax_calls"]["truth"] == grade["syntax_calls"]["predicted"] == 6
+    assert grade["persists_false_positives"] == grade["publishes_false_positives"] == 0
+    assert evs[-1]["stats"]["refused"] == 0
     # every line written is valid JSON, even though it was appended while running
     for line in (out / "events.jsonl").read_text().splitlines():
         json.loads(line)
@@ -120,3 +123,64 @@ def test_jev_path_through_the_real_sdk_then_replays_from_cache(tmp_path):
     assert fake.calls == len(answers), "a second run must be served entirely from the cache"
     assert all(e["cached"] for e in second if e["type"] == "answer")
     assert graph() == before, "replaying the cache must rebuild the same graph"
+
+
+def all_asks():
+    parses = [extract.parse_file(FIXTURE, f, extract.new_parser()) for f in extract.java_files(FIXTURE)]
+    index = extract.TypeIndex(parses)
+    types = {t.id: t for t in index.types.values()}
+    pairs = extract.candidates(index)
+    ctx = q.context("sample-commerce", extract.frameworks(parses))
+    asks = []
+    for with_source in (True, False):
+        for t in types.values():
+            asks.append(q.role_ask(t, *q.neighbours(t, pairs, types), ctx, with_source))
+        for c in pairs:
+            asks.append(q.relation_ask(c, types, extract.syntax_kinds(c, types[c.target]), ctx, with_source))
+    members = list(types.values())
+    asks.append(q.community_ask("community:all", members, {}, [], [], ctx))
+    asks.append(q.community_ask("community:one", members[:1], {}, [], [], ctx))
+    return asks
+
+
+def test_every_question_passes_the_check():
+    asks = all_asks()
+    assert len(asks) > 30
+    assert [p for a in asks for p in q.lint(a)] == []
+
+
+def test_questions_follow_the_primitive_rules():
+    asks = all_asks()
+    for a in asks:
+        for name, question in a.wire_questions().items():
+            if question["type"] == "choice":  # no catch-all: "none of these" is its own Noul
+                assert not set(question["criteria"]) & q.CATCH_ALL
+    role = next(a for a in asks if a.phase == "role")
+    assert set(role.questions) == {"role", "fits_a_role", "name_misleads"}
+    assert {"CONTROLLER", "SERVICE", "REPOSITORY_COMPONENT", "ENTITY", "CONFIGURATION"} <= set(q.ROLES)  # the product's EntityKind names
+    relation = next(a for a in asks if a.phase == "relation")
+    assert {x["type"] for x in relation.wire_questions().values()} == {"noul"}  # several can be true: one Noul each
+    single = next(a for a in asks if a.subject == "community:one")
+    assert "cohesion" not in single.questions  # cohesion of one class is meaningless
+
+
+def test_the_check_refuses_bad_questions():
+    good = all_asks()[0]
+    bad = q.Ask("x", "role", "x", {"type": {}}, {
+        "catch_all": q.Choice(instructions="Which?", criteria={"CONTROLLER": "a", "OTHER": "anything else"}),
+        "one_sided": q.Noul(instructions="Is `type` ok?", criteria={"true": "yes"}),
+        "flat": q.Score(instructions="How much?", criteria=["low", "high"]),
+        "dangling": q.Noul(instructions="Is `nowhere.field` set?", criteria={"true": "a", "false": "b"}),
+    }, {})
+    problems = " | ".join(q.lint(bad))
+    for expected in ["catch-all option 'OTHER'", "both the yes and the no", "three ordered levels", "`nowhere.field` is not in the state"]:
+        assert expected in problems, expected
+    assert q.lint(good) == []
+
+
+def test_refused_questions_are_never_sent(tmp_path, monkeypatch):
+    monkeypatch.setattr("jevgraph.pipeline.lint", lambda ask: ["forced"] if ask.phase == "relation" else [])
+    evs = events(tmp_path, mode="dryrun")
+    sent = [json.loads(l)["qid"] for l in (tmp_path / "sample-commerce" / "requests.jsonl").read_text().splitlines()]
+    assert sent and not any(qid.startswith("relation:") for qid in sent)
+    assert evs[-1]["stats"]["refused"] == 7

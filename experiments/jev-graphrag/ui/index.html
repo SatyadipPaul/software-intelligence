@@ -158,10 +158,10 @@
 <script>
 "use strict";
 const AST_COLORS = ["#6c8cff", "#3fc1c9", "#a0e7e5", "#ffb86b", "#c792ea", "#5c6773", "#34405a", "#7a869a"];
-const ROLE_COLORS = { CONTROLLER: "#4f8ef7", SERVICE: "#2bb673", REPOSITORY: "#f2a93b", ENTITY: "#b07cf2",
-  CONSUMER: "#f25f8b", GATEWAY: "#29c4d6", CONFIGURATION: "#9aa5b1", OTHER: "#6b7785" };
-const REL_COLORS = { DEPENDS_ON: "#7fb2ff", CALLS: "#5ed0a0", CREATES: "#f2c94c", PERSISTS: "#f2994a",
-  PUBLISHES: "#eb5757", USES_TYPE: "#8892a0", NONE: "#ff6b81" };
+const ROLE_COLORS = { CONTROLLER: "#4f8ef7", SERVICE: "#2bb673", REPOSITORY_COMPONENT: "#f2a93b", ENTITY: "#b07cf2",
+  CONFIGURATION: "#9aa5b1", MESSAGE_CONSUMER: "#f25f8b", EXTERNAL_CLIENT: "#29c4d6", UTILITY: "#6b7785" };
+const REL_COLORS = { CALLS: "#5ed0a0", DEPENDS_ON: "#7fb2ff", CREATES: "#f2c94c", PERSISTS: "#f2994a", PUBLISHES: "#eb5757" };
+const TYPE_LINKS = ["CALLS", "DEPENDS_ON", "CREATES"];  // syntax-proven; drawn as one line per pair, strongest first
 const KIND_COLORS = { PACKAGE: "#3d4a5e", ENDPOINT: "#e0e6f0", TOPIC: "#f25f8b" };
 const COMMUNITY_COLORS = ["#4f8ef7", "#2bb673", "#f2a93b", "#b07cf2", "#29c4d6", "#f25f8b", "#9aa5b1", "#f2c94c"];
 const PACES = {
@@ -212,11 +212,10 @@ if (window.ResizeObserver) { const ro = new ResizeObserver(() => { measure(); re
 function legends() {
   $("astlegend").innerHTML = categories.map((c, i) => `<span><i style="background:${AST_COLORS[i]}"></i>${c}</span>`).join("");
   $("graphlegend").innerHTML =
-    Object.entries(ROLE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k.toLowerCase()}</span>`).join("") +
+    Object.entries(ROLE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k.toLowerCase().replace("_", " ")}</span>`).join("") +
     `<span><i style="background:#2a3444;border:1px solid #5a6a80"></i>not judged</span>` +
-    Object.entries(REL_COLORS).filter(([k]) => k !== "NONE")
-      .map(([k, c]) => `<span><i class="line" style="background:${c}"></i>${k.toLowerCase()}</span>`).join("") +
-    `<span><i class="line" style="background:#3a4658"></i>syntax</span>`;
+    Object.entries(REL_COLORS).map(([k, c]) => `<span><i class="line" style="background:${c}"></i>${k.toLowerCase().replace("_", " ")}</span>`).join("") +
+    `<span>line width = essential (Jev) · dashed = not essential</span>`;
 }
 
 /* ---------- particles ---------- */
@@ -327,8 +326,9 @@ function stepGraph() {
     a.vx += (cx - a.x) * 0.0022; a.vy += (cy - a.y) * 0.0022;
   }
   for (const e of edges) {
-    const a = nodes.get(e.source), b = nodes.get(e.target); if (!a || !b || e.type === "NONE") continue;
-    const want = (e.origin === "syntax" ? 80 : 110) * Math.sqrt(scale), k = e.origin === "syntax" ? 0.004 : 0.008;
+    const a = nodes.get(e.source), b = nodes.get(e.target); if (!a || !b) continue;
+    const link = TYPE_LINKS.includes(e.type) || e.origin !== "syntax", w = e.weight ?? 0.5;
+    const want = (link ? 110 : 80) * Math.sqrt(scale), k = link ? 0.003 + 0.007 * w : 0.004;
     const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, f = (d - want) * k;
     a.vx += dx / d * f; a.vy += dy / d * f; b.vx -= dx / d * f; b.vy -= dy / d * f;
   }
@@ -385,21 +385,21 @@ function drawGraph() {
     if (c.label) { ctx.fillStyle = hexA(color, 0.9); ctx.font = "600 11px system-ui"; ctx.textAlign = "center";
       ctx.fillText(`${c.label}${c.cohesion != null ? ` · ${c.cohesion.toFixed(1)}/3` : ""}`, c.cx, c.cy - rr - 5); }
   }
+  const pairs = new Map();
   for (const e of edges) {
     const a = nodes.get(e.source), b = nodes.get(e.target); if (!a || !b) continue;
-    if (e.origin === "syntax") {
+    if (e.origin === "syntax" && !TYPE_LINKS.includes(e.type)) {
       ctx.strokeStyle = "#2c3748"; ctx.lineWidth = 1; ctx.setLineDash(e.type === "CONTAINS" ? [2, 4] : []);
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]); continue;
     }
-    if (e.type === "NONE") continue;
-    const color = REL_COLORS[e.type] || "#8892a0", conf = e.confidence ?? 1;
-    ctx.strokeStyle = hexA(color, 0.35 + 0.6 * conf); ctx.lineWidth = 1 + 2 * conf; ctx.setLineDash(e.status === "uncertain" ? [5, 4] : []);
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
-    const ang = Math.atan2(b.y - a.y, b.x - a.x), tx = b.x - Math.cos(ang) * (radius(b) + 3), ty = b.y - Math.sin(ang) * (radius(b) + 3);
-    ctx.fillStyle = hexA(color, 0.9); ctx.beginPath(); ctx.moveTo(tx, ty);
-    ctx.lineTo(tx - Math.cos(ang - 0.45) * 8, ty - Math.sin(ang - 0.45) * 8); ctx.lineTo(tx - Math.cos(ang + 0.45) * 8, ty - Math.sin(ang + 0.45) * 8);
-    ctx.fill();
+    if (e.origin === "syntax") {  // several proven kinds between one pair: draw the strongest
+      const key = e.source + "|" + e.target, prior = pairs.get(key);
+      if (!prior || TYPE_LINKS.indexOf(e.type) < TYPE_LINKS.indexOf(prior.type)) pairs.set(key, e);
+      continue;
+    }
+    drawLink(a, b, e, REL_COLORS[e.type] || "#8892a0", 0, 0.9);
   }
+  for (const e of pairs.values()) drawLink(nodes.get(e.source), nodes.get(e.target), e, REL_COLORS[e.type], 1, null);
   for (const n of nodes.values()) {
     const r = radius(n), color = nodeColor(n);
     if (n.pulse > 0) { ctx.fillStyle = hexA(n.role ? ROLE_COLORS[n.role] || "#7c9cff" : "#7c9cff", n.pulse * 0.35);
@@ -414,6 +414,17 @@ function drawGraph() {
       ctx.lineWidth = 3; ctx.strokeStyle = "rgba(11,15,22,.85)"; ctx.strokeText(n.title, n.x, n.y + r + 13);
       ctx.fillStyle = n.kind === "TYPE" ? "#c9d4e5" : "#8b98ab"; ctx.fillText(n.title, n.x, n.y + r + 13); }
   }
+}
+function drawLink(a, b, e, color, dashed, fixed) {
+  const w = e.weight;  // null until Jev has judged the pair
+  const strength = fixed ?? (w == null ? 0.35 : w);
+  ctx.strokeStyle = hexA(color, 0.3 + 0.65 * strength); ctx.lineWidth = w == null ? 1.2 : 1 + 2.6 * strength;
+  ctx.setLineDash(dashed && w != null && w < 0.5 ? [5, 5] : []);
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+  const ang = Math.atan2(b.y - a.y, b.x - a.x), tx = b.x - Math.cos(ang) * (radius(b) + 3), ty = b.y - Math.sin(ang) * (radius(b) + 3);
+  ctx.fillStyle = hexA(color, 0.4 + 0.5 * strength); ctx.beginPath(); ctx.moveTo(tx, ty);
+  ctx.lineTo(tx - Math.cos(ang - 0.45) * 8, ty - Math.sin(ang - 0.45) * 8); ctx.lineTo(tx - Math.cos(ang + 0.45) * 8, ty - Math.sin(ang + 0.45) * 8);
+  ctx.fill();
 }
 function drawParticles() {
   for (const p of particles) {
@@ -431,19 +442,21 @@ function frame(ts) {
 /* ---------- the question card ---------- */
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function shortId(id) { return id.includes("|") ? id.split("|").map(shortId).join(" → ") : id.replace(/^(type|community):/, "").split(".").pop(); }
+function textOf(v) { return v == null ? "" : typeof v === "string" ? v : v.question || v.what || JSON.stringify(v); }
 function renderQuestion(q) {
   const qs = Object.entries(q.questions);
   const first = qs[0][1];
   let html = `<div class="top"><span class="tag phase">${esc(q.phase)}</span>` +
     qs.map(([, v]) => `<span class="tag">${v.type}</span>`).join("") + `<span class="meta" id="qmeta">asking…</span></div>` +
     `<div class="subject">${esc(q.phase === "community" ? "community " + shortId(q.subject) : shortId(q.subject))}</div>` +
-    `<div class="instr">${esc(typeof first.instructions === "string" ? first.instructions : "")}</div>`;
+    `<div class="instr">${esc(textOf(first.instructions))}</div>`;
   for (const [name, v] of qs) {
-    html += `<div class="q"><div class="qname">${esc(name)} · ${v.type}</div>`;
+    html += `<div class="q"><div class="qname">${esc(name)} · ${v.type}${qs.length > 1 && v !== first ? " · " + esc(textOf(v.instructions)) : ""}</div>`;
     const opts = v.type === "choice" ? Object.keys(v.criteria) : v.type === "score" ? v.criteria.map((_, i) => String(i)) : ["yes"];
+    const tip = (o) => v.type === "choice" ? textOf(v.criteria[o]) : v.type === "score" ? textOf(v.criteria[+o]) : "yes: " + textOf((v.criteria || {}).true);
     for (const o of opts) {
       const color = REL_COLORS[o] || ROLE_COLORS[o] || "#7c9cff";
-      html += `<div class="opt" data-q="${esc(name)}" data-o="${esc(o)}"><span class="name" title="${esc(v.type === "score" ? v.criteria[+o] : o)}">${esc(o)}</span>` +
+      html += `<div class="opt" data-q="${esc(name)}" data-o="${esc(o)}"><span class="name" title="${esc(tip(o))}">${esc(o)}</span>` +
         `<span class="bar"><b style="background:${color}"></b></span><span class="pct">·</span></div>`;
     }
     html += "</div>";
@@ -481,9 +494,9 @@ function tick(ev) {
 function pace() { return PACES[$("pace").value] || PACES.cinematic; }
 function answerColor(ev) {
   if (!ev.answers) return "#f2c94c";
-  const a = Object.values(ev.answers)[0];
-  if (a.type === "choice") return ROLE_COLORS[a.choice] || REL_COLORS[a.choice] || COMMUNITY_COLORS[0];
-  return "#7c9cff";
+  if (ev.phase === "relation") return (ev.answers.essential?.noul ?? 0) >= 0.5 ? REL_COLORS.CALLS : "#56657c";
+  if (ev.phase === "community") { const c = communities.get(ev.subject); return COMMUNITY_COLORS[(c ? c.index : 0) % COMMUNITY_COLORS.length]; }
+  const a = ev.answers.role; return a ? ROLE_COLORS[a.choice] || "#7c9cff" : "#7c9cff";
 }
 function answerTarget(ev) {
   if (ev.phase === "role") return { node: ev.subject };
@@ -537,6 +550,12 @@ function handle(ev) {
       return P.pull + P.reveal + P.emit;
     }
     case "entity_update": addNode(ev.entity); return 0;
+    case "relationship_update": {
+      const r = ev.relationship;
+      edges = edges.map((e) => e.source === r.source && e.target === r.target && e.type === r.type && e.origin === r.origin ? r : e);
+      return 0;
+    }
+    case "pair_judged": return 0;
     case "community": {
       const c = ev.community, prior = communities.get(c.id);
       communities.set(c.id, { ...(prior || {}), ...c, index: prior ? prior.index : communities.size });
@@ -570,8 +589,9 @@ function showDone(ev) {
   let html = `done · ${s.entities} entities · ${s.relationships} relationships · ${s.communities} communities` +
     ` · <a href="/out/${encodeURIComponent(ev.out_dir.split(/[\\/]/).pop())}/graphrag.json" target="_blank">graphrag.json</a>`;
   if (g) html += ` · <a href="/out/${encodeURIComponent(ev.out_dir.split(/[\\/]/).pop())}/report.md" target="_blank">report.md</a>` +
-    `<br>vs compiler: roles <b>${g.roles.correct}/${g.roles.scored}</b> · DEPENDS_ON P ${pct(g.depends_on.precision)} R ${pct(g.depends_on.recall)}` +
-    ` · invokes P ${pct(g.invokes.precision)} R ${pct(g.invokes.recall)} · candidate coverage ${pct(g.candidate_coverage)}`;
+    `<br>parser vs compiler: DEPENDS_ON <b>${g.syntax_depends_on.correct}/${g.syntax_depends_on.truth}</b> · CALLS <b>${g.syntax_calls.correct}/${g.syntax_calls.truth}</b>` +
+    ` · judge vs compiler: roles <b>${g.roles.correct}/${g.roles.scored}</b> · persists/publishes false alarms <b>${g.persists_false_positives + g.publishes_false_positives}</b>` +
+    (s.refused ? ` · <span style="color:var(--bad)">${s.refused} questions refused by the check</span>` : "");
   el.innerHTML = html; el.classList.add("show");
 }
 function banner(text, error) { const b = $("banner"); b.textContent = text; b.className = text ? "show" + (error ? " error" : "") : ""; measure(); }
@@ -602,10 +622,12 @@ $("stage").addEventListener("mousemove", (e) => {
   let html = `<div class="t">${esc(hover.title)}</div><div class="m">${esc(hover.kind)}${d.file ? " · " + esc(d.file) + ":" + d.line : ""}</div>`;
   if (d.role_probabilities) {
     const top = Object.entries(d.role_probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3);
-    html += `<div class="m" style="margin-top:4px">role (${esc(d.role_judge || "")}): ` + top.map(([k, v]) => `${k.toLowerCase()} ${Math.round(v * 100)}%`).join(" · ") + "</div>";
+    html += `<div class="m" style="margin-top:4px">role (${esc(d.role_judge || "")}): ` + top.map(([k, v]) => `${k.toLowerCase().replace("_", " ")} ${Math.round(v * 100)}%`).join(" · ") + "</div>";
+    html += `<div class="m">fits a role ${Math.round((d.fits_a_role ?? 0) * 100)}% · name misleads ${Math.round((d.name_misleads ?? 0) * 100)}%</div>`;
   }
-  const rels = edges.filter((x) => x.origin !== "syntax" && (x.source === hover.id || x.target === hover.id));
-  if (rels.length) html += `<div class="m" style="margin-top:4px">` + rels.map((x) => `${shortId(x.source)} ${x.type} ${shortId(x.target)} (${(x.confidence ?? 1).toFixed(2)})`).map(esc).join("<br>") + "</div>";
+  const rels = edges.filter((x) => (x.origin !== "syntax" || TYPE_LINKS.includes(x.type)) && (x.source === hover.id || x.target === hover.id));
+  if (rels.length) html += `<div class="m" style="margin-top:4px">` + rels.map((x) => `${shortId(x.source)} ${x.type} ${shortId(x.target)} · ${x.origin === "syntax" ? "proven" : x.origin}` +
+    (x.weight == null ? "" : x.origin === "syntax" ? ` · essential ${Math.round(x.weight * 100)}%` : ` · yes ${Math.round((x.confidence ?? 0) * 100)}%`)).map(esc).join("<br>") + "</div>";
   tip.innerHTML = html; tip.style.display = "block";
   tip.style.left = Math.min(window.innerWidth - 310, e.clientX + 14) + "px"; tip.style.top = (e.clientY + 14) + "px";
 });

@@ -104,10 +104,16 @@ class FileParse:
 
 @dataclass
 class Evidence:
+    kind: str  # field_type | field_new | signature_type | invocation | creation
     how: str
     line: int
     code: str
     method: str | None = None  # the invoked method's name, for call evidence
+
+
+# Which syntax edge each kind of evidence proves. CALLS additionally needs the invoked method to be
+# one the target itself declares, which `syntax_kinds` checks.
+EDGE_FOR = {"field_type": "DEPENDS_ON", "signature_type": "DEPENDS_ON", "field_new": "CREATES", "creation": "CREATES"}
 
 
 @dataclass
@@ -354,28 +360,28 @@ def candidates(index: TypeIndex) -> list[Candidate]:
     """Every (A, B) where A's source names in-repository type B, with each place it does so."""
     found: dict[tuple[str, str], list[Evidence]] = {}
 
-    def add(source: TypeDecl, simple: str, how: str, line: int, method: str | None = None):
+    def add(source: TypeDecl, simple: str, kind: str, how: str, line: int, method: str | None = None):
         target = index.resolve(simple, source)
         if target is None or target == source.qualified:
             return
-        found.setdefault((source.id, "type:" + target), []).append(Evidence(how, line, _line(source, line), method))
+        found.setdefault((source.id, "type:" + target), []).append(Evidence(kind, how, line, _line(source, line), method))
 
     for declared in index.types.values():
         for f in declared.fields:
             for simple in f.type_names:
-                add(declared, simple, f"field `{f.name}` has type {simple}", f.line)
+                add(declared, simple, "field_type", f"field `{f.name}` has type {simple}", f.line)
             if f.creates:
-                add(declared, f.creates, f"field `{f.name}` is initialised with new {f.creates}()", f.line)
+                add(declared, f.creates, "field_new", f"field `{f.name}` is initialised with new {f.creates}()", f.line)
         for m in declared.methods:
             for simple in m.type_names:
-                add(declared, simple, f"method `{m.name}` names type {simple} in its signature or locals", m.line)
+                add(declared, simple, "signature_type", f"method `{m.name}` names type {simple} in its signature or locals", m.line)
             for invocation in m.invocations:
                 if invocation.receiver_type:
-                    add(declared, invocation.receiver_type,
+                    add(declared, invocation.receiver_type, "invocation",
                         f"method `{m.name}` calls `{invocation.receiver}.{invocation.method}(...)`", invocation.line,
                         invocation.method)
             for created, line in m.creations:
-                add(declared, created, f"method `{m.name}` constructs new {created}()", line)
+                add(declared, created, "creation", f"method `{m.name}` constructs new {created}()", line)
     return [Candidate(s, t, evidence) for (s, t), evidence in sorted(found.items())]
 
 
@@ -402,3 +408,41 @@ def endpoints(declared: TypeDecl) -> list[dict]:
 def _first_string(args: str) -> str:
     match = re.search(r'"([^"]*)"', args)
     return match.group(1) if match else ""
+
+
+def syntax_kinds(candidate: Candidate, target: TypeDecl) -> dict[str, list[Evidence]]:
+    """The relationship kinds syntax proves for one pair, each with the evidence that proves it."""
+    declared = {m.name for m in target.methods}
+    kinds: dict[str, list[Evidence]] = {}
+    for e in candidate.evidence:
+        if e.kind == "invocation":
+            if e.method in declared:
+                kinds.setdefault("CALLS", []).append(e)
+        else:
+            kinds.setdefault(EDGE_FOR[e.kind], []).append(e)
+    return kinds
+
+
+FRAMEWORKS = [  # import prefix -> what its presence tells a reader about the code
+    ("org.springframework.web", "Spring Web: HTTP controllers and routes"),
+    ("org.springframework.kafka", "Spring Kafka: message listeners and producers"),
+    ("org.springframework.amqp", "Spring AMQP: RabbitMQ listeners and producers"),
+    ("org.springframework.security", "Spring Security: access rules"),
+    ("org.springframework.data", "Spring Data: repositories over stored data"),
+    ("jakarta.persistence", "JPA: entities mapped to database tables"),
+    ("javax.persistence", "JPA: entities mapped to database tables"),
+    ("org.springframework.jdbc", "Spring JDBC: SQL access"),
+    ("org.springframework.transaction", "Spring transactions"),
+    ("org.springframework.stereotype", "Spring stereotypes: @Service, @Component, @Repository"),
+    ("org.springframework.beans", "Spring beans and injected configuration values"),
+    ("org.springframework.context", "Spring configuration and events"),
+]
+
+
+def frameworks(parses: list[FileParse]) -> list[str]:
+    found = []
+    imports = [i for p in parses for i in p.imports]
+    for prefix, meaning in FRAMEWORKS:
+        if any(i.startswith(prefix) for i in imports) and meaning not in found:
+            found.append(meaning)
+    return found

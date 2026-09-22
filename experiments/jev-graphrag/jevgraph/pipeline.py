@@ -17,7 +17,7 @@ from . import extract
 from .extract import TypeIndex
 from .grade import grade
 from .judges import AnswerCache, DryRunJudge, JevJudge, StandInJudge, load_env
-from .questions import Ask, community_ask, relation_ask, role_ask
+from .questions import Ask, community_ask, context, label_candidates, lint, neighbours, relation_ask, role_ask
 
 HERE = Path(__file__).resolve().parent.parent
 OUT = HERE / "out"
@@ -112,18 +112,19 @@ def run(repo: Path, mode: str = "standin", with_source: bool = True, truth: Path
                 "nodes": sum(p.node_count for p in parses), "ms": round(parse_ms, 2)})
 
     entities: dict[str, dict] = {}
-    relationships: list[dict] = []
+    relationships: dict[tuple, dict] = {}  # keyed so a later judgment updates the edge it describes
 
     def entity(record: dict) -> dict:
         entities[record["id"]] = record
         writer.append("entities", record)
         return emit({"type": "entity", "entity": record})
 
-    def relationship(record: dict) -> dict:
-        relationships.append(record)
-        writer.append("relationships", record)
-        return emit({"type": "relationship", "relationship": record})
+    def relationship(record: dict, update: bool = False) -> dict:
+        relationships[(record["source"], record["target"], record["type"])] = record
+        writer.append("relationships", record)  # an append log: the last line for an edge wins
+        return emit({"type": "relationship_update" if update else "relationship", "relationship": record})
 
+    ctx = context(repo.name, extract.frameworks(parses))
     for package in sorted({t.package for t in types.values() if t.package}):
         yield entity({"id": f"package:{package}", "type": "PACKAGE", "title": package, "source": "tree-sitter"})
     for declared in types.values():
@@ -148,17 +149,35 @@ def run(repo: Path, mode: str = "standin", with_source: bool = True, truth: Path
             yield relationship({"source": src, "target": dst, "type": kind, "origin": "syntax", "confidence": 1.0,
                                 "file": declared.file, "line": entry["line"], "via_method": entry["method"]})
 
-    stats = {"questions": 0, "answered": 0, "cached": 0, "errors": 0, "input_tokens": 0, "latency_ms": []}
+    # Links between types that syntax proves: no model is asked whether they exist.
+    pairs = extract.candidates(index)
+    proven: dict[tuple[str, str], dict[str, list]] = {}
+    for c in pairs:
+        proven[(c.source, c.target)] = extract.syntax_kinds(c, types[c.target])
+        for kind, evidence in sorted(proven[(c.source, c.target)].items()):
+            yield relationship({"source": c.source, "target": c.target, "type": kind, "origin": "syntax",
+                                "confidence": 1.0, "weight": None,
+                                "evidence": [{"how": e.how, "line": e.line} for e in evidence]})
+
+    stats = {"questions": 0, "answered": 0, "cached": 0, "errors": 0, "refused": 0, "input_tokens": 0, "latency_ms": []}
 
     def ask_all(asks: list[Ask]) -> Iterator[tuple[Ask, object, dict]]:
+        ready = []
         for ask in asks:
+            problems = lint(ask)
+            if problems:  # a badly formed question is never sent
+                stats["refused"] += 1
+                yield ask, None, emit({"type": "error", "fatal": False, "qid": ask.qid,
+                                       "message": "Question refused by the check: " + "; ".join(problems)})
+                continue
+            ready.append(ask)
             stats["questions"] += 1
             record = {"qid": ask.qid, "phase": ask.phase, "subject": ask.subject, "files": ask.files,
                       "questions": ask.wire_questions()}
             writer.append("questions", record)
             yield ask, None, emit({"type": "question", **record})
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-            futures = {pool.submit(judge.ask, ask): ask for ask in asks}
+            futures = {pool.submit(judge.ask, ask): ask for ask in ready}
             for future in as_completed(futures):
                 ask, result = futures[future], future.result()
                 if result.error:
@@ -175,37 +194,49 @@ def run(repo: Path, mode: str = "standin", with_source: bool = True, truth: Path
                 writer.append("answers", record)
                 yield ask, result, emit({"type": "answer", **record})
 
-    # 2. Roles.
-    roles: dict[str, str] = {}
-    for ask, result, event in ask_all([role_ask(t, with_source) for t in types.values()]):
+    # Round 1: the role of each class, with its neighbourhood as context.
+    inferred_roles: dict[str, dict] = {}
+    role_asks = []
+    for declared in types.values():
+        uses, used_by = neighbours(declared, pairs, types)
+        role_asks.append(role_ask(declared, uses, used_by, ctx, with_source))
+    for ask, result, event in ask_all(role_asks):
         yield event
         if result is None or not result.answers:
             continue
-        answer = result.answers["role"]
-        roles[ask.subject] = answer["choice"]
-        entities[ask.subject].update(role=answer["choice"], role_confidence=answer["confidence"],
-                                     role_probabilities=answer["probabilities"], role_judge=result.judge)
+        a = result.answers
+        role = a["role"]
+        inferred_roles[ask.subject] = {"value": role["choice"], "confidence": round(role["confidence"], 3),
+                                       "fits_a_role": round(a["fits_a_role"]["noul"], 3), "judged_by": result.judge}
+        entities[ask.subject].update(role=role["choice"], role_confidence=role["confidence"],
+                                     role_probabilities=role["probabilities"], fits_a_role=a["fits_a_role"]["noul"],
+                                     name_misleads=a["name_misleads"]["noul"], role_judge=result.judge)
         writer.append("entities", entities[ask.subject])
         yield emit({"type": "entity_update", "entity": entities[ask.subject]})
 
-    # 3. Relationships between types that mention each other.
-    pairs = extract.candidates(index)
+    # Round 2: what each proven link means. The essential answer becomes the edge weight GraphRAG uses.
     weights: dict[tuple[str, str], float] = {(c.source, c.target): 0.5 for c in pairs}
-    for ask, result, event in ask_all([relation_ask(c, types, with_source) for c in pairs]):
+    essential: dict[tuple[str, str], float] = {}
+    for ask, result, event in ask_all([relation_ask(c, types, proven[(c.source, c.target)], ctx, with_source) for c in pairs]):
         yield event
         if result is None or not result.answers:
             continue
         source, target = ask.subject.split("|")
-        relation, invokes = result.answers["relation"], result.answers["invokes"]
-        status = "rejected" if relation["choice"] == "NONE" else ("uncertain" if relation["confidence"] < 0.6 else "accepted")
-        weights[(source, target)] = 0.0 if status == "rejected" else (
-            0.2 if relation["choice"] == "USES_TYPE" else relation["confidence"])
-        yield relationship({"source": source, "target": target, "type": relation["choice"], "origin": result.judge,
-                            "confidence": relation["confidence"], "probabilities": relation["probabilities"],
-                            "invokes_probability": invokes["noul"], "status": status,
-                            "evidence": ask.state["evidence"]})
+        a = result.answers
+        weights[(source, target)] = essential[(source, target)] = a["essential"]["noul"]
+        for kind in sorted(proven[(source, target)]):
+            edge = relationships[(source, target, kind)]
+            yield relationship({**edge, "weight": a["essential"]["noul"], "essential": a["essential"]["noul"],
+                                "judged_by": result.judge}, update=True)
+        for question, kind in (("persists", "PERSISTS"), ("publishes", "PUBLISHES")):
+            if a[question]["noul"] >= 0.5:
+                yield relationship({"source": source, "target": target, "type": kind, "origin": result.judge,
+                                    "confidence": a[question]["noul"], "weight": a[question]["noul"],
+                                    "evidence": ask.state["evidence"]})
+        yield emit({"type": "pair_judged", "source": source, "target": target,
+                    "answers": {k: v["noul"] for k, v in a.items()}})
 
-    # 4. Communities: found by an algorithm, described by the judge.
+    # Round 3: communities are found by an algorithm and described by the judge.
     graph = nx.Graph()
     graph.add_nodes_from(types)
     for (source, target), weight in weights.items():
@@ -218,43 +249,55 @@ def run(repo: Path, mode: str = "standin", with_source: bool = True, truth: Path
     asks = []
     for number, members in enumerate(groups):
         cid = f"community:{number}"
+        inside_set = set(members)
         # Sorted: answers arrive in completion order, and an unsorted list would change the request - and miss the cache.
-        inside = sorted(({"source": types[s].name, "target": types[t].name, "type": r["type"]} for r in relationships
-                         for s, t in [(r["source"], r["target"])] if s in members and t in members and s in types and t in types),
-                        key=lambda r: (r["source"], r["target"], r["type"]))
-        asks.append(community_ask(cid, [types[m] for m in members], roles, inside))
+        inside, outside = [], []
+        for (s, t), kinds in sorted(proven.items()):
+            row = {"from": types[s].name, "to": types[t].name, "kinds": sorted(kinds),
+                   "essential": None if (s, t) not in essential else round(essential[(s, t)], 3)}
+            if s in inside_set and t in inside_set:
+                inside.append(row)
+            elif s in inside_set or t in inside_set:
+                outside.append(row)
+        asks.append(community_ask(cid, [types[m] for m in members], inferred_roles, inside, outside, ctx))
         community = {"id": cid, "level": 0, "members": members, "size": len(members), "label": None}
         communities.append(community)
         yield emit({"type": "community", "community": community})
     by_id = {c["id"]: c for c in communities}
+    for ask in asks:  # a group offering a single name needs no Choice: that name is the label
+        if "label" not in ask.questions:
+            names = list(label_candidates([types[m] for m in by_id[ask.subject]["members"]]))
+            by_id[ask.subject]["label"] = names[0] if names else None
     for ask, result, event in ask_all(asks):
         yield event
         if result is None or not result.answers:
             continue
+        a = result.answers
         community = by_id[ask.subject]
-        community.update(label=result.answers["label"]["choice"], label_confidence=result.answers["label"]["confidence"],
-                         label_probabilities=result.answers["label"]["probabilities"],
-                         cohesion=result.answers["cohesion"]["score"],
-                         business_capability=result.answers["business_capability"]["noul"], judge=result.judge)
+        if "label" in a:
+            community.update(label=a["label"]["choice"], label_confidence=a["label"]["confidence"],
+                             label_probabilities=a["label"]["probabilities"])
+        community.update(single_theme=a["single_theme"]["noul"], business_capability=a["business_capability"]["noul"],
+                         cohesion=a["cohesion"]["score"] if "cohesion" in a else None, judge=result.judge)
         yield emit({"type": "community", "community": community})
     for community in communities:
         writer.append("communities", community)
 
-    # 5. Assemble, grade, report.
+    # Assemble, grade, report.
     latencies = stats.pop("latency_ms")
     summary = {**stats, "avg_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else None,
                "est_cost_usd": round(stats["input_tokens"] * PRICE_PER_MILLION_INPUT / 1e6, 6),
                "parse_ms": round(parse_ms, 2), "ast_nodes": sum(p.node_count for p in parses),
                "entities": len(entities), "relationships": len(relationships), "communities": len(communities)}
-    graphrag = {"repo": repo.name, "judge": judge.name, "source_sent": with_source, "stats": summary,
+    graphrag = {"repo": repo.name, "judge": judge.name, "source_sent": with_source, "context": ctx, "stats": summary,
                 "entities": sorted(entities.values(), key=lambda e: e["id"]),
-                "relationships": sorted(relationships, key=lambda r: (r["source"], r["target"], r["type"], r["origin"])),
+                "relationships": [relationships[k] for k in sorted(relationships)],
                 "communities": communities}
     writer.write("graphrag.json", json.dumps(graphrag, indent=2))
     report = None
     truth_file = truth or HERE / "truth" / f"{repo.name}.graph.json"
     if truth_file.exists():
-        report = grade(graphrag, json.loads(truth_file.read_text()), [c for c in pairs])
+        report = grade(graphrag, json.loads(truth_file.read_text()), pairs)
         writer.write("report.md", report["markdown"])
     yield emit({"type": "done", "stats": summary, "out_dir": str(out_dir),
                 "grade": {k: v for k, v in report.items() if k != "markdown"} if report else None})

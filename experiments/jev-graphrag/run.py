@@ -43,19 +43,22 @@ def main() -> int:
             else:
                 print(f"  {event['qid']}: request saved, no answer")
         elif kind == "error":
-            print("error:", event["message"], file=sys.stderr)
+            print("error:" if event.get("fatal") else "refused:", event["message"], file=sys.stderr)
             status = 1 if event.get("fatal") else status
         elif kind == "done":
             s = event["stats"]
             print(f"done: {s['entities']} entities, {s['relationships']} relationships, {s['communities']} communities; "
                   f"{s['answered']}/{s['questions']} answered ({s['cached']} from cache), {s['errors']} errors, "
+                  f"{s['refused']} refused by the question check, "
                   f"{s['input_tokens']} input tokens, est ${s['est_cost_usd']}")
             if event["grade"]:
                 g = event["grade"]
-                print(f"grade: roles {g['roles']['correct']}/{g['roles']['scored']}, "
-                      f"DEPENDS_ON {g['depends_on']['correct']}/{g['depends_on']['truth']} "
-                      f"(predicted {g['depends_on']['predicted']}), invokes {g['invokes']['correct']}/{g['invokes']['truth']} "
-                      f"(predicted {g['invokes']['predicted']}) -> {event['out_dir']}/report.md")
+                print(f"parser vs compiler: DEPENDS_ON {g['syntax_depends_on']['correct']}/{g['syntax_depends_on']['truth']} "
+                      f"(found {g['syntax_depends_on']['predicted']}), CALLS {g['syntax_calls']['correct']}/{g['syntax_calls']['truth']} "
+                      f"(found {g['syntax_calls']['predicted']})")
+                print(f"judge vs compiler: roles {g['roles']['correct']}/{g['roles']['scored']}, "
+                      f"PERSISTS false alarms {g['persists_false_positives']}, PUBLISHES false alarms {g['publishes_false_positives']}"
+                      f" -> {event['out_dir']}/report.md")
     return status
 
 
