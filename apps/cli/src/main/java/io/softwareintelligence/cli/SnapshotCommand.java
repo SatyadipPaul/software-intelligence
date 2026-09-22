@@ -50,10 +50,10 @@ final class DiffCommand implements Callable<Integer> {
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
-        CodeGraph before = GraphSnapshot.read(snapshot);
         Target target = options.target(first, second, "snapshot", this);
         repository = target.repository();
         snapshot = Path.of(target.subject());
+        CodeGraph before = GraphSnapshot.read(snapshot);
         CodeGraph after = options.analyze(repository);
         GraphSnapshot.Diff diff = GraphSnapshot.diff(before, after);
         System.out.print(GraphSnapshot.render(diff));
