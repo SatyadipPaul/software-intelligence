@@ -52,11 +52,43 @@ rebuilding, a tenth of a second to be certain is not a trade worth considering.
 
 `SourceFingerprintTest` pins each of those cases, including the restored timestamp.
 
+## Heap
+
+Measured separately, before anything long-running was built on this. Retained is live heap after
+repeated full collections with the session fully warm; the floor is the smallest `-Xmx` at which
+the step completes, probed in 64 MB steps near the boundary.
+
+| | graph | + tree | + BM25 | **retained** |
+| --- | ---: | ---: | ---: | ---: |
+| sample-commerce (72 nodes) | 3 MB | 0 | 0 | **3 MB** |
+| spring-petclinic (1,182 nodes) | 7 MB | 0 | 2 MB | **9 MB** |
+| this repository (3,318 nodes) | 20 MB | 1 MB | 4 MB | **25 MB** |
+| jackson-databind (46,469 nodes) | 190 MB | 18 MB | 77 MB | **286 MB** |
+
+| jackson-databind | 768 MB | 832 MB | 896 MB | 960 MB | 1 GB | 1.5 GB | 2 GB |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| open, cold | OOM | OOM | OOM | OOM | ok | ok | ok |
+| refresh after an edit | — | OOM | OOM | OOM | ok | ok | ok |
+
+What that says:
+
+- **Holding is cheap; building is not.** A warm session on jackson-databind retains 286 MB. Getting
+  there needs a 1 GB heap, because the floor is set by JDT resolving bindings across 1386 files at
+  once, not by anything the session keeps.
+- **A refresh does not raise the floor.** It rebuilds while the previous graph is still referenced,
+  which could have added 286 MB to the peak; at 64 MB resolution the two floors are identical. The
+  previous graph is kept referenced on purpose — if the rebuild throws, the session still holds a
+  graph — and this measurement is why that costs nothing worth trading.
+- **Peak figures under a generous heap mislead.** At `-Xmx6g` the pools report a 2.2 GB peak for
+  the same work that completes in 1 GB. G1 collects lazily when it has room; the floor, not the
+  peak, is the number to size a process by.
+- **Stated limit for a server:** about 1 GB per ~1,400 source files for the build, plus what it
+  retains. For a repository the size of jackson-databind, run with `-Xmx1536m` for margin.
+  Nothing here says the relationship is linear; it is one point, stated as one.
+
 ## What this does not measure
 
-- **Heap.** Every row here ran at `-Xmx6g` and none was tuned or instrumented. A server holding a
-  graph, a tree and both indexes for a large repository has no measured ceiling yet, and that
-  number is needed before anything long-running ships.
+- **The dense index.** Not held by the session yet, so not in the heap figures above.
 - **Rebuild cost mid-session.** Every warm row reports `rebuilt=false`. An edit between questions
   costs the cold column again, and nothing here says how that feels in a shell.
 - **Concurrency.** `AnalysisSession` is single-threaded by design and was measured that way.

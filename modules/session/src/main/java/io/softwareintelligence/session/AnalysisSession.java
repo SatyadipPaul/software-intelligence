@@ -60,8 +60,17 @@ public final class AnalysisSession {
         }
     }
 
+    /** How a graph is built. A seam for tests that need a build to fail; production uses the pipeline. */
+    @FunctionalInterface
+    interface Builder {
+        CodeGraph build(Request request) throws IOException;
+    }
+
+    private static final Builder PIPELINE = request -> new RepositoryModel().build(
+            request.repository(), request.classpath(), request.includeTests(), request.layers());
+
     private final Request request;
-    private final RepositoryModel model = new RepositoryModel();
+    private final Builder builder;
 
     private CodeGraph graph;
     private SourceFingerprint fingerprint;
@@ -71,13 +80,18 @@ public final class AnalysisSession {
     private IndexTree tree;
     private Bm25Index bm25;
 
-    private AnalysisSession(Request request) {
+    private AnalysisSession(Request request, Builder builder) {
         this.request = request;
+        this.builder = builder;
     }
 
     /** Opens a session and builds its graph. */
     public static AnalysisSession open(Request request) throws IOException {
-        AnalysisSession session = new AnalysisSession(Objects.requireNonNull(request, "request"));
+        return open(request, PIPELINE);
+    }
+
+    static AnalysisSession open(Request request, Builder builder) throws IOException {
+        AnalysisSession session = new AnalysisSession(Objects.requireNonNull(request, "request"), builder);
         session.rebuild();
         return session;
     }
@@ -135,10 +149,18 @@ public final class AnalysisSession {
     }
 
     private void rebuild() throws IOException {
-        // The fingerprint is taken first. Taken afterwards, an edit landing during analysis would
-        // be recorded as the state the graph describes, and the session would never notice it.
-        fingerprint = SourceFingerprint.of(request.repository(), request.includeTests());
-        graph = model.build(request.repository(), request.classpath(), request.includeTests(), request.layers());
+        // The fingerprint is taken before the build: taken afterwards, an edit landing during
+        // analysis would be recorded as the state the graph describes, and never noticed.
+        //
+        // Both are held in locals and published together, only once the build has succeeded. An
+        // earlier version assigned the fingerprint first, so a build that threw left the previous
+        // graph paired with the new fingerprint - and the session then reported itself current
+        // while answering from source that had changed. That is the one failure this class exists
+        // to prevent, reached through its own error path.
+        SourceFingerprint taken = SourceFingerprint.of(request.repository(), request.includeTests());
+        CodeGraph built = builder.build(request);
+        fingerprint = taken;
+        graph = built;
         tree = null;
         bm25 = null;
     }

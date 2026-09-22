@@ -113,6 +113,25 @@ final class AnalysisSessionTest {
         org.junit.jupiter.api.Assertions.assertEquals(1, request.classpath().size());
     }
 
+    @Test void a_failed_rebuild_leaves_the_session_stale_rather_than_falsely_current(@TempDir Path directory) throws IOException {
+        // The build fails on its second call, after the source has changed. The session must go on
+        // reporting stale: the graph it still holds describes the old source, and pairing it with
+        // the new fingerprint would make every later question look answered from current code.
+        int[] calls = {0};
+        AnalysisSession.Builder failingSecondTime = request -> {
+            if (++calls[0] == 2) throw new IOException("simulated analysis failure");
+            return new RepositoryModel().build(request.repository());
+        };
+        AnalysisSession session = AnalysisSession.open(AnalysisSession.Request.of(sample(directory)), failingSecondTime);
+        CodeGraph original = session.graph();
+
+        write(directory, "src/main/java/demo/Other.java", "package demo; public class Other { }");
+        org.junit.jupiter.api.Assertions.assertThrows(IOException.class, session::refresh);
+
+        assertSame(original, session.graph(), "a failed build must not replace the graph");
+        assertTrue(session.stale(), "and must not mark the old graph as current");
+    }
+
     private static void deleteTree(Path root) throws IOException {
         try (var paths = Files.walk(root)) {
             for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
