@@ -76,8 +76,8 @@ only thing left untested is the upload.
 
 ```bash
 git checkout main && git pull
-git tag -a v0.2.0 -m "0.2.0"     # the version in pom.xml, with a v prefix
-git push origin v0.2.0
+git tag -a v0.3.0 -m "0.3.0"     # the version in pom.xml, with a v prefix
+git push origin v0.3.0
 ```
 
 The tag push starts the workflow. It verifies, builds, signs, uploads to a **staging** repository,

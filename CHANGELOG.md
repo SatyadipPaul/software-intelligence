@@ -10,8 +10,13 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
-### Added — `repo-intel serve`, for assistants
+Nothing yet.
 
+## [0.3.0] — 2026-09-22
+
+Everything here landed after `v0.2.0` was published to Maven Central.
+
+### Added — `repo-intel serve`, for assistants
 - **A Model Context Protocol server over stdio**, holding one repository warm. Tools: `ask`,
   `impact`, `context`, `navigate_start`/`navigate_choose` and `status`. On jackson-databind the
   first question waits for the analysis, about 20 s; every later one takes 74–102 ms over the
@@ -27,21 +32,7 @@ the point of quoting it rather than a headline.
 - **Heap was measured before the server was written.** A warm session on jackson-databind retains
   286 MB and needs a 1 GB heap to analyse; a refresh does not raise that floor.
 
-### Fixed
-
-- **A failed rebuild could leave a session reporting itself current.** `AnalysisSession` assigned
-  the new fingerprint before building, so a build that threw left the old graph paired with it and
-  `stale()` answered false. Both are now published together, after the build succeeds; the
-  regression test was confirmed to fail against the old ordering.
-- **Choosing a card's heading said it was never shown.** The root heading is printed on the first
-  card, has no symbol behind it, and was rejected with "not on the cards" — false, and an invitation
-  to try again. It now says it is a heading and to choose a child.
-- **`repo-intel -V` printed nothing.** The jar now carries its version.
-- **Ambiguous-symbol warnings can go somewhere other than stderr**, which a server's client never
-  sees; there they travel inside the answer.
-
 ### Added — a warm session
-
 - **`modules/session`**, holding a graph and everything derived from it across many questions.
   Per question on jackson-databind this is 11,160 ms to about 60 ms — a command-line invocation
   spends 20 s analysing, 10 s deriving the index tree and 1 s building the retrieval index to do
@@ -57,9 +48,11 @@ the point of quoting it rather than a headline.
   question cannot be answered at all, the answer is "stale".
 - **`JavaRepositoryAnalyzer.sourceFiles` is now public**, so the fingerprint asks about exactly the
   files the analyzer parses rather than keeping a second copy of the rule that could drift from it.
+- **A failed rebuild leaves the session stale, not falsely current.** The new fingerprint and graph
+  are published together, only once the build succeeds, so a build that throws keeps the old graph
+  *and* keeps reporting it stale.
 
 ### Added — a launcher, and a documented Java API
-
 - **`bin/repo-intel` and `bin/repo-intel.cmd`**, attached to each release beside the jar. Download
   them into one directory on `PATH` and the command is `repo-intel ask "..."`. The launcher prefers
   `JAVA_HOME` when it is new enough and falls back to `java` on `PATH` when it is not — a stale
@@ -73,8 +66,16 @@ the point of quoting it rather than a headline.
   where nothing says which layer is which or that `8` is a depth. A negative workflow depth is now
   rejected where it is written instead of silently finding no workflows.
 
-### Changed — the repository argument is optional
+### Added — release engineering
 
+- **The README is checked against the code on every push.** `.github/scripts/readme_drift.py` fails
+  CI when an example uses a command or flag that does not exist, a command is missing from the list,
+  a link is broken, a published coordinate carries the wrong version, a module is missing from the
+  layout, or the server's tool table disagrees with what `serve` advertises.
+- **Every command is exercised in every argument form inside `mvn verify`**, rather than only by CI
+  steps after the build, so a command that fails as wired fails the local build.
+
+### Changed — the repository argument is optional
 - **Every command defaults to the current directory.** `repo-intel impact PaymentService` is now
   the short form of `repo-intel impact . PaymentService`, and `-C/--repo` names a repository you
   are not standing in. Which of two positionals is which is decided by how many there are, never by
@@ -93,6 +94,12 @@ the point of quoting it rather than a headline.
 
 ### Fixed
 
+- **Choosing a card's heading said it was never shown.** The root heading is printed on the first
+  card, has no symbol behind it, and was rejected with "not on the cards" — false, and an invitation
+  to try again. It now says it is a heading and to choose a child.
+- **`repo-intel -V` printed nothing.** The jar now carries its version.
+- **Ambiguous-symbol warnings can go somewhere other than stderr**, which a server's client never
+  sees; there they travel inside the answer.
 - **The Central publishing plugin is current again**, 0.5.0 to 0.11.0. Releasing 0.2.0 uploaded the
   bundle successfully and then failed the build reading the portal's reply, because the API had
   grown a `warnings` field that 0.5.0 deserializes strictly and does not know. The upload is the
@@ -241,6 +248,7 @@ Two defects in what it published are fixed in the next release rather than in it
 on Central cannot be replaced: the shaded jar's `META-INF/LICENSE` carried JNA's file rather than the
 project's, and no third-party inventory shipped with it. Both are listed under Fixed above.
 
-[Unreleased]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SatyadipPaul/software-intelligence/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SatyadipPaul/software-intelligence/releases/tag/v0.1.0
