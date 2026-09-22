@@ -43,12 +43,12 @@ class Writer:
     def append(self, name: str, record: dict) -> None:
         handle = self.handles.get(name)
         if handle is None:
-            handle = self.handles[name] = (self.directory / f"{name}.jsonl").open("a")
+            handle = self.handles[name] = (self.directory / f"{name}.jsonl").open("a", encoding="utf-8")
         handle.write(json.dumps(record) + "\n")
         handle.flush()
 
     def write(self, name: str, content: str) -> None:
-        (self.directory / name).write_text(content)
+        (self.directory / name).write_text(content, encoding="utf-8")  # Windows would default to cp1252
 
     def close(self) -> None:
         for handle in self.handles.values():
@@ -391,7 +391,7 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
             reference.kill()
         truth_file = out_dir / "reference.graph.json"
     if truth_file.exists():
-        report = grade(graphrag, json.loads(truth_file.read_text()), pairs)
+        report = grade(graphrag, json.loads(truth_file.read_text(encoding="utf-8")), pairs)
         writer.write("report.md", report["markdown"])
     yield emit({"type": "done", "stats": summary, "out_dir": str(out_dir),
                 "grade": {k: v for k, v in report.items() if k != "markdown"} if report else None})

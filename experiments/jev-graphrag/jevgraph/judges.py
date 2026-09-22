@@ -24,7 +24,7 @@ def load_env() -> dict[str, str]:
     """Read experiments/jev-graphrag/.env on every call, so a key added mid-session needs no restart."""
     values = {}
     if ENV_FILE.exists():
-        for raw in ENV_FILE.read_text().splitlines():
+        for raw in ENV_FILE.read_text(encoding="utf-8-sig").splitlines():  # -sig: Notepad may add a BOM
             line = raw.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
@@ -52,7 +52,7 @@ class AnswerCache:
         self.lock = threading.Lock()
         self.entries: dict[str, dict] = {}
         if path.exists():
-            for line in path.read_text().splitlines():
+            for line in path.read_text(encoding="utf-8").splitlines():
                 if line.strip():
                     entry = json.loads(line)
                     self.entries[entry["key"]] = entry
@@ -70,7 +70,7 @@ class AnswerCache:
         with self.lock:
             self.entries[key] = {"key": key, **entry}
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("a") as out:
+            with self.path.open("a", encoding="utf-8") as out:
                 out.write(json.dumps(self.entries[key]) + "\n")
 
 
@@ -97,7 +97,7 @@ class DryRunJudge:
 
     def ask(self, ask: Ask) -> Result:
         body = {"qid": ask.qid, "request": {"model": self.model, "state": ask.state, "questions": ask.wire_questions()}}
-        with self.lock, self.requests_file.open("a") as out:
+        with self.lock, self.requests_file.open("a", encoding="utf-8") as out:
             out.write(json.dumps(body) + "\n")
         return Result(None, 0.0, 0, False, self.name)
 
