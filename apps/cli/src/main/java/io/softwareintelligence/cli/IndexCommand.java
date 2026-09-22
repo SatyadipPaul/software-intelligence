@@ -13,10 +13,15 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "index",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "index",
         description = "Derive the navigable index tree from a graph, and pin it to a file.")
 final class IndexCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository or graph file") private Path repository;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String repositoryArgument;
+
+    /** Resolved once in call(): the positional, --repo, or the current directory. */
+    private Path repository;
 
     @CommandLine.Option(names = {"-o", "--output"}, description = "Where to write the tree; omit to print a summary only")
     private Path output;
@@ -35,6 +40,7 @@ final class IndexCommand implements Callable<Integer> {
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        repository = options.repository(repositoryArgument);
         CodeGraph graph = options.analyze(repository);
         IndexTree tree = IndexTreeBuilder.derive(graph,
                 new IndexTreeBuilder.Options(maxFanout, maxMembers, !noMembers));

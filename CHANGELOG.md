@@ -10,6 +10,21 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
+### Changed — the repository argument is optional
+
+- **Every command defaults to the current directory.** `repo-intel impact PaymentService` is now
+  the short form of `repo-intel impact . PaymentService`, and `-C/--repo` names a repository you
+  are not standing in. Which of two positionals is which is decided by how many there are, never by
+  inspecting the filesystem, so `impact PaymentService` means the same thing in a checkout that
+  happens to contain a directory of that name. Every previously documented invocation still works
+  unchanged.
+- **`navigate` decides by flag rather than by count**, because its question is optional and the
+  count alone cannot settle it: `--choose`/`--choices` mark a continuation, which carries no
+  question, so a lone argument beside them is the repository and a lone argument without them is
+  the question.
+- **`-h` works on subcommands.** `mixinStandardHelpOptions` was set only on the root, so
+  `repo-intel impact --help` answered `Unknown option: '--help'`.
+
 ### Fixed
 
 - **The Central publishing plugin is current again**, 0.5.0 to 0.11.0. Releasing 0.2.0 uploaded the

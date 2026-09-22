@@ -20,11 +20,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "ask",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "ask",
         description = "Answer a question from the graph, citing source evidence and withholding anything unsupported.")
 final class AskCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect") private Path repository;
-    @CommandLine.Parameters(index = "1", description = "Question in plain language") private String question;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String first;
+
+    @CommandLine.Parameters(index = "1", arity = "0..1", paramLabel = "QUESTION",
+            description = "Question in plain language")
+    private String second;
+
+    /** Both resolved in call() from the positionals above, in either accepted order. */
+    private Path repository;
+    private String question;
     @CommandLine.Mixin private AnalysisOptions options;
 
     @CommandLine.Option(names = "--budget", description = "Token budget for the context packet", defaultValue = "1500")
@@ -54,6 +63,9 @@ final class AskCommand implements Callable<Integer> {
     private boolean explain;
 
     @Override public Integer call() throws Exception {
+        Target target = options.target(first, second, "question", this);
+        repository = target.repository();
+        question = target.subject();
         CodeGraph graph = options.analyze(repository);
         Bm25Index index = Bm25Index.over(graph);
         IndexTree tree = retrieval.needsTree() || session != null ? TreeOptions.load(graph, indexFile) : null;

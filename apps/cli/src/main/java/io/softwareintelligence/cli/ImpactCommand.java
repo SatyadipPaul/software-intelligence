@@ -13,13 +13,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "impact", description = "Show source-backed direct and transitive impact for a Java symbol.")
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "impact", description = {"Show source-backed direct and transitive impact for a Java symbol.",
+        "Both `impact SYMBOL` and `impact REPOSITORY SYMBOL` work."})
 final class ImpactCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect")
-    private Path repository;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String first;
 
-    @CommandLine.Parameters(index = "1", description = "Exact graph id, name, or graph-id suffix (for example: PaymentService or #authorize/0)")
-    private String symbol;
+    @CommandLine.Parameters(index = "1", arity = "0..1", paramLabel = "SYMBOL",
+            description = "Exact graph id, name, or graph-id suffix (for example: PaymentService or #authorize/0)")
+    private String second;
 
     @CommandLine.Option(names = {"-d", "--depth"}, defaultValue = "4", description = "Maximum transitive traversal depth")
     private int depth;
@@ -31,8 +34,9 @@ final class ImpactCommand implements Callable<Integer> {
 
     @Override public Integer call() throws Exception {
         if (depth < 1) throw new CommandLine.ParameterException(new CommandLine(this), "--depth must be at least 1");
-        CodeGraph graph = options.analyze(repository);
-        var subject = Symbols.resolve(graph, symbol, this);
+        Target target = options.target(first, second, "symbol", this);
+        CodeGraph graph = options.analyze(target.repository());
+        var subject = Symbols.resolve(graph, target.subject(), this);
         ImpactReport impact = GraphQueries.impact(graph, subject, depth);
         System.out.printf("IMPACT: %s (%s)%n", subject.name(), subject.kind());
         System.out.printf("Direct: %d | Transitive: %d | Depth: %d%n", impact.direct().size(), impact.transitive().size(), depth);

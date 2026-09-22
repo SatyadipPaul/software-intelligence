@@ -22,10 +22,19 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "evaluate", description = "Score the engine against a grounded question set.")
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "evaluate", description = "Score the engine against a grounded question set.")
 final class EvaluateCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect") private Path repository;
-    @CommandLine.Parameters(index = "1", description = "Tab-separated question set") private Path questions;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String first;
+
+    @CommandLine.Parameters(index = "1", arity = "0..1", paramLabel = "QUESTIONS",
+            description = "Tab-separated question set")
+    private String second;
+
+    /** Both resolved in call() from the positionals above, in either accepted order. */
+    private Path repository;
+    private Path questions;
     @CommandLine.Option(names = "--depth", defaultValue = "4", description = "Traversal depth") private int depth;
     @CommandLine.Option(names = "--fail-under", defaultValue = "1.0", description = "Exit non-zero when mean structural accuracy is below this")
     private double failUnder;
@@ -64,6 +73,9 @@ final class EvaluateCommand implements Callable<Integer> {
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        Target target = options.target(first, second, "question set", this);
+        repository = target.repository();
+        questions = Path.of(target.subject());
         List<GroundedQuestion> set = EvaluationHarness.load(questions);
         CodeGraph graph = options.analyze(repository);
         if (retrievalModes != null && !retrievalModes.isEmpty()) return retrievalOnly(graph, set);
@@ -187,11 +199,16 @@ final class EvaluateCommand implements Callable<Integer> {
     }
 }
 
-@CommandLine.Command(name = "enrichment-plan",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "enrichment-plan",
         description = "Rank symbols worth enriching within a token budget, and audit the decision. Calls no model.")
 final class EnrichmentPlanCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect") private Path repository;
-    @CommandLine.Option(names = "--max-tokens", defaultValue = "20000", description = "Token budget") private int maxTokens;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String repositoryArgument;
+
+    /** Resolved once in call(): the positional, --repo, or the current directory. */
+    private Path repository;
+        @CommandLine.Option(names = "--max-tokens", defaultValue = "20000", description = "Token budget") private int maxTokens;
     @CommandLine.Option(names = "--cost-per-1k", defaultValue = "0.003", description = "Cost per thousand tokens, for the audit line")
     private double costPerThousand;
 
@@ -205,6 +222,7 @@ final class EnrichmentPlanCommand implements Callable<Integer> {
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        repository = options.repository(repositoryArgument);
         CodeGraph graph = options.analyze(repository);
         EnrichmentPlanner.Budget budget = new EnrichmentPlanner.Budget(maxTokens, costPerThousand);
         EnrichmentPlanner.Plan plan = branches

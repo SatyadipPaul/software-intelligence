@@ -13,8 +13,8 @@ Prerequisites: JDK 25 and Maven 3.9+.
 ```powershell
 mvn -q verify
 java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
-java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
-java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
+java -jar apps/cli/target/repo-intel.jar impact PaymentService -C fixtures/sample-commerce --depth 3
+java -jar apps/cli/target/repo-intel.jar context PaymentService -C fixtures/sample-commerce -o context.json
 ```
 
 The second command writes a graph containing nodes and edges with `resolver`, `confidence`, `file`, `line`, and `column` evidence.
@@ -68,25 +68,43 @@ docs/evidence/               Terminal transcripts and a rendered graph screensho
 
 ## Commands
 
+Run these from inside the repository you are asking about. The repository argument is optional
+everywhere and defaults to the current directory.
+
 ```text
-repo-intel inspect <repo> -o graph.json        canonical graph export
-repo-intel impact <repo> <symbol> --risk       source-backed blast radius, with an explained score
-repo-intel context <repo> <symbol> -o ctx.json minimum-sufficient evidence packet
-repo-intel architecture <repo>                 modules, centrality, communities, workflows, capabilities
-repo-intel ask <repo> "<question>"             retrieval + traversal, every claim verified or withheld
-repo-intel index <repo> -o tree.json           derive the navigable index tree, and pin it to a file
-repo-intel navigate <repo> "<q>" --session s   walk that tree one level at a time, for an assistant
-repo-intel snapshot <repo> -o snap.json        durable snapshot for later comparison
-repo-intel diff <repo> snap.json               what changed, and the risk of each changed symbol
-repo-intel evaluate <repo> questions.tsv       score against a grounded question set
-repo-intel enrichment-plan <repo>              rank symbols (or --branches) worth model tokens, in budget
-repo-intel visualize <repo> -o graph.html      self-contained interactive view, or GraphML/DOT
-repo-intel enrich-targets <repo> -o work.json  ranked work packets for a semantic enricher
-repo-intel enrich-apply <repo> claims.json     verify claims and apply only what evidence supports
+repo-intel inspect -o graph.json          canonical graph export
+repo-intel impact <symbol> --risk         source-backed blast radius, with an explained score
+repo-intel context <symbol> -o ctx.json   minimum-sufficient evidence packet
+repo-intel architecture                   modules, centrality, communities, workflows, capabilities
+repo-intel ask "<question>"               retrieval + traversal, every claim verified or withheld
+repo-intel index -o tree.json             derive the navigable index tree, and pin it to a file
+repo-intel navigate "<q>" --session s     walk that tree one level at a time, for an assistant
+repo-intel snapshot -o snap.json          durable snapshot for later comparison
+repo-intel diff snap.json                 what changed, and the risk of each changed symbol
+repo-intel evaluate questions.tsv         score against a grounded question set
+repo-intel enrichment-plan                rank symbols (or --branches) worth model tokens, in budget
+repo-intel visualize -o graph.html        self-contained interactive view, or GraphML/DOT
+repo-intel enrich-targets -o work.json    ranked work packets for a semantic enricher
+repo-intel enrich-apply claims.json       verify claims and apply only what evidence supports
 ```
 
-Every command takes `--classpath`, `--discover-classpath`, `--no-framework`, `--no-architecture`,
-and `--no-tests`, so any layer above deterministic Java analysis can be switched off.
+To work on a repository you are not standing in, name it first — every form below is the same
+command, and the longer ones are exactly what earlier versions required:
+
+```text
+repo-intel impact PaymentService                      the current directory
+repo-intel impact /path/to/repo PaymentService        positionally, as before
+repo-intel impact PaymentService -C /path/to/repo     or with the flag
+```
+
+Which of two positionals is which is decided by how many there are, never by looking at the
+filesystem: one is the subject, two are a repository and a subject. `impact PaymentService` therefore
+means the same thing in every checkout, including one that happens to contain a directory called
+`PaymentService`.
+
+Every command takes `-C/--repo`, `--classpath`, `--discover-classpath`, `--no-framework`,
+`--no-architecture`, and `--no-tests`, so any layer above deterministic Java analysis can be
+switched off. Every command also takes `-h` for its own options.
 
 Every command also accepts **either a repository directory or a `.json` graph**. If you already have
 a graph, the source tree is not needed and is never read - query it, visualize it, enrich it, or
@@ -99,7 +117,7 @@ evaluate against it from the file alone. See
 verification — is identical, so the choice is about retrieval and nothing else.
 
 ```powershell
-java -jar repo-intel.jar ask . "which module contains the BM25 retrieval index?" --retrieval HYBRID --anchors 3 --explain
+java -jar repo-intel.jar ask "which module contains the BM25 retrieval index?" --retrieval HYBRID --anchors 3 --explain
 ```
 
 - `BM25` ranks every symbol flatly. Fast, and blind to containment.
@@ -129,11 +147,11 @@ The tree can be walked by a model instead of by the scorer, through a file excha
 still never calls anything:
 
 ```powershell
-java -jar repo-intel.jar index . -o tree.json
-java -jar repo-intel.jar navigate . "where are payments authorized?" --session nav.json --index tree.json
+java -jar repo-intel.jar index -o tree.json
+java -jar repo-intel.jar navigate "where are payments authorized?" --session nav.json --index tree.json
 # hand the printed cards to an assistant, then pass back the ids it chose
-java -jar repo-intel.jar navigate . --session nav.json --choose index:capability:payments
-java -jar repo-intel.jar ask . "where are payments authorized?" --from-session nav.json
+java -jar repo-intel.jar navigate --session nav.json --choose index:capability:payments
+java -jar repo-intel.jar ask "where are payments authorized?" --from-session nav.json
 ```
 
 Each step presents one card per open branch and accepts only ids that appeared on it; anything else
@@ -224,8 +242,8 @@ Reproduce all four commands and the screenshot yourself:
 ```powershell
 mvn -q verify
 java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
-java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
-java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
+java -jar apps/cli/target/repo-intel.jar impact PaymentService -C fixtures/sample-commerce --depth 3
+java -jar apps/cli/target/repo-intel.jar context PaymentService -C fixtures/sample-commerce -o context.json
 java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope OPERATIONAL -o graph.html
 ```
 
@@ -284,9 +302,9 @@ the tool prints an init script that registers a per-project task, so nothing in 
 changes:
 
 ```powershell
-java -jar repo-intel.jar inspect . --discover-classpath   # prints the init script if none is found
+java -jar repo-intel.jar inspect --discover-classpath   # prints the init script if none is found
 gradle --init-script repo-intel-init.gradle repoIntelClasspath
-java -jar repo-intel.jar inspect . --discover-classpath   # now finds and merges every module's file
+java -jar repo-intel.jar inspect --discover-classpath   # now finds and merges every module's file
 ```
 
 Each module writes its own `build/repo-intel.classpath`; discovery merges them. Verified on junit5
