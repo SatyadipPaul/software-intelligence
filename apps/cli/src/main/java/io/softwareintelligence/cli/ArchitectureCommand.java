@@ -12,9 +12,14 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "architecture", description = "Report modules, coupling, centrality, communities, and workflows.")
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "architecture", description = "Report modules, coupling, centrality, communities, and workflows.")
 final class ArchitectureCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect") private Path repository;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String repositoryArgument;
+
+    /** Resolved once in call(): the positional, --repo, or the current directory. */
+    private Path repository;
     @CommandLine.Mixin private AnalysisOptions options;
 
     @CommandLine.Option(names = "--communities", description = "Clustering strategy: CONNECTED_COMPONENTS or K_CORE", defaultValue = "CONNECTED_COMPONENTS")
@@ -24,6 +29,7 @@ final class ArchitectureCommand implements Callable<Integer> {
     @CommandLine.Option(names = "--top", description = "How many ranked entries to print", defaultValue = "10") private int top;
 
     @Override public Integer call() throws Exception {
+        repository = options.repository(repositoryArgument);
         CodeGraph graph = options.analyze(repository);
         List<Modules.Subsystem> subsystems = Modules.detect(graph);
         System.out.printf("MODULES (%d, showing the %d largest)%n", subsystems.size(), Math.min(top, subsystems.size()));

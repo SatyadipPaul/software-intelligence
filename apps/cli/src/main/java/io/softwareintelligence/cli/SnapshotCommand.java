@@ -10,14 +10,20 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "snapshot", description = "Write a durable graph snapshot for later comparison.")
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "snapshot", description = "Write a durable graph snapshot for later comparison.")
 final class SnapshotCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect") private Path repository;
-    @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "repo-intel.snapshot.json", description = "Snapshot file")
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String repositoryArgument;
+
+    /** Resolved once in call(): the positional, --repo, or the current directory. */
+    private Path repository;
+        @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "repo-intel.snapshot.json", description = "Snapshot file")
     private Path output;
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        repository = options.repository(repositoryArgument);
         CodeGraph graph = options.analyze(repository);
         GraphSnapshot.write(graph, output.toAbsolutePath());
         System.out.printf("Wrote snapshot: %d nodes, %d edges to %s%n", graph.nodes().size(), graph.edges().size(), output.toAbsolutePath());
@@ -25,16 +31,28 @@ final class SnapshotCommand implements Callable<Integer> {
     }
 }
 
-@CommandLine.Command(name = "diff",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "diff",
         description = "Compare a snapshot against the working tree and rank the risk of what changed.")
 final class DiffCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository to inspect") private Path repository;
-    @CommandLine.Parameters(index = "1", description = "Snapshot written by a previous run") private Path snapshot;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String first;
+
+    @CommandLine.Parameters(index = "1", arity = "0..1", paramLabel = "SNAPSHOT",
+            description = "Snapshot written by a previous run")
+    private String second;
+
+    /** Both resolved in call() from the positionals above, in either accepted order. */
+    private Path repository;
+    private Path snapshot;
     @CommandLine.Option(names = "--depth", defaultValue = "4", description = "Impact depth for the what-if simulation") private int depth;
     @CommandLine.Option(names = "--top", defaultValue = "5", description = "How many changed symbols to assess") private int top;
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        Target target = options.target(first, second, "snapshot", this);
+        repository = target.repository();
+        snapshot = Path.of(target.subject());
         CodeGraph before = GraphSnapshot.read(snapshot);
         CodeGraph after = options.analyze(repository);
         GraphSnapshot.Diff diff = GraphSnapshot.diff(before, after);

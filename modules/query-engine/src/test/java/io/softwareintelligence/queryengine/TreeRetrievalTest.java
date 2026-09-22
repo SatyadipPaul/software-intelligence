@@ -158,6 +158,21 @@ class TreeRetrievalTest {
         assertTrue(rejected.getMessage().contains("not on the cards"), rejected.getMessage());
     }
 
+    @Test void choosing_a_heading_with_nothing_behind_it_says_so_rather_than_that_it_was_never_shown() {
+        // The root is printed at the top of the first card, so "not on the cards" would be false,
+        // and a reader told that would reasonably try the same id again.
+        IndexTree tree = IndexTreeBuilder.derive(commerceGraph());
+        NavigationSession.State state = NavigationSession.start(tree, "where are payments authorized?");
+        String root = tree.root().id();
+
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                () -> NavigationSession.advance(tree, state, List.of(root)));
+
+        assertTrue(rejected.getMessage().contains("is a heading"), rejected.getMessage());
+        assertTrue(rejected.getMessage().contains("choose one of its children"), rejected.getMessage());
+        assertFalse(rejected.getMessage().contains("not on the cards"), rejected.getMessage());
+    }
+
     @Test void an_assistant_descent_reaches_an_anchor_through_presented_ids_only() {
         IndexTree tree = IndexTreeBuilder.derive(commerceGraph());
         NavigationSession.State state = NavigationSession.start(tree, "where are payments authorized?");

@@ -4,17 +4,47 @@ An evidence-first, Java-first repository intelligence engine. It is designed to 
 
 This is a local-first product. The analyzer, graph, evidence, reports, and cache stay on disk. Docker and hosted services are optional integrations, never prerequisites.
 
-The current 0.1 slice is executable and intentionally evidence-first. It builds a deterministic Java graph with provenance for every relationship, recognizes Java/Spring operational concepts, resolves calls proven from in-repository declarations, and runs source-backed change-impact analysis. This gives the project a trustworthy base before adding graph storage, optional LLM enrichment, or a UI.
+It builds a deterministic Java graph with provenance for every relationship, recognizes Java/Spring operational concepts, resolves calls proven from in-repository declarations, runs source-backed change-impact analysis, and answers questions by navigating that graph — from the command line, or held warm and served to an assistant over MCP. Every claim in an answer cites a file and line; anything the graph cannot support is withheld. Nothing here calls a model: semantic enrichment is a verification gate for claims made elsewhere, not a generator.
 
 ## Quick start
 
-Prerequisites: JDK 25 and Maven 3.9+.
+### Install
 
-```powershell
+Download `repo-intel.jar` and the launcher for your platform from the
+[latest release](https://github.com/SatyadipPaul/software-intelligence/releases/latest), put all of
+them in one directory on your `PATH`, and that is the install — the launcher finds the jar beside
+itself.
+
+```bash
+mkdir -p ~/.local/bin && cd ~/.local/bin
+curl -sSLO https://github.com/SatyadipPaul/software-intelligence/releases/latest/download/repo-intel.jar
+curl -sSLO https://github.com/SatyadipPaul/software-intelligence/releases/latest/download/repo-intel
+chmod +x repo-intel
+```
+
+Needs **Java 25 or newer**. The launcher prefers `JAVA_HOME` when it is new enough and falls back
+to `java` on `PATH` when it is not, so a `JAVA_HOME` left pointing at an older JDK does not break
+it. For a large repository set `JAVA_OPTS`: analysing about 1,400 source files was measured to need
+1 GB, so `-Xmx1536m` leaves margin.
+
+Then, from inside any Java repository:
+
+```bash
+repo-intel ask "where are payments authorized?"
+repo-intel impact PaymentService --depth 3
+repo-intel architecture
+```
+
+### From a checkout
+
+Prerequisites: JDK 25 and Maven 3.9+. `bin/repo-intel` finds the jar under `apps/cli/target`, so
+nothing needs installing.
+
+```bash
 mvn -q verify
-java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
-java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
-java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
+bin/repo-intel inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
+bin/repo-intel impact PaymentService -C fixtures/sample-commerce --depth 3
+bin/repo-intel context PaymentService -C fixtures/sample-commerce -o context.json
 ```
 
 The second command writes a graph containing nodes and edges with `resolver`, `confidence`, `file`, `line`, and `column` evidence.
@@ -41,7 +71,7 @@ Source files are analyzed in sorted path order and attribute keys are written in
 To inspect any Java repository:
 
 ```powershell
-java -jar apps/cli/target/repo-intel.jar inspect C:\path\to\repository --output repo-graph.json
+repo-intel inspect C:\path\to\repository --output repo-graph.json
 ```
 
 ## Repository layout
@@ -49,12 +79,16 @@ java -jar apps/cli/target/repo-intel.jar inspect C:\path\to\repository --output 
 ```text
 apps/cli/                    Runnable `repo-intel` command-line interface
 apps/maven-plugin/           Build-integrated analyze / impact-check goals
+bin/                         `repo-intel` launchers for POSIX shells and Windows
 modules/model/               Canonical schema, provenance, queries, snapshots
 modules/analyzer-java/       Deterministic Java analysis using Eclipse JDT
 modules/framework-spring/    Spring, JPA, Kafka, Security, and HTTP-client interpretation
 modules/architecture/        Modules, centrality, communities, workflows, capabilities, risk
 modules/index-tree/          Derived table of contents: the navigable index over the graph
+modules/embedding/           Optional dense text encoder: Model2Vec static weights, plain Java
+modules/embedding-model/     Optional packaged weights; builds only when weights and their licence are present
 modules/query-engine/        BM25 retrieval, tree navigation, planning, budgets, verification
+modules/session/             A warm graph and its derived indexes, and when to rebuild them
 modules/evaluation/          Grounded question format, harness, and scoring
 modules/pipeline/            Layer composition and build classpath discovery
 modules/visualization/       Self-contained HTML view and GraphML/DOT/Cytoscape exports
@@ -63,35 +97,149 @@ fixtures/sample-commerce/    Small checkout flow for local smoke testing
 docs/architecture.md         Product architecture and invariants
 docs/roadmap.md              Sequenced implementation roadmap and exit criteria
 docs/hybrid-index-tree.md    Tree-navigated retrieval: design, and what it measured
+docs/cli-ergonomics-plan.md  Where CLI time goes, and the plan that measurement produced
+docs/benchmarks/             Every measurement quoted anywhere, with how to reproduce it
 docs/evidence/               Terminal transcripts and a rendered graph screenshot (see below)
 ```
 
 ## Commands
 
+Run these from inside the repository you are asking about. The repository argument is optional
+everywhere and defaults to the current directory.
+
 ```text
-repo-intel inspect <repo> -o graph.json        canonical graph export
-repo-intel impact <repo> <symbol> --risk       source-backed blast radius, with an explained score
-repo-intel context <repo> <symbol> -o ctx.json minimum-sufficient evidence packet
-repo-intel architecture <repo>                 modules, centrality, communities, workflows, capabilities
-repo-intel ask <repo> "<question>"             retrieval + traversal, every claim verified or withheld
-repo-intel index <repo> -o tree.json           derive the navigable index tree, and pin it to a file
-repo-intel navigate <repo> "<q>" --session s   walk that tree one level at a time, for an assistant
-repo-intel snapshot <repo> -o snap.json        durable snapshot for later comparison
-repo-intel diff <repo> snap.json               what changed, and the risk of each changed symbol
-repo-intel evaluate <repo> questions.tsv       score against a grounded question set
-repo-intel enrichment-plan <repo>              rank symbols (or --branches) worth model tokens, in budget
-repo-intel visualize <repo> -o graph.html      self-contained interactive view, or GraphML/DOT
-repo-intel enrich-targets <repo> -o work.json  ranked work packets for a semantic enricher
-repo-intel enrich-apply <repo> claims.json     verify claims and apply only what evidence supports
+repo-intel inspect -o graph.json          canonical graph export
+repo-intel impact <symbol> --risk         source-backed blast radius, with an explained score
+repo-intel context <symbol> -o ctx.json   minimum-sufficient evidence packet
+repo-intel architecture                   modules, centrality, communities, workflows, capabilities
+repo-intel ask "<question>"               retrieval + traversal, every claim verified or withheld
+repo-intel index -o tree.json             derive the navigable index tree, and pin it to a file
+repo-intel navigate "<q>" --session s     walk that tree one level at a time, for an assistant
+repo-intel serve                          hold the graph warm and answer an assistant over MCP
+repo-intel snapshot -o snap.json          durable snapshot for later comparison
+repo-intel diff snap.json                 what changed, and the risk of each changed symbol
+repo-intel evaluate questions.tsv         score against a grounded question set (maintainers)
+repo-intel enrichment-plan                rank symbols (or --branches) worth model tokens, in budget
+repo-intel visualize -o graph.html        self-contained interactive view, or GraphML/DOT
+repo-intel enrich-targets -o work.json    ranked work packets for a semantic enricher
+repo-intel enrich-apply claims.json       verify claims and apply only what evidence supports
 ```
 
-Every command takes `--classpath`, `--discover-classpath`, `--no-framework`, `--no-architecture`,
-and `--no-tests`, so any layer above deterministic Java analysis can be switched off.
+To work on a repository you are not standing in, name it first — every form below is the same
+command, and the longer ones are exactly what earlier versions required:
+
+```text
+repo-intel impact PaymentService                      the current directory
+repo-intel impact /path/to/repo PaymentService        positionally, as before
+repo-intel impact PaymentService -C /path/to/repo     or with the flag
+```
+
+Which of two positionals is which is decided by how many there are, never by looking at the
+filesystem: one is the subject, two are a repository and a subject. `impact PaymentService` therefore
+means the same thing in every checkout, including one that happens to contain a directory called
+`PaymentService`.
+
+Every command takes `-C/--repo`, `--classpath`, `--discover-classpath`, `--no-framework`,
+`--no-architecture`, and `--no-tests`, so any layer above deterministic Java analysis can be
+switched off. Every command also takes `-h` for its own options.
 
 Every command also accepts **either a repository directory or a `.json` graph**. If you already have
 a graph, the source tree is not needed and is never read - query it, visualize it, enrich it, or
 evaluate against it from the file alone. See
 [enriching with a chat assistant](docs/enrichment-with-a-chat-assistant.md) for that workflow.
+
+## Using it as a Java library
+
+The CLI is a thin shell over the modules, and every one of them is published to Maven Central under
+`io.github.satyadippaul`. Depend on `pipeline` to build a graph, and on `query-engine` to ask
+questions of one.
+
+```xml
+<dependency>
+  <groupId>io.github.satyadippaul</groupId>
+  <artifactId>pipeline</artifactId>
+  <version>0.2.0</version>
+</dependency>
+```
+
+```java
+// Every layer, tests included, no classpath.
+CodeGraph graph = new RepositoryModel().build(Path.of("."));
+
+for (GraphEdge edge : graph.edges()) {
+    // Every edge carries where it came from and how sure the analyzer is.
+    Provenance where = edge.provenance();
+    System.out.printf("%s -> %s  [%s, %.2f] %s:%d%n",
+            edge.from(), edge.to(), where.resolver(), where.confidence(), where.file(), where.line());
+}
+```
+
+Layers above deterministic Java analysis are switched individually, so a graph can be built with any
+suffix of the pipeline turned off and the facts underneath stay identical:
+
+```java
+RepositoryModel.Layers layers = RepositoryModel.Layers.all()
+        .withArchitecture(false)        // skip modules, workflows, capabilities
+        .withCommitVocabulary(true);    // read git history; needs a full clone
+
+CodeGraph graph = new RepositoryModel()
+        .build(Path.of("."), ClasspathDiscovery.discover(Path.of(".")).entries(), true, layers);
+```
+
+`Layers.all()` deliberately leaves `testVocabulary` off — it measured *negative* on every corpus
+available here, so it is not part of "all" — and leaves `commitVocabulary` off because it reads git
+history rather than the source at the analysed commit. Both stay switchable; neither is a default.
+
+Writing and reading a graph is `GraphSnapshot`:
+
+```java
+GraphSnapshot.write(graph, Path.of("repo-graph.json"));
+CodeGraph reloaded = GraphSnapshot.read(Path.of("repo-graph.json"));
+```
+
+**On large repositories, build the graph once and keep it.** Analysing jackson-databind takes about
+28 seconds and reloading its 134 MB graph about 4, so a program that rebuilds per question spends
+nearly all of its time in setup — see [the timings](docs/cli-ergonomics-plan.md).
+
+## Serving it to an assistant
+
+`repo-intel serve` holds one repository's graph in memory and answers an assistant over the
+[Model Context Protocol](https://modelcontextprotocol.io/) on stdio. The graph is analysed once and
+rebuilt only when a source file changes, so every question after the first costs milliseconds
+instead of a fresh analysis.
+
+```json
+{
+  "mcpServers": {
+    "repo-intel": {
+      "command": "repo-intel",
+      "args": ["serve", "-C", "/path/to/your/repo"],
+      "env": { "JAVA_OPTS": "-Xmx1536m" }
+    }
+  }
+}
+```
+
+| Tool | What it does |
+| --- | --- |
+| `ask` | A question in plain language; every claim in the answer cites a file and line |
+| `impact` | What is affected if a symbol changes, with the evidence for each dependency |
+| `context` | The minimum evidence packet for a symbol, as JSON |
+| `navigate_start`, `navigate_choose` | The assistant steers the descent itself, card by card, and gets the verified answer where it lands |
+| `status` | Which repository is loaded, and whether its source has changed |
+
+Measured over the protocol on jackson-databind (1386 files): the first question waits for the
+analysis, about 20 seconds; every later one takes 74–102 ms. The same question from the command
+line takes 11 seconds even with a cached graph — see
+[the measurement](docs/benchmarks/warm-session-2026-09-22.md).
+
+Before each answer the server checks whether the source has moved, by content rather than
+timestamps, and rebuilds if it has; the answer says when that happened. It never answers from a
+graph it knows to be stale — if the rebuild fails, the call fails. Open descents are discarded on a
+rebuild, because their cards describe the previous graph.
+
+**Heap:** analysing about 1,400 source files needs 1 GB; a warm session on that repository retains
+under 300 MB. Size `-Xmx` for the analysis, not for what is held.
 
 ## Retrieval: ranking, or navigation
 
@@ -99,7 +247,7 @@ evaluate against it from the file alone. See
 verification — is identical, so the choice is about retrieval and nothing else.
 
 ```powershell
-java -jar repo-intel.jar ask . "which module contains the BM25 retrieval index?" --retrieval HYBRID --anchors 3 --explain
+repo-intel ask "which module contains the BM25 retrieval index?" --retrieval HYBRID --anchors 3 --explain
 ```
 
 - `BM25` ranks every symbol flatly. Fast, and blind to containment.
@@ -129,11 +277,11 @@ The tree can be walked by a model instead of by the scorer, through a file excha
 still never calls anything:
 
 ```powershell
-java -jar repo-intel.jar index . -o tree.json
-java -jar repo-intel.jar navigate . "where are payments authorized?" --session nav.json --index tree.json
+repo-intel index -o tree.json
+repo-intel navigate "where are payments authorized?" --session nav.json --index tree.json
 # hand the printed cards to an assistant, then pass back the ids it chose
-java -jar repo-intel.jar navigate . --session nav.json --choose index:capability:payments
-java -jar repo-intel.jar ask . "where are payments authorized?" --from-session nav.json
+repo-intel navigate --session nav.json --choose index:capability:payments
+repo-intel ask "where are payments authorized?" --from-session nav.json
 ```
 
 Each step presents one card per open branch and accepts only ids that appeared on it; anything else
@@ -143,9 +291,9 @@ and cannot assert anything about the code — so a bad descent costs recall and 
 ## Viewing the graph
 
 ```powershell
-java -jar repo-intel.jar visualize . --scope OPERATIONAL -o graph.html
-java -jar repo-intel.jar visualize . --scope SYMBOL --symbol PaymentService -o payment.html
-java -jar repo-intel.jar visualize . --scope ARCHITECTURE --format GRAPHML -o graph.graphml
+repo-intel visualize --scope OPERATIONAL -o graph.html
+repo-intel visualize --scope SYMBOL --symbol PaymentService -o payment.html
+repo-intel visualize --scope ARCHITECTURE --format GRAPHML -o graph.graphml
 ```
 
 `visualize` writes one HTML file with no external script, stylesheet, font, or CDN reference, so it
@@ -223,10 +371,10 @@ Reproduce all four commands and the screenshot yourself:
 
 ```powershell
 mvn -q verify
-java -jar apps/cli/target/repo-intel.jar inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
-java -jar apps/cli/target/repo-intel.jar impact fixtures/sample-commerce PaymentService --depth 3
-java -jar apps/cli/target/repo-intel.jar context fixtures/sample-commerce PaymentService -o context.json
-java -jar apps/cli/target/repo-intel.jar visualize fixtures/sample-commerce --scope OPERATIONAL -o graph.html
+bin/repo-intel inspect fixtures/sample-commerce -o outputs/sample-commerce.graph.json
+bin/repo-intel impact PaymentService -C fixtures/sample-commerce --depth 3
+bin/repo-intel context PaymentService -C fixtures/sample-commerce -o context.json
+bin/repo-intel visualize fixtures/sample-commerce --scope OPERATIONAL -o graph.html
 ```
 
 Release notes are in [`CHANGELOG.md`](CHANGELOG.md); every number in them names the benchmark it
@@ -273,7 +421,7 @@ For a Maven project, generate a classpath and pass it to the analyzer:
 
 ```powershell
 mvn dependency:build-classpath -Dmdep.outputFile=target/repo-intel.classpath -Dmdep.includeScope=test
-java -jar repo-intel.jar inspect . --classpath (Get-Content -Raw target/repo-intel.classpath)
+repo-intel inspect --classpath (Get-Content -Raw target/repo-intel.classpath)
 ```
 
 ## Gradle projects
@@ -284,9 +432,9 @@ the tool prints an init script that registers a per-project task, so nothing in 
 changes:
 
 ```powershell
-java -jar repo-intel.jar inspect . --discover-classpath   # prints the init script if none is found
+repo-intel inspect --discover-classpath   # prints the init script if none is found
 gradle --init-script repo-intel-init.gradle repoIntelClasspath
-java -jar repo-intel.jar inspect . --discover-classpath   # now finds and merges every module's file
+repo-intel inspect --discover-classpath   # now finds and merges every module's file
 ```
 
 Each module writes its own `build/repo-intel.classpath`; discovery merges them. Verified on junit5
@@ -294,13 +442,13 @@ Each module writes its own `build/repo-intel.classpath`; discovery merges them. 
 
 ## Maven build integration
 
-The local-first Maven plugin is built in `apps/maven-plugin`. Install it locally with `mvn install`, or take it from Maven Central once published, then add it to a project:
+The local-first Maven plugin is built in `apps/maven-plugin`. It is on Maven Central; add it to a project:
 
 ```xml
 <plugin>
   <groupId>io.github.satyadippaul</groupId>
   <artifactId>repo-intel-maven-plugin</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <executions>
     <execution><phase>verify</phase><goals><goal>analyze</goal></goals></execution>
   </executions>
@@ -310,7 +458,7 @@ The local-first Maven plugin is built in `apps/maven-plugin`. Install it locally
 It writes `target/repo-intel/repo-graph.json` using the Maven project's resolved compile classpath. The impact goal additionally writes text, graph JSON, and SARIF reports. For an explicit impact gate:
 
 ```powershell
-mvn io.github.satyadippaul:repo-intel-maven-plugin:0.1.0:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
+mvn io.github.satyadippaul:repo-intel-maven-plugin:0.2.0:impact-check '-DrepoIntel.symbol=VetRepository' '-DmaxImpactedNodes=10'
 ```
 
 The plugin does not require Docker, a hosted graph, or source-code upload.
@@ -354,7 +502,7 @@ spent: a summary on a branch is read by every descent that passes through it, wh
 leaf method is read once by whoever already found it.
 
 ```powershell
-java -jar repo-intel.jar enrich-targets . --branches --max-tokens 20000 -o packets.md --format MARKDOWN
+repo-intel enrich-targets --branches --max-tokens 20000 -o packets.md --format MARKDOWN
 ```
 
 On jackson-databind a 2,000-token budget spent this way buys summaries of `type`, `util`, `misc` and

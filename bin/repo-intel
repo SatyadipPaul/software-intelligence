@@ -1,0 +1,84 @@
+#!/bin/sh
+# repo-intel launcher.
+#
+# The jar is the product; this exists so that using it does not mean typing the JVM's name. Put
+# this file and repo-intel.jar in the same directory, put that directory on PATH, and the command
+# is `repo-intel ask "..."` rather than `java -jar /some/path/repo-intel.jar ask "..."`.
+#
+# Two things are worth setting from outside:
+#   REPO_INTEL_JAR   where the jar is, if it is not beside this script
+#   JAVA_OPTS        JVM flags; -Xmx is the one that matters on a large repository
+set -eu
+
+# Follow symlinks, so this works when linked into ~/.local/bin from a checkout.
+script=$0
+while [ -L "$script" ]; do
+    target=$(readlink "$script")
+    case $target in
+        /*) script=$target ;;
+        *)  script=$(dirname "$script")/$target ;;
+    esac
+done
+here=$(cd "$(dirname "$script")" && pwd)
+
+jar=${REPO_INTEL_JAR:-}
+if [ -z "$jar" ]; then
+    # Beside the script when installed; under target/ when run from a checkout.
+    for candidate in "$here/repo-intel.jar" "$here/../apps/cli/target/repo-intel.jar"; do
+        if [ -f "$candidate" ]; then jar=$candidate; break; fi
+    done
+fi
+
+if [ -z "$jar" ] || [ ! -f "$jar" ]; then
+    echo "repo-intel: cannot find repo-intel.jar." >&2
+    echo "Put it beside this script, or set REPO_INTEL_JAR to its path." >&2
+    echo "From a checkout of this repository: mvn -DskipTests package" >&2
+    exit 1
+fi
+
+required=25
+
+# The major version of a java executable, or nothing if it will not run.
+java_major() {
+    [ -x "$1" ] || command -v "$1" >/dev/null 2>&1 || return 0
+    "$1" -version 2>&1 \
+        | sed -n 's/^[a-zA-Z()]* *version "\([0-9][0-9]*\)[.".-].*/\1/p' \
+        | head -1
+}
+
+# JAVA_HOME wins when it is new enough. When it is not, a usable java on PATH is better than
+# failing: a JAVA_HOME left pointing at an older JDK is the normal state of a developer machine,
+# and honouring it blindly produces "LinkageError occurred while loading main class", which says
+# nothing about the version being wrong.
+java=""
+home_java=""
+[ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ] && home_java=$JAVA_HOME/bin/java
+
+for candidate in "$home_java" java; do
+    [ -n "$candidate" ] || continue
+    major=$(java_major "$candidate")
+    if [ -n "$major" ] && [ "$major" -ge "$required" ] 2>/dev/null; then
+        java=$candidate
+        break
+    fi
+done
+
+if [ -z "$java" ]; then
+    echo "repo-intel: needs Java $required or newer, and did not find it." >&2
+    if [ -n "$home_java" ]; then
+        echo "  JAVA_HOME ($JAVA_HOME) is Java $(java_major "$home_java" || echo unknown)" >&2
+    else
+        echo "  JAVA_HOME is not set to a JDK" >&2
+    fi
+    if command -v java >/dev/null 2>&1; then
+        echo "  java on PATH ($(command -v java)) is Java $(java_major java || echo unknown)" >&2
+    else
+        echo "  no java on PATH" >&2
+    fi
+    echo "Set JAVA_HOME to a JDK $required, or put one first on PATH." >&2
+    exit 1
+fi
+
+# Unquoted on purpose: JAVA_OPTS is a list of flags, not one argument.
+# shellcheck disable=SC2086
+exec "$java" ${JAVA_OPTS:-} -jar "$jar" "$@"

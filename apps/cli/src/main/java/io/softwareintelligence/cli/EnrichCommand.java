@@ -14,11 +14,16 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "enrich-targets",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "enrich-targets",
         description = "Write work packets for a semantic enricher: ranked symbols, their evidence, and the relationships each may cite.")
 final class EnrichTargetsCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository, or a snapshot JSON") private Path source;
-    @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "enrichment-targets.json", description = "Work packet file")
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String sourceArgument;
+
+    /** Resolved once in call(): the positional, --repo, or the current directory. */
+    private Path source;
+        @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "enrichment-targets.json", description = "Work packet file")
     private Path output;
     @CommandLine.Option(names = "--max-tokens", defaultValue = "20000", description = "Token budget for the whole run") private int maxTokens;
     @CommandLine.Option(names = "--cost-per-1k", defaultValue = "0.003", description = "Cost per thousand tokens, for the audit line") private double costPerThousand;
@@ -38,6 +43,7 @@ final class EnrichTargetsCommand implements Callable<Integer> {
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        source = options.repository(sourceArgument);
         CodeGraph graph = options.analyze(source);
         EnrichmentPlanner.Budget budget = new EnrichmentPlanner.Budget(maxTokens, costPerThousand);
         EnrichmentPlanner.Plan plan = branches
@@ -89,16 +95,28 @@ final class EnrichTargetsCommand implements Callable<Integer> {
     }
 }
 
-@CommandLine.Command(name = "enrich-apply",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "enrich-apply",
         description = "Verify a claims file against the graph and apply only what the evidence supports.")
 final class EnrichApplyCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository, or a snapshot JSON") private Path source;
-    @CommandLine.Parameters(index = "1", description = "Claims file written by an enricher") private Path claims;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String first;
+
+    @CommandLine.Parameters(index = "1", arity = "0..1", paramLabel = "CLAIMS",
+            description = "Claims file written by an enricher")
+    private String second;
+
+    /** Both resolved in call() from the positionals above, in either accepted order. */
+    private Path source;
+    private Path claims;
     @CommandLine.Option(names = {"-o", "--output"}, description = "Enriched graph JSON") private Path output;
     @CommandLine.Option(names = "--strict", description = "Exit non-zero if any claim is rejected or disputed") private boolean strict;
     @CommandLine.Mixin private AnalysisOptions options;
 
     @Override public Integer call() throws Exception {
+        Target target = options.target(first, second, "claims file", this);
+        source = target.repository();
+        claims = Path.of(target.subject());
         CodeGraph graph = options.analyze(source);
         List<EnrichmentClaims.Claim> parsed = EnrichmentClaims.parse(Files.readString(claims));
         EnrichmentMerge.Result result = EnrichmentMerge.apply(graph, parsed);

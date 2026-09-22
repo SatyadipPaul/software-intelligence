@@ -37,6 +37,7 @@
     <module>modules/index-tree</module>
     <module>modules/embedding</module>
     <module>modules/query-engine</module>
+    <module>modules/session</module>
     <module>modules/evaluation</module>
     <module>modules/visualization</module>
     <module>apps/cli</module>
@@ -163,9 +164,15 @@
             Uploads to the Central Portal. autoPublish is deliberately false: the release lands in a
             staging area for the maintainer to inspect and release by hand. A first publish that
             goes straight to Central cannot be taken back - coordinates are immutable there.
+
+            Keep this version current. The portal's API gains response fields over time, and this
+            plugin deserializes the response strictly: 0.5.0 uploaded the 0.2.0 bundle successfully
+            and then failed the build parsing the reply, because the API had grown a "warnings"
+            field that 0.5.0 does not know. The upload had already happened, so the build failed
+            after the irreversible half of the work rather than before it.
           -->
           <plugin>
-            <groupId>org.sonatype.central</groupId><artifactId>central-publishing-maven-plugin</artifactId><version>0.5.0</version>
+            <groupId>org.sonatype.central</groupId><artifactId>central-publishing-maven-plugin</artifactId><version>0.11.0</version>
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>

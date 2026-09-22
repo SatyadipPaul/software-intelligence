@@ -68,8 +68,20 @@ public final class NavigationSession {
         List<String> presented = presented(tree, state);
         List<String> unknown = chosen.stream().filter(id -> !presented.contains(id)).toList();
         if (!unknown.isEmpty()) {
-            throw new IllegalArgumentException("these ids were not on the cards presented at step " + state.step()
-                    + ", so they were not followed: " + String.join(", ", unknown));
+            // A heading is printed on its card like any other id, so "not on the cards" would be
+            // false for it and the reader would reasonably try it again. Say what is actually true.
+            List<String> headings = unknown.stream().filter(state.frontier()::contains).toList();
+            List<String> absent = unknown.stream().filter(id -> !headings.contains(id)).toList();
+            List<String> reasons = new ArrayList<>();
+            if (!headings.isEmpty()) {
+                reasons.add(String.join(", ", headings) + " " + (headings.size() == 1 ? "is a heading" : "are headings")
+                        + " with no symbol behind it, so there is nothing to stop at; choose one of its children");
+            }
+            if (!absent.isEmpty()) {
+                reasons.add("these ids were not on the cards presented at step " + state.step()
+                        + ", so they were not followed: " + String.join(", ", absent));
+            }
+            throw new IllegalArgumentException(String.join("; ", reasons));
         }
 
         Set<String> anchors = new LinkedHashSet<>(state.anchors());
@@ -106,7 +118,27 @@ public final class NavigationSession {
      * <p>The rules are repeated at every step on purpose. Instructions given once at the top of a
      * long session stop being followed, and this session is one exchange per level.
      */
+    /** How a reader in a chat window answers: with the choice as JSON, and nothing else. */
+    public static final String REPLY_AS_JSON = """
+            Answer with only this JSON, and nothing else:
+
+            ```json
+            {"chosen": ["<id>", "<id>"]}
+            ```
+            """;
+
     public static String packet(IndexTree tree, State state) {
+        return packet(tree, state, REPLY_AS_JSON);
+    }
+
+    /**
+     * The cards for this step, with the reader told how to reply.
+     *
+     * <p>The rules are fixed; the reply is not. A person pasting cards into a chat needs the answer
+     * back as JSON they can copy. An assistant calling a tool needs to be told which tool, and would
+     * be misled by an instruction to answer with JSON and nothing else.
+     */
+    public static String packet(IndexTree tree, State state, String replyInstruction) {
         StringBuilder text = new StringBuilder();
         text.append("# Navigation step ").append(state.step()).append("\n\n");
         text.append("QUESTION: ").append(state.question()).append("\n\n");
@@ -122,14 +154,9 @@ public final class NavigationSession {
                 - Choose more than one when the question has more than one answer.
                 - Prefer the entry a reader would open, not the one whose words look most similar.
 
-                Answer with only this JSON, and nothing else:
-
-                ```json
-                {"chosen": ["<id>", "<id>"]}
-                ```
-
-                ## Cards
                 """);
+        text.append(replyInstruction);
+        text.append("\n## Cards\n");
         for (String id : state.frontier()) {
             tree.node(id).ifPresent(node -> text.append('\n').append(IndexCards.render(tree, node)));
         }

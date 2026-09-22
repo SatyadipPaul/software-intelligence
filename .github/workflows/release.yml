@@ -89,6 +89,9 @@ jobs:
         # The shaded jar is what every example in the README tells people to run, and it is not a
         # Maven artifact: apps/cli publishes a thin jar. Without this step a release gives nobody a
         # way to get the file the documentation is about.
+        #
+        # The launchers ship beside it because they find the jar next to themselves: downloading
+        # all three into one directory on PATH is the whole install.
         run: |
           set -euo pipefail
           # The changelog section for this version, from its heading to the next one.
@@ -101,4 +104,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \
-            apps/cli/target/repo-intel.jar
+            apps/cli/target/repo-intel.jar \
+            bin/repo-intel \
+            bin/repo-intel.cmd

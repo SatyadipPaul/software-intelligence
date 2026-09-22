@@ -16,14 +16,18 @@ import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "visualize",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "visualize",
         description = "Write a self-contained view of the graph: interactive HTML, or GraphML/DOT for other tools.")
 final class VisualizeCommand implements Callable<Integer> {
     enum Format { HTML, GRAPHML, DOT, CYTOSCAPE }
 
     enum Scope { ALL, OPERATIONAL, ARCHITECTURE, SYMBOL }
 
-    @CommandLine.Parameters(index = "0", description = "Java repository, or a snapshot JSON written by `snapshot`")
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String sourceArgument;
+
+    /** Resolved once in call(): the positional, --repo, or the current directory. */
     private Path source;
 
     @CommandLine.Option(names = {"-o", "--output"}, description = "Output file", defaultValue = "repo-graph.html")
@@ -60,6 +64,7 @@ final class VisualizeCommand implements Callable<Integer> {
             EntityKind.ENDPOINT, EntityKind.DATABASE_TABLE, EntityKind.TOPIC, EntityKind.EXTERNAL_SERVICE);
 
     @Override public Integer call() throws Exception {
+        source = options.repository(sourceArgument);
         CodeGraph full = options.analyze(source);
         CodeGraph view = switch (scope) {
             case ALL -> full;

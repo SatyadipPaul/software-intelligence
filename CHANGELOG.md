@@ -10,7 +10,95 @@ the point of quoting it rather than a headline.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added — `repo-intel serve`, for assistants
+
+- **A Model Context Protocol server over stdio**, holding one repository warm. Tools: `ask`,
+  `impact`, `context`, `navigate_start`/`navigate_choose` and `status`. On jackson-databind the
+  first question waits for the analysis, about 20 s; every later one takes 74–102 ms over the
+  protocol, against 11 s from the command line with a cached graph.
+- **The navigate exchange is native.** The card-by-card descent that previously meant a person
+  copying cards between a terminal and a chat window is two tool calls, and a finished descent
+  returns the verified answer directly. Ids that were not on the cards are still refused.
+- **It never answers from a graph it knows is stale.** Each call checks the source first and
+  rebuilds if it moved, saying so in the answer; if the rebuild fails, the call fails. Open descents
+  are discarded on a rebuild, because their cards describe the previous graph.
+- **No new dependency.** The protocol's JSON is a strict RFC 8259 codec written for it, so nothing
+  reached the allow-list or `THIRD-PARTY-NOTICES.md`.
+- **Heap was measured before the server was written.** A warm session on jackson-databind retains
+  286 MB and needs a 1 GB heap to analyse; a refresh does not raise that floor.
+
+### Fixed
+
+- **A failed rebuild could leave a session reporting itself current.** `AnalysisSession` assigned
+  the new fingerprint before building, so a build that threw left the old graph paired with it and
+  `stale()` answered false. Both are now published together, after the build succeeds; the
+  regression test was confirmed to fail against the old ordering.
+- **Choosing a card's heading said it was never shown.** The root heading is printed on the first
+  card, has no symbol behind it, and was rejected with "not on the cards" — false, and an invitation
+  to try again. It now says it is a heading and to choose a child.
+- **`repo-intel -V` printed nothing.** The jar now carries its version.
+- **Ambiguous-symbol warnings can go somewhere other than stderr**, which a server's client never
+  sees; there they travel inside the answer.
+
+### Added — a warm session
+
+- **`modules/session`**, holding a graph and everything derived from it across many questions.
+  Per question on jackson-databind this is 11,160 ms to about 60 ms — a command-line invocation
+  spends 20 s analysing, 10 s deriving the index tree and 1 s building the retrieval index to do
+  63 ms of work, and none of that is expensive work, only repeated work. Measured in
+  [`docs/benchmarks/warm-session-2026-09-22.md`](docs/benchmarks/warm-session-2026-09-22.md).
+  Nothing uses it yet: it is the foundation the interactive and server surfaces both need, built
+  on its own so that it does not end up buried inside whichever arrives first.
+- **`SourceFingerprint` decides staleness from content, not timestamps.** Sizes and modification
+  times are near-free and wrong in the direction that matters: an editor that restores an mtime, a
+  checkout that preserves one, or a same-length edit inside one filesystem tick each yield
+  "unchanged" about source that changed, after which answers describe code that is no longer there
+  and nothing says so. Digesting the bytes costs 56–168 ms against 30 s of rebuilding. When the
+  question cannot be answered at all, the answer is "stale".
+- **`JavaRepositoryAnalyzer.sourceFiles` is now public**, so the fingerprint asks about exactly the
+  files the analyzer parses rather than keeping a second copy of the rule that could drift from it.
+
+### Added — a launcher, and a documented Java API
+
+- **`bin/repo-intel` and `bin/repo-intel.cmd`**, attached to each release beside the jar. Download
+  them into one directory on `PATH` and the command is `repo-intel ask "..."`. The launcher prefers
+  `JAVA_HOME` when it is new enough and falls back to `java` on `PATH` when it is not — a stale
+  `JAVA_HOME` previously produced `LinkageError occurred while loading main class`, which names
+  neither the cause nor the fix. When no JDK 25 is found it says which Java each candidate was.
+- **A "Using it as a Java library" section in the README**, which had none, although every module
+  is published. Its examples are compiled against the built jars rather than written from memory.
+- **`RepositoryModel.build(Path)`** — every layer, no classpath, one argument.
+- **Withers on `RepositoryModel.Layers`**, so a caller writes
+  `Layers.all().withCommitVocabulary(true)` rather than `new Layers(true, true, 8, false, false)`,
+  where nothing says which layer is which or that `8` is a depth. A negative workflow depth is now
+  rejected where it is written instead of silently finding no workflows.
+
+### Changed — the repository argument is optional
+
+- **Every command defaults to the current directory.** `repo-intel impact PaymentService` is now
+  the short form of `repo-intel impact . PaymentService`, and `-C/--repo` names a repository you
+  are not standing in. Which of two positionals is which is decided by how many there are, never by
+  inspecting the filesystem, so `impact PaymentService` means the same thing in a checkout that
+  happens to contain a directory of that name. Every previously documented invocation still works
+  unchanged.
+- **`navigate` decides by flag rather than by count**, because its question is optional and the
+  count alone cannot settle it: `--choose`/`--choices` mark a continuation, which carries no
+  question, so a lone argument beside them is the repository and a lone argument without them is
+  the question.
+- **`-h` works on subcommands.** `mixinStandardHelpOptions` was set only on the root, so
+  `repo-intel impact --help` answered `Unknown option: '--help'`.
+- **`evaluate` and `quantize-model` are hidden from the root listing**, and named in its footer.
+  They develop this tool rather than use it, and were competing with `ask` in a flat list of
+  fifteen. Both still run exactly as before.
+
+### Fixed
+
+- **The Central publishing plugin is current again**, 0.5.0 to 0.11.0. Releasing 0.2.0 uploaded the
+  bundle successfully and then failed the build reading the portal's reply, because the API had
+  grown a `warnings` field that 0.5.0 deserializes strictly and does not know. The upload is the
+  irreversible half of a release, so failing after it is the worst place to fail: the deployment was
+  staged and waiting while CI reported a red build, and the step that attaches the runnable jar to
+  the GitHub release never ran. Pinning a stale version of this plugin is not a neutral choice.
 
 ## [0.2.0] — 2026-09-21
 

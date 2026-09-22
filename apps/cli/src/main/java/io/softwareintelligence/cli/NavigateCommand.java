@@ -10,12 +10,19 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@CommandLine.Command(name = "navigate",
+@CommandLine.Command(mixinStandardHelpOptions = true, name = "navigate",
         description = "Walk the index tree one level at a time, so an assistant can choose the branches. Calls no model.")
 final class NavigateCommand implements Callable<Integer> {
-    @CommandLine.Parameters(index = "0", description = "Java repository or graph file") private Path repository;
+    @CommandLine.Parameters(index = "0", arity = "0..1", paramLabel = "REPOSITORY",
+            description = "Java repository or graph file. Omit it to use the current directory.")
+    private String first;
 
-    @CommandLine.Parameters(index = "1", arity = "0..1", description = "Question, when starting a descent")
+    @CommandLine.Parameters(index = "1", arity = "0..1", paramLabel = "QUESTION",
+            description = "Question, when starting a descent")
+    private String second;
+
+    /** Both resolved in call(): see resolveTarget, which cannot use positional count alone. */
+    private Path repository;
     private String question;
 
     @CommandLine.Option(names = "--session", required = true,
@@ -38,7 +45,35 @@ final class NavigateCommand implements Callable<Integer> {
 
     @CommandLine.Mixin private AnalysisOptions options;
 
+    /**
+     * Works out what the positionals meant.
+     *
+     * <p>Every other command can read this off the positional count, because its subject is
+     * required: one argument is the subject, two are a repository and a subject. Here the question
+     * is optional — a descent is started with one and continued without one — so `navigate X` is
+     * genuinely ambiguous, and the count cannot settle it.
+     *
+     * <p>What settles it is a flag the caller typed. `--choose` and `--choices` answer the last
+     * cards, which only happens on a continuation, and a continuation carries no question. So a
+     * lone argument alongside either of them is the repository, and a lone argument without them
+     * is the question. Nothing here inspects the filesystem: `navigate PaymentService` must not
+     * mean different things depending on whether a directory of that name happens to exist.
+     */
+    private void resolveTarget() {
+        boolean continuing = (choose != null && !choose.isEmpty()) || choices != null;
+        if (second != null) {
+            repository = Path.of(first);
+            question = second;
+        } else if (first != null && continuing) {
+            repository = Path.of(first);
+        } else {
+            repository = options.repository(null);
+            question = first;
+        }
+    }
+
     @Override public Integer call() throws Exception {
+        resolveTarget();
         CodeGraph graph = options.analyze(repository);
         IndexTree tree = TreeOptions.load(graph, indexFile);
 

@@ -4,6 +4,7 @@ import io.softwareintelligence.model.CodeGraph;
 import io.softwareintelligence.model.GraphSnapshot;
 import io.softwareintelligence.pipeline.ClasspathDiscovery;
 import io.softwareintelligence.pipeline.RepositoryModel;
+import io.softwareintelligence.session.AnalysisSession;
 import picocli.CommandLine;
 
 import java.io.File;
@@ -15,6 +16,11 @@ import java.util.regex.Pattern;
 
 /** The analysis inputs every command shares, so a flag means the same thing everywhere. */
 final class AnalysisOptions {
+    @CommandLine.Option(names = {"-C", "--repo"},
+            description = "Repository or graph file to work on. Defaults to the current directory, "
+                    + "and is ignored when one is given positionally.")
+    private Path repo;
+
     @CommandLine.Option(names = "--classpath", description = "Classpath entries separated by the platform path separator")
     private String classpath;
 
@@ -51,6 +57,18 @@ final class AnalysisOptions {
      */
     CodeGraph analyze(Path repository) throws IOException {
         if (isGraphFile(repository)) return GraphSnapshot.read(repository);
+        AnalysisSession.Request request = request(repository);
+        return new RepositoryModel().build(request.repository(), request.classpath(), request.includeTests(), request.layers());
+    }
+
+    /**
+     * Everything these options say about how to build a graph, without building it.
+     *
+     * <p>Shared by {@link #analyze}, which builds once and exits, and by {@code serve}, which hands
+     * it to a session that rebuilds whenever the source moves. One method, so the two cannot
+     * disagree about what a flag means.
+     */
+    AnalysisSession.Request request(Path repository) throws IOException {
         List<Path> entries = classpathEntries();
         if (entries.isEmpty() && discover) {
             ClasspathDiscovery.Discovered discovered = ClasspathDiscovery.discover(repository);
@@ -68,8 +86,22 @@ final class AnalysisOptions {
             }
             entries = discovered.entries();
         }
-        RepositoryModel.Layers layers = new RepositoryModel.Layers(!noFramework, !noArchitecture, 8, testVocabulary, commitVocabulary);
-        return new RepositoryModel().build(repository, entries, !noTests, layers);
+        RepositoryModel.Layers layers = RepositoryModel.Layers.all()
+                .withFramework(!noFramework)
+                .withArchitecture(!noArchitecture)
+                .withTestVocabulary(testVocabulary)
+                .withCommitVocabulary(commitVocabulary);
+        return new AnalysisSession.Request(repository, entries, !noTests, layers);
+    }
+
+    /** The repository a command should use when it takes one positional, which it may omit. */
+    Path repository(String positional) {
+        return Target.repository(positional, repo);
+    }
+
+    /** The repository and subject for a command that takes both, in either of the accepted forms. */
+    Target target(String first, String second, String subject, Object command) {
+        return Target.of(first, second, repo, subject, command);
     }
 
     /** A path is an existing graph when it is a JSON file, and a repository otherwise. */

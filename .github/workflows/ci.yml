@@ -16,6 +16,12 @@ jobs:
           cache: maven
       - run: mvn -B verify
 
+      # A README drifts without breaking anything: a renamed flag, a new module, or a release that
+      # moves the version on all leave it quietly wrong. This compares each claim it makes - commands,
+      # flags, links, published versions, the module layout, the server's tools - with the code.
+      - name: README matches the code
+        run: python3 .github/scripts/readme_drift.py
+
       # Three runs, not two: an ordering bug driven by per-JVM hash randomization can agree twice
       # by chance. The fixture deliberately contains a security guard, a configuration property, and
       # a module with two coupling targets, because every layer must be covered by this gate.
