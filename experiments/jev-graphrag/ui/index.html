@@ -185,9 +185,11 @@
 <script>
 "use strict";
 const AST_COLORS = ["#6c8cff", "#3fc1c9", "#a0e7e5", "#ffb86b", "#c792ea", "#5c6773", "#34405a", "#7a869a"];
-const ROLE_COLORS = { CONTROLLER: "#4f8ef7", SERVICE: "#2bb673", REPOSITORY_COMPONENT: "#f2a93b", ENTITY: "#b07cf2",
-  CONFIGURATION: "#9aa5b1", MESSAGE_CONSUMER: "#f25f8b", EXTERNAL_CLIENT: "#29c4d6", UTILITY: "#6b7785" };
-const REL_COLORS = { CALLS: "#5ed0a0", DEPENDS_ON: "#7fb2ff", CREATES: "#f2c94c", PERSISTS: "#f2994a", PUBLISHES: "#eb5757" };
+const ROLE_COLORS = { CONTROLLER: "#4f8ef7", ENTRY_POINT: "#7aa7ff", MESSAGE_CONSUMER: "#f25f8b", SERVICE: "#2bb673",
+  ENGINE: "#1fa39b", REPOSITORY_COMPONENT: "#f2a93b", ENTITY: "#b07cf2", DATA_MODEL: "#d4a5f5", EXTERNAL_CLIENT: "#29c4d6",
+  SERIALIZER: "#e0b44a", CONFIGURATION: "#9aa5b1", UTILITY: "#6b7785" };
+const REL_COLORS = { CALLS: "#5ed0a0", DEPENDS_ON: "#7fb2ff", CREATES: "#f2c94c", PERSISTS: "#f2994a", SERIALIZES: "#c9a86a",
+  PUBLISHES: "#eb5757" };
 const TYPE_LINKS = ["CALLS", "DEPENDS_ON", "CREATES"];  // syntax-proven; drawn as one line per pair, strongest first
 const KIND_COLORS = { PACKAGE: "#3d4a5e", ENDPOINT: "#e0e6f0", TOPIC: "#f25f8b" };
 const COMMUNITY_COLORS = ["#4f8ef7", "#2bb673", "#f2a93b", "#b07cf2", "#29c4d6", "#f25f8b", "#9aa5b1", "#f2c94c"];
@@ -242,9 +244,9 @@ if (window.ResizeObserver) { const ro = new ResizeObserver(() => { measure(); re
 function legends() {
   $("astlegend").innerHTML = categories.map((c, i) => `<span><i style="background:${AST_COLORS[i]}"></i>${c}</span>`).join("");
   $("graphlegend").innerHTML =
-    Object.entries(ROLE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k.toLowerCase().replace("_", " ")}</span>`).join("") +
+    Object.entries(ROLE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k.toLowerCase().replaceAll("_", " ")}</span>`).join("") +
     `<span><i style="background:#2a3444;border:1px solid #5a6a80"></i>not judged</span>` +
-    Object.entries(REL_COLORS).map(([k, c]) => `<span><i class="line" style="background:${c}"></i>${k.toLowerCase().replace("_", " ")}</span>`).join("") +
+    Object.entries(REL_COLORS).map(([k, c]) => `<span><i class="line" style="background:${c}"></i>${k.toLowerCase().replaceAll("_", " ")}</span>`).join("") +
     `<span>line width = essential (Jev) · dashed = not essential</span>`;
 }
 
@@ -681,7 +683,7 @@ $("stage").addEventListener("mousemove", (e) => {
   let html = `<div class="t">${esc(hover.title)}</div><div class="m">${esc(hover.kind)}${d.file ? " · " + esc(d.file) + ":" + d.line : ""}</div>`;
   if (d.role_probabilities) {
     const top = Object.entries(d.role_probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3);
-    html += `<div class="m" style="margin-top:4px">role (${esc(d.role_judge || "")}): ` + top.map(([k, v]) => `${k.toLowerCase().replace("_", " ")} ${Math.round(v * 100)}%`).join(" · ") + "</div>";
+    html += `<div class="m" style="margin-top:4px">role (${esc(d.role_judge || "")}): ` + top.map(([k, v]) => `${k.toLowerCase().replaceAll("_", " ")} ${Math.round(v * 100)}%`).join(" · ") + "</div>";
     html += `<div class="m">fits a role ${Math.round((d.fits_a_role ?? 0) * 100)}% · name misleads ${Math.round((d.name_misleads ?? 0) * 100)}%</div>`;
   }
   const rels = edges.filter((x) => (x.origin !== "syntax" || TYPE_LINKS.includes(x.type)) && (x.source === hover.id || x.target === hover.id));

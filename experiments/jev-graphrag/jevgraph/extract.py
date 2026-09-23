@@ -360,7 +360,10 @@ def parse_file(root: Path, file: Path, parser: Parser) -> FileParse:
 
 
 SKIP_DIRS = {".git", "target", "build", "node_modules", ".gradle", "out", ".idea", "generated", "generated-sources"}
-TEST_DIRS = {"test", "tests", "androidTest", "testFixtures", "integrationTest", "it"}
+# Test code and test data: a fixture folder is sample input for tests, not part of the application, and
+# reading it made a CLI tool look like a Spring web app in every request of the first real run.
+TEST_DIRS = {"test", "tests", "androidTest", "testFixtures", "integrationTest", "it",
+             "fixtures", "fixture", "testdata", "test-data", "__fixtures__", "test-resources"}
 MAX_FILE_BYTES = 1_000_000  # larger .java files are almost always generated
 LANGUAGES = {".py": "Python", ".js": "JavaScript", ".ts": "TypeScript", ".tsx": "TypeScript", ".go": "Go",
              ".rs": "Rust", ".rb": "Ruby", ".php": "PHP", ".cs": "C#", ".kt": "Kotlin", ".scala": "Scala",
@@ -558,9 +561,12 @@ FRAMEWORKS = [  # import prefix -> what its presence tells a reader about the co
 
 
 def frameworks(parses: list[FileParse]) -> list[str]:
-    found = []
-    imports = [i for p in parses for i in p.imports]
-    for prefix, meaning in FRAMEWORKS:
-        if any(i.startswith(prefix) for i in imports) and meaning not in found:
-            found.append(meaning)
-    return found
+    """Each framework the code imports, with how much of the code uses it - "used by 3 of 95 files"
+    and "used by 80 of 95 files" describe very different applications."""
+    users: dict[str, int] = {}
+    for parse in parses:
+        for meaning in {meaning for prefix, meaning in FRAMEWORKS if any(i.startswith(prefix) for i in parse.imports)}:
+            users[meaning] = users.get(meaning, 0) + 1
+    order = [meaning for _, meaning in FRAMEWORKS]
+    return [f"{meaning} (imported by {users[meaning]} of {len(parses)} files)"
+            for meaning in sorted(users, key=lambda m: (-users[m], order.index(m)))]

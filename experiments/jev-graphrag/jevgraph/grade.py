@@ -47,6 +47,11 @@ def _p(value) -> str:
 def grade(graphrag: dict, truth: dict, candidates) -> dict:
     in_repo = {n["id"] for n in truth["nodes"] if n["id"].startswith("type:") and "#" not in n["id"]
                and ".field:" not in n["id"] and n["kind"] != "EXTERNAL_SYMBOL"}
+    # Grade on the classes both sides read: the parser skips test and fixture folders on purpose, and those
+    # skipped classes must not count as misses. How many of the reference's classes were read is its own line.
+    ours_types = {e["id"] for e in graphrag["entities"] if e["type"] == "TYPE"}
+    reference_types = set(in_repo)
+    in_repo = in_repo & ours_types
     truth_kind = {n["id"]: n["kind"] for n in truth["nodes"] if n["id"] in in_repo}
     consumers = {_owner(e["from"]) for e in truth["edges"] if e["kind"] == "CONSUMES"}
 
@@ -94,6 +99,7 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
     # The judge: kinds of link only a reading of the code can find. The fixture has none, so this counts false alarms.
     persists = _prf(judged("PERSISTS"), truth_pairs("PERSISTS"))
     publishes = _prf(judged("PUBLISHES"), truth_pairs("PUBLISHES"))
+    serializes = sorted(judged("SERIALIZES"))  # the product has no such edge: listed for a person to check
     weighed = sorted({(r["source"], r["target"]): r.get("essential") for r in rels
                       if r["origin"] == "syntax" and r.get("essential") is not None}.items())
 
@@ -109,6 +115,8 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
     if not answered:
         lines += ["> Dry run: no answers, so only the parser is graded.", ""]
     lines += ["## The parser (tree-sitter, no model)", "",
+              f"Classes read by both: {len(in_repo)} of the reference's {len(reference_types)} "
+              f"(the rest are in folders the parser skips, such as tests and fixtures).", "",
               f"Real dependencies put in front of the judge: **{_pct(coverage)}** ({len(truth_depends & candidate_pairs)} of {len(truth_depends)}).", "",
               "| Syntax edge | Precision | Recall | Correct / found / compiler |", "|---|---|---|---|",
               f"| DEPENDS_ON | {_pct(depends['precision'])} | {_pct(depends['recall'])} | {depends['correct']} / {depends['predicted']} / {depends['truth']} |",
@@ -137,6 +145,8 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
               + (f"; false alarms: {', '.join(_short(p) for p in persists['false_positives'])}" if persists["false_positives"] else ""),
               f"- PUBLISHES: {publishes['predicted']} claimed, {publishes['correct']} confirmed by the compiler"
               + (f"; false alarms: {', '.join(_short(p) for p in publishes['false_positives'])}" if publishes["false_positives"] else ""),
+              f"- SERIALIZES (this experiment's own kind, not graded): {len(serializes)} claimed"
+              + (f": {_listing(serializes)}" if serializes else ""),
               "", "Essential (probability that the first class delegates part of its job to the second; used as the edge weight):", "",
               "| Link | Essential |", "|---|---|"]
     lines += [f"| {_short(pair)} | {_p(value)} |" for pair, value in weighed] or ["| - | - |"]
@@ -150,7 +160,8 @@ def grade(graphrag: dict, truth: dict, candidates) -> dict:
         match = (c.get("label") or "") in known
         communities.append({"members": members, "label": c.get("label"), "matches_analyzer_name": match})
         cohesion = "n/a (one class)" if c["size"] == 1 else (f"{c['cohesion']:.2f} / 3" if c.get("cohesion") is not None else "-")
-        lines.append(f"| {', '.join(members)} | {c.get('label') or '-'} | {'yes' if match else 'no'} | "
+        note = f" (was {c['label_was']})" if c.get("label_was") else ""
+        lines.append(f"| {', '.join(members)} | {(c.get('label') or '-') + note} | {'yes' if match else 'no'} | "
                      f"{_p(c.get('single_theme'))} | {cohesion} | {_p(c.get('business_capability'))} |")
     return {"candidate_coverage": coverage, "roles": roles,
             "syntax_depends_on": {k: depends[k] for k in ("precision", "recall", "correct", "predicted", "truth")},

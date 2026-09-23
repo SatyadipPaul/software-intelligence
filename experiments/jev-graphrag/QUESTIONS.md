@@ -24,43 +24,19 @@ OrderRepository has no annotation, so only a reading of its code can say what it
     },
     "criteria": {
       "CONTROLLER": {
-        "what": "Receives requests from outside the application and hands them to other code.",
+        "what": "Receives HTTP requests and hands them to other code.",
         "signs": [
           "@RestController or @Controller",
-          "methods mapped to HTTP routes, listed in `entry_points`",
-          "calls a service to do the actual work"
-        ]
+          "methods mapped to HTTP routes, listed in `entry_points`"
+        ],
+        "not": "command-line commands or RPC/MCP servers: those are ENTRY_POINT"
       },
-      "SERVICE": {
-        "what": "Carries out business logic or coordinates one use case.",
+      "ENTRY_POINT": {
+        "what": "Receives input from outside the application other than HTTP: a command-line command, an RPC or MCP server, a scheduled job or a main method.",
         "signs": [
-          "@Service",
-          "used by controllers or consumers",
-          "calls repositories, clients or other services"
-        ]
-      },
-      "REPOSITORY_COMPONENT": {
-        "what": "Reads or writes stored data on behalf of other code.",
-        "signs": [
-          "@Repository or a Spring Data interface",
-          "save, find or delete methods over stored records",
-          "JPA, JDBC or SQL use"
-        ]
-      },
-      "ENTITY": {
-        "what": "A record describing one business object: mostly fields, little behaviour.",
-        "signs": [
-          "@Entity or @Table",
-          "fields with getters and setters",
-          "passed to and from repositories"
-        ]
-      },
-      "CONFIGURATION": {
-        "what": "Sets the application up rather than doing its work.",
-        "signs": [
-          "@Configuration",
-          "@Bean methods",
-          "property binding as its main content"
+          "parses arguments or incoming requests",
+          "a main method, a CLI framework annotation, or a request loop",
+          "hands the work to other classes"
         ]
       },
       "MESSAGE_CONSUMER": {
@@ -70,20 +46,73 @@ OrderRepository has no annotation, so only a reading of its code can say what it
           "topics listed in `entry_points`"
         ]
       },
+      "SERVICE": {
+        "what": "Coordinates one business use case of the application, usually called by a controller or consumer.",
+        "signs": [
+          "@Service",
+          "calls repositories, clients or other services in a sequence"
+        ],
+        "not": "a general algorithm or processing engine: that is ENGINE"
+      },
+      "ENGINE": {
+        "what": "Implements a core algorithm or processing step - parsing, analysing, indexing, ranking, planning, building - over data it is given.",
+        "signs": [
+          "substantial logic of its own",
+          "works with several collaborators or data structures"
+        ],
+        "not": "a small stateless helper: that is UTILITY"
+      },
+      "REPOSITORY_COMPONENT": {
+        "what": "Saves or loads stored records in a database on behalf of other code.",
+        "signs": [
+          "@Repository or a Spring Data interface",
+          "JPA, JDBC or SQL"
+        ],
+        "not": "writing files or JSON: that is SERIALIZER"
+      },
+      "ENTITY": {
+        "what": "A business record that is mapped to a database table.",
+        "signs": [
+          "@Entity or @Table",
+          "fields that become columns"
+        ],
+        "not": "an in-memory data structure: that is DATA_MODEL"
+      },
+      "DATA_MODEL": {
+        "what": "An in-memory data structure or value type: mostly fields, records or enums, little behaviour, not mapped to a database.",
+        "signs": [
+          "a record, enum or class of fields",
+          "passed between other classes"
+        ]
+      },
       "EXTERNAL_CLIENT": {
-        "what": "Wraps calls to a system outside this application.",
+        "what": "Calls a system outside this application: another service, a vendor API or a remote store.",
         "signs": [
           "HTTP clients such as RestTemplate, WebClient or Feign",
-          "remote URLs or a vendor SDK",
-          "translates between this application's types and the remote system's"
+          "remote URLs or a vendor SDK"
+        ],
+        "not": "only formatting data for a file or stream: that is SERIALIZER"
+      },
+      "SERIALIZER": {
+        "what": "Converts objects to or from an external format: JSON, XML, CSV, files or a wire protocol.",
+        "signs": [
+          "reads or writes files or streams",
+          "names such as Json, Writer, Reader, Codec, Exporter"
+        ]
+      },
+      "CONFIGURATION": {
+        "what": "Holds settings or sets the application up, rather than doing its work.",
+        "signs": [
+          "@Configuration or @Bean methods",
+          "an options or settings holder",
+          "property binding"
         ]
       },
       "UTILITY": {
-        "what": "A stateless helper used across the code, with no business role of its own.",
+        "what": "A small stateless helper with no collaborators: formatting, parsing a string, conversions.",
         "signs": [
           "mostly static methods",
-          "formatting, parsing or conversion",
-          "no collaborators"
+          "no fields holding other classes"
         ]
       }
     }
@@ -91,7 +120,7 @@ OrderRepository has no annotation, so only a reading of its code can say what it
   "fits_a_role": {
     "type": "noul",
     "instructions": {
-      "question": "Does the class in `type` plainly play one of these roles: controller, service, repository component, entity, configuration, message consumer, external client or utility?",
+      "question": "Does the class in `type` plainly play one of these roles: controller, entry point, message consumer, service, engine, repository component, entity, data model, external client, serializer, configuration or utility?",
       "inspect": [
         "type",
         "uses",
@@ -100,7 +129,7 @@ OrderRepository has no annotation, so only a reading of its code can say what it
     },
     "criteria": {
       "true": "One of the listed roles describes the class's main job.",
-      "false": "None of them does: for example an exception type, test support, generated code, or a data carrier passed between layers."
+      "false": "None of them does: for example an exception type, test support or generated code."
     }
   },
   "name_misleads": {
@@ -110,7 +139,7 @@ OrderRepository has no annotation, so only a reading of its code can say what it
       "inspect": [
         "type"
       ],
-      "focus": "Compare what the name claims - Repository, Gateway, Controller, Service, Consumer - with what the fields and methods actually do."
+      "focus": "Compare what the name claims - Repository, Gateway, Controller, Service, Consumer, Command - with what the fields and methods actually do."
     },
     "criteria": {
       "true": "The name claims something the code does not do: for example a Repository that stores nothing, or a Gateway that calls nothing outside the application.",
@@ -128,12 +157,12 @@ OrderRepository has no annotation, so only a reading of its code can say what it
     "repository": "sample-commerce",
     "language": "Java",
     "frameworks": [
-      "Spring Web: HTTP controllers and routes",
-      "Spring Kafka: message listeners and producers",
-      "Spring Security: access rules",
-      "Spring transactions",
-      "Spring stereotypes: @Service, @Component, @Repository",
-      "Spring beans and injected configuration values"
+      "Spring stereotypes: @Service, @Component, @Repository (imported by 3 of 10 files)",
+      "Spring Web: HTTP controllers and routes (imported by 2 of 10 files)",
+      "Spring Kafka: message listeners and producers (imported by 1 of 10 files)",
+      "Spring Security: access rules (imported by 1 of 10 files)",
+      "Spring transactions (imported by 1 of 10 files)",
+      "Spring beans and injected configuration values (imported by 1 of 10 files)"
     ],
     "graph_being_built": "A knowledge graph of this codebase for answering questions about it: nodes are classes, edges are relationships between classes, and groups of classes are business capabilities."
   },
@@ -201,7 +230,7 @@ BillingLedger names PaymentGateway, but only calls `getClass()` on it: syntax pr
   "persists": {
     "type": "noul",
     "instructions": {
-      "question": "Does `from_type` save or load `to_type` as stored data?",
+      "question": "Does `from_type` save `to_type` to a database, or load it from one?",
       "inspect": [
         "from_type",
         "to_type",
@@ -209,8 +238,23 @@ BillingLedger names PaymentGateway, but only calls `getClass()` on it: syntax pr
       ]
     },
     "criteria": {
-      "true": "`from_type` writes `to_type` records to, or reads them from, a database, table, file or other store.",
-      "false": "`from_type` writes no stored data of type `to_type` and reads none."
+      "true": "`from_type` writes `to_type` records to, or reads them from, a database - tables, documents or a key-value store - for example through JPA, JDBC, SQL or a Spring Data repository.",
+      "false": "No database is involved. Writing `to_type` to a file, JSON, a stream or the console does not count; that is serialising."
+    }
+  },
+  "serializes": {
+    "type": "noul",
+    "instructions": {
+      "question": "Does `from_type` convert `to_type` to or from an external format?",
+      "inspect": [
+        "from_type",
+        "to_type",
+        "evidence"
+      ]
+    },
+    "criteria": {
+      "true": "`from_type` turns `to_type` into, or builds it from, JSON, XML, CSV, a file or a wire message.",
+      "false": "`from_type` never converts `to_type` to or from any external format."
     }
   },
   "publishes": {
@@ -239,12 +283,12 @@ BillingLedger names PaymentGateway, but only calls `getClass()` on it: syntax pr
     "repository": "sample-commerce",
     "language": "Java",
     "frameworks": [
-      "Spring Web: HTTP controllers and routes",
-      "Spring Kafka: message listeners and producers",
-      "Spring Security: access rules",
-      "Spring transactions",
-      "Spring stereotypes: @Service, @Component, @Repository",
-      "Spring beans and injected configuration values"
+      "Spring stereotypes: @Service, @Component, @Repository (imported by 3 of 10 files)",
+      "Spring Web: HTTP controllers and routes (imported by 2 of 10 files)",
+      "Spring Kafka: message listeners and producers (imported by 1 of 10 files)",
+      "Spring Security: access rules (imported by 1 of 10 files)",
+      "Spring transactions (imported by 1 of 10 files)",
+      "Spring beans and injected configuration values (imported by 1 of 10 files)"
     ],
     "graph_being_built": "A knowledge graph of this codebase for answering questions about it: nodes are classes, edges are relationships between classes, and groups of classes are business capabilities."
   },
@@ -342,9 +386,10 @@ The group Louvain found around the payment route; `inferred_role` values are ear
       "question": "Which name best describes what the group of classes in `members` does?",
       "inspect": [
         "members",
-        "relations"
+        "relations",
+        "other_groups"
       ],
-      "focus": "Each option says where in the code the name comes from."
+      "focus": "Each option says where in the code the name comes from. `other_groups` lists what the other groups are about; prefer a name that tells this group apart from them."
     },
     "criteria": {
       "payments": "Named by class names PaymentController, PaymentService; route /payments/authorize",
@@ -384,14 +429,15 @@ The group Louvain found around the payment route; `inferred_role` values are ear
   "business_capability": {
     "type": "noul",
     "instructions": {
-      "question": "Does the group in `members` provide something the application does for its users or the business?",
+      "question": "Does the group in `members` provide a feature that a user of this application would name, given what the application is (see `context`)?",
       "inspect": [
-        "members"
+        "members",
+        "context"
       ]
     },
     "criteria": {
-      "true": "A product manager would name it as a capability, for example taking payments or managing orders.",
-      "false": "It is technical plumbing: auditing infrastructure, configuration, logging or shared helpers."
+      "true": "Users would name it as something the application does for them: for a shop, taking payments; for a developer tool, impact analysis or answering questions about code.",
+      "false": "It is internal plumbing that users never see: logging, configuration, shared helpers or data holders."
     }
   }
 }
@@ -405,12 +451,12 @@ The group Louvain found around the payment route; `inferred_role` values are ear
     "repository": "sample-commerce",
     "language": "Java",
     "frameworks": [
-      "Spring Web: HTTP controllers and routes",
-      "Spring Kafka: message listeners and producers",
-      "Spring Security: access rules",
-      "Spring transactions",
-      "Spring stereotypes: @Service, @Component, @Repository",
-      "Spring beans and injected configuration values"
+      "Spring stereotypes: @Service, @Component, @Repository (imported by 3 of 10 files)",
+      "Spring Web: HTTP controllers and routes (imported by 2 of 10 files)",
+      "Spring Kafka: message listeners and producers (imported by 1 of 10 files)",
+      "Spring Security: access rules (imported by 1 of 10 files)",
+      "Spring transactions (imported by 1 of 10 files)",
+      "Spring beans and injected configuration values (imported by 1 of 10 files)"
     ],
     "graph_being_built": "A knowledge graph of this codebase for answering questions about it: nodes are classes, edges are relationships between classes, and groups of classes are business capabilities."
   },
@@ -445,7 +491,8 @@ The group Louvain found around the payment route; `inferred_role` values are ear
     }
   ],
   "relations": [],
-  "links_outside": []
+  "links_outside": [],
+  "other_groups": []
 }
 ```
 

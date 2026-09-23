@@ -20,7 +20,8 @@ from . import extract, fetch
 from .extract import TypeIndex
 from .grade import grade
 from .judges import AnswerCache, DryRunJudge, JevJudge, StandInJudge, load_env
-from .questions import Ask, community_ask, context, label_candidates, lint, neighbours, relation_ask, role_ask
+from .questions import (Ask, _singular, community_ask, context, label_candidates, lint, neighbours, relation_ask,
+                        role_ask)
 
 HERE = Path(__file__).resolve().parent.parent
 REPO_ROOT = HERE.parent.parent
@@ -324,7 +325,8 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
                 edge = relationships[(source, target, kind)]
                 yield relationship({**edge, "weight": a["essential"]["noul"], "essential": a["essential"]["noul"],
                                     "judged_by": result.judge}, update=True)
-            for question, kind in (("persists", "PERSISTS"), ("publishes", "PUBLISHES")):
+            # SERIALIZES is this experiment's own kind: the product has no edge for "writes it as JSON".
+            for question, kind in (("persists", "PERSISTS"), ("serializes", "SERIALIZES"), ("publishes", "PUBLISHES")):
                 if a[question]["noul"] >= 0.5:
                     yield relationship({"source": source, "target": target, "type": kind, "origin": result.judge,
                                         "confidence": a[question]["noul"], "weight": a[question]["noul"],
@@ -347,6 +349,9 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
         chosen = sorted((c for c in communities if focus & set(c["members"])),
                         key=lambda c: (-len(focus & set(c["members"])), -c["size"], c["id"]))[:budget.communities]
         asks = []
+        # What every chosen group is about, by the names its code offers - so each label question can steer
+        # away from a name that describes a neighbouring group better (two groups were both "graph" before).
+        about = {c["id"]: ", ".join(list(label_candidates([types[m] for m in c["members"]]))[:3]) for c in chosen}
         for community in chosen:
             inside_set = set(community["members"])
             # Sorted: answers arrive in completion order, and an unsorted list would change the request - and miss the cache.
@@ -358,7 +363,9 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
                        "essential": None if (s, t) not in essential else round(essential[(s, t)], 3)}
                 (inside if s in inside_set and t in inside_set else outside).append(row)
             members = sorted(community["members"], key=lambda m: position[m])  # judged classes first
-            asks.append(community_ask(community["id"], [types[m] for m in members], inferred_roles, inside, outside, ctx))
+            others = [about[c["id"]] for c in chosen if c["id"] != community["id"] and about[c["id"]]]
+            asks.append(community_ask(community["id"], [types[m] for m in members], inferred_roles, inside, outside, ctx,
+                                      sorted(others)))
             community["judged"] = True
             yield emit({"type": "community", "community": community})
         by_id = {c["id"]: c for c in communities}
@@ -378,6 +385,20 @@ def run(repo: Path | str, mode: str = "standin", with_source: bool = True, truth
             community.update(single_theme=a["single_theme"]["noul"], business_capability=a["business_capability"]["noul"],
                              cohesion=a["cohesion"]["score"] if "cohesion" in a else None, judge=result.judge)
             yield emit({"type": "community", "community": community})
+        # Two groups must not share a label: the less sure one takes its next-best option, and says so.
+        taken: dict[str, dict] = {}  # keyed by singular form: "payment" and "payments" are one name
+        for community in sorted((c for c in communities if c.get("label")),
+                                key=lambda c: (-(c.get("label_confidence") or 0), c["id"])):
+            if _singular(community["label"]) in taken and community.get("label_probabilities"):
+                ranked = sorted(community["label_probabilities"].items(), key=lambda kv: (-kv[1], kv[0]))
+                free = next((label for label, _ in ranked if _singular(label) not in taken), None)
+                if free is None:  # every name it was offered is taken: tell it apart by its most connected class
+                    lead = min(community["members"], key=lambda m: position.get(m, len(position)))
+                    free = f"{community['label']} ({types[lead].name})"
+                community.update(label_was=community["label"], label=free,
+                                 label_note=f"renamed: '{community['label']}' was taken by a group Jev was surer about")
+                yield emit({"type": "community", "community": community})
+            taken[_singular(community["label"])] = community
         for community in communities:
             writer.append("communities", community)
 

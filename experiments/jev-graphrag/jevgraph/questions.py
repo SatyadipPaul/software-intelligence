@@ -31,29 +31,44 @@ GRAPH_BEING_BUILT = ("A knowledge graph of this codebase for answering questions
                      "edges are relationships between classes, and groups of classes are business capabilities.")
 
 # Keys match the product's EntityKind where one exists (CONTROLLER, SERVICE, REPOSITORY_COMPONENT, ENTITY,
-# CONFIGURATION); the other three are roles the product records as edges (CONSUMES a topic, calls an
-# external service) or not at all.
+# CONFIGURATION). The rest cover what the first real run showed web-app roles cannot: a CLI tool or a
+# library's commands, core algorithms, data structures and serialisers. Every option says what it is
+# and what it is not, so the options stay mutually exclusive.
 ROLES = {
-    "CONTROLLER": {"what": "Receives requests from outside the application and hands them to other code.",
-                   "signs": ["@RestController or @Controller", "methods mapped to HTTP routes, listed in `entry_points`",
-                             "calls a service to do the actual work"]},
-    "SERVICE": {"what": "Carries out business logic or coordinates one use case.",
-                "signs": ["@Service", "used by controllers or consumers", "calls repositories, clients or other services"]},
-    "REPOSITORY_COMPONENT": {"what": "Reads or writes stored data on behalf of other code.",
-                             "signs": ["@Repository or a Spring Data interface", "save, find or delete methods over stored records",
-                                       "JPA, JDBC or SQL use"]},
-    "ENTITY": {"what": "A record describing one business object: mostly fields, little behaviour.",
-               "signs": ["@Entity or @Table", "fields with getters and setters", "passed to and from repositories"]},
-    "CONFIGURATION": {"what": "Sets the application up rather than doing its work.",
-                      "signs": ["@Configuration", "@Bean methods", "property binding as its main content"]},
+    "CONTROLLER": {"what": "Receives HTTP requests and hands them to other code.",
+                   "signs": ["@RestController or @Controller", "methods mapped to HTTP routes, listed in `entry_points`"],
+                   "not": "command-line commands or RPC/MCP servers: those are ENTRY_POINT"},
+    "ENTRY_POINT": {"what": "Receives input from outside the application other than HTTP: a command-line command, an RPC or MCP server, a scheduled job or a main method.",
+                    "signs": ["parses arguments or incoming requests", "a main method, a CLI framework annotation, or a request loop",
+                              "hands the work to other classes"]},
     "MESSAGE_CONSUMER": {"what": "Reacts to messages or events that arrive from a queue, topic or event bus.",
                          "signs": ["@KafkaListener, @RabbitListener or @EventListener methods", "topics listed in `entry_points`"]},
-    "EXTERNAL_CLIENT": {"what": "Wraps calls to a system outside this application.",
-                        "signs": ["HTTP clients such as RestTemplate, WebClient or Feign", "remote URLs or a vendor SDK",
-                                  "translates between this application's types and the remote system's"]},
-    "UTILITY": {"what": "A stateless helper used across the code, with no business role of its own.",
-                "signs": ["mostly static methods", "formatting, parsing or conversion", "no collaborators"]},
+    "SERVICE": {"what": "Coordinates one business use case of the application, usually called by a controller or consumer.",
+                "signs": ["@Service", "calls repositories, clients or other services in a sequence"],
+                "not": "a general algorithm or processing engine: that is ENGINE"},
+    "ENGINE": {"what": "Implements a core algorithm or processing step - parsing, analysing, indexing, ranking, planning, building - over data it is given.",
+               "signs": ["substantial logic of its own", "works with several collaborators or data structures"],
+               "not": "a small stateless helper: that is UTILITY"},
+    "REPOSITORY_COMPONENT": {"what": "Saves or loads stored records in a database on behalf of other code.",
+                             "signs": ["@Repository or a Spring Data interface", "JPA, JDBC or SQL"],
+                             "not": "writing files or JSON: that is SERIALIZER"},
+    "ENTITY": {"what": "A business record that is mapped to a database table.",
+               "signs": ["@Entity or @Table", "fields that become columns"],
+               "not": "an in-memory data structure: that is DATA_MODEL"},
+    "DATA_MODEL": {"what": "An in-memory data structure or value type: mostly fields, records or enums, little behaviour, not mapped to a database.",
+                   "signs": ["a record, enum or class of fields", "passed between other classes"]},
+    "EXTERNAL_CLIENT": {"what": "Calls a system outside this application: another service, a vendor API or a remote store.",
+                        "signs": ["HTTP clients such as RestTemplate, WebClient or Feign", "remote URLs or a vendor SDK"],
+                        "not": "only formatting data for a file or stream: that is SERIALIZER"},
+    "SERIALIZER": {"what": "Converts objects to or from an external format: JSON, XML, CSV, files or a wire protocol.",
+                   "signs": ["reads or writes files or streams", "names such as Json, Writer, Reader, Codec, Exporter"]},
+    "CONFIGURATION": {"what": "Holds settings or sets the application up, rather than doing its work.",
+                      "signs": ["@Configuration or @Bean methods", "an options or settings holder", "property binding"]},
+    "UTILITY": {"what": "A small stateless helper with no collaborators: formatting, parsing a string, conversions.",
+                "signs": ["mostly static methods", "no fields holding other classes"]},
 }
+ROLE_LIST = ("controller, entry point, message consumer, service, engine, repository component, entity, data model, "
+             "external client, serializer, configuration or utility")
 CATCH_ALL = {"OTHER", "NONE", "MIXED", "UNKNOWN", "N/A", "NA", "MISC", "ANY"}
 
 COHESION = [
@@ -66,8 +81,10 @@ COHESION = [
 ROLE_SUFFIXES = {"controller", "service", "repository", "gateway", "consumer", "listener", "admin", "impl",
                  "handler", "manager", "event", "config", "configuration", "entity", "dto", "trail", "client"}
 NAME_PROMISES = {"Controller": "CONTROLLER", "Service": "SERVICE", "Repository": "REPOSITORY_COMPONENT",
-                 "Gateway": "EXTERNAL_CLIENT", "Client": "EXTERNAL_CLIENT", "Consumer": "MESSAGE_CONSUMER",
-                 "Listener": "MESSAGE_CONSUMER", "Config": "CONFIGURATION", "Configuration": "CONFIGURATION"}
+                 "Consumer": "MESSAGE_CONSUMER", "Listener": "MESSAGE_CONSUMER", "Config": "CONFIGURATION",
+                 "Configuration": "CONFIGURATION", "Options": "CONFIGURATION", "Command": "ENTRY_POINT",
+                 "Server": "ENTRY_POINT", "Json": "SERIALIZER", "Writer": "SERIALIZER", "Reader": "SERIALIZER",
+                 "Codec": "SERIALIZER", "Gateway": "EXTERNAL_CLIENT", "Client": "EXTERNAL_CLIENT"}
 
 
 @dataclass
@@ -185,18 +202,15 @@ def role_ask(declared: TypeDecl, uses: list, used_by: list, ctx: dict, with_sour
                           "focus": f"Judge by what the class declares and does{code_part}. Its name is a hint, not evidence."},
             criteria=ROLES),
         "fits_a_role": Noul(
-            instructions={"question": ("Does the class in `type` plainly play one of these roles: controller, service, "
-                                       "repository component, entity, configuration, message consumer, external client "
-                                       "or utility?"),
+            instructions={"question": f"Does the class in `type` plainly play one of these roles: {ROLE_LIST}?",
                           "inspect": ["type", "uses", "used_by"]},
             criteria={"true": "One of the listed roles describes the class's main job.",
-                      "false": ("None of them does: for example an exception type, test support, generated code, or a "
-                                "data carrier passed between layers.")}),
+                      "false": "None of them does: for example an exception type, test support or generated code."}),
         "name_misleads": Noul(
             instructions={"question": "Does the name in `type.name` promise a role or behaviour that the class does not deliver?",
                           "inspect": ["type"],
-                          "focus": ("Compare what the name claims - Repository, Gateway, Controller, Service, Consumer - "
-                                    "with what the fields and methods actually do.")},
+                          "focus": ("Compare what the name claims - Repository, Gateway, Controller, Service, Consumer, "
+                                    "Command - with what the fields and methods actually do.")},
             criteria={"true": ("The name claims something the code does not do: for example a Repository that stores "
                                "nothing, or a Gateway that calls nothing outside the application."),
                       "false": "The class does what its name says, or its name makes no such claim."}),
@@ -204,7 +218,7 @@ def role_ask(declared: TypeDecl, uses: list, used_by: list, ctx: dict, with_sour
     rule = rule_role(declared)
     promise = name_promise(declared.name)
     stand_in = {
-        "role": _one_hot(ROLES, rule or "UTILITY"),
+        "role": _one_hot(ROLES, rule or ("DATA_MODEL" if declared.kind in ("record", "enum") else "UTILITY")),
         "fits_a_role": _noul(True if rule else None),
         "name_misleads": _noul(None if promise is None or rule is None else promise != rule),
     }
@@ -231,16 +245,23 @@ def relation_ask(candidate: Candidate, types: dict[str, TypeDecl], proven: dict[
                       "false": ("`to_type` is incidental: only passed through, stored without being used, logged, or used "
                                 "for its class name or other methods every object has.")}),
         "persists": Noul(
-            instructions={"question": "Does `from_type` save or load `to_type` as stored data?", "inspect": inspect},
-            criteria={"true": "`from_type` writes `to_type` records to, or reads them from, a database, table, file or other store.",
-                      "false": "`from_type` writes no stored data of type `to_type` and reads none."}),
+            instructions={"question": "Does `from_type` save `to_type` to a database, or load it from one?", "inspect": inspect},
+            criteria={"true": ("`from_type` writes `to_type` records to, or reads them from, a database - tables, documents "
+                               "or a key-value store - for example through JPA, JDBC, SQL or a Spring Data repository."),
+                      "false": ("No database is involved. Writing `to_type` to a file, JSON, a stream or the console "
+                                "does not count; that is serialising.")}),
+        "serializes": Noul(
+            instructions={"question": "Does `from_type` convert `to_type` to or from an external format?", "inspect": inspect},
+            criteria={"true": "`from_type` turns `to_type` into, or builds it from, JSON, XML, CSV, a file or a wire message.",
+                      "false": "`from_type` never converts `to_type` to or from any external format."}),
         "publishes": Noul(
             instructions={"question": "Does `from_type` send `to_type` as a message or event for other parts of the system?",
                           "inspect": inspect},
             criteria={"true": "`from_type` hands `to_type`, or data describing it, to a message broker, topic, queue or event bus.",
                       "false": "`from_type` sends no message or event carrying `to_type`."}),
     }
-    stand_in = {"essential": _noul("CALLS" in proven), "persists": _noul(False), "publishes": _noul(False)}
+    stand_in = {"essential": _noul("CALLS" in proven), "persists": _noul(False), "serializes": _noul(None),
+                "publishes": _noul(False)}
     return Ask(qid=f"relation:{source.qualified}->{target.qualified}", phase="relation",
                subject=f"{candidate.source}|{candidate.target}", state=state, questions=questions,
                stand_in=stand_in, files=sorted({source.file, target.file}))
@@ -288,7 +309,7 @@ def label_candidates(members: list[TypeDecl]) -> dict[str, str]:
 
 
 def community_ask(cid: str, members: list[TypeDecl], inferred_roles: dict[str, dict], relations: list[dict],
-                  outside: list[dict], ctx: dict) -> Ask:
+                  outside: list[dict], ctx: dict, other_groups: list[str] | None = None) -> Ask:
     labels = label_candidates(members)
     hidden = max(0, len(members) - MAX_MEMBERS)
     members = members[:MAX_MEMBERS]  # the caller puts the members that matter most first
@@ -297,7 +318,7 @@ def community_ask(cid: str, members: list[TypeDecl], inferred_roles: dict[str, d
                      "methods": [x.name for x in m.methods],
                      "entry_points": [e["name"] for e in endpoints(m)]} for m in members]
     state = {"context": ctx, "members": member_cards, "relations": relations[:MAX_RELATIONS],
-             "links_outside": outside[:MAX_OUTSIDE]}
+             "links_outside": outside[:MAX_OUTSIDE], "other_groups": other_groups or []}
     for key, count in (("members_not_shown", hidden), ("relations_not_shown", len(relations) - MAX_RELATIONS),
                        ("links_outside_not_shown", len(outside) - MAX_OUTSIDE)):
         if count > 0:
@@ -307,8 +328,9 @@ def community_ask(cid: str, members: list[TypeDecl], inferred_roles: dict[str, d
     if len(labels) >= 2:  # a choice between one option is not a question worth asking
         questions["label"] = Choice(
             instructions={"question": "Which name best describes what the group of classes in `members` does?",
-                          "inspect": ["members", "relations"],
-                          "focus": "Each option says where in the code the name comes from."},
+                          "inspect": ["members", "relations", "other_groups"],
+                          "focus": ("Each option says where in the code the name comes from. `other_groups` lists what the "
+                                    "other groups are about; prefer a name that tells this group apart from them.")},
             criteria=labels)
         stand_in["label"] = _one_hot(labels, next(iter(labels)))
     questions["single_theme"] = Noul(
@@ -328,10 +350,12 @@ def community_ask(cid: str, members: list[TypeDecl], inferred_roles: dict[str, d
                                 "legend": {str(i): c for i, c in enumerate(COHESION)},
                                 "probabilities": {str(i): 1.0 if i == level else 0.0 for i in range(len(COHESION))}}
     questions["business_capability"] = Noul(
-        instructions={"question": "Does the group in `members` provide something the application does for its users or the business?",
-                      "inspect": ["members"]},
-        criteria={"true": "A product manager would name it as a capability, for example taking payments or managing orders.",
-                  "false": "It is technical plumbing: auditing infrastructure, configuration, logging or shared helpers."})
+        instructions={"question": ("Does the group in `members` provide a feature that a user of this application would name, "
+                                   "given what the application is (see `context`)?"),
+                      "inspect": ["members", "context"]},
+        criteria={"true": ("Users would name it as something the application does for them: for a shop, taking payments; "
+                           "for a developer tool, impact analysis or answering questions about code."),
+                  "false": "It is internal plumbing that users never see: logging, configuration, shared helpers or data holders."})
     stand_in["business_capability"] = _noul(True if any(endpoints(m) for m in members) else None)
     return Ask(qid=f"community:{cid}", phase="community", subject=cid, state=state, questions=questions,
                stand_in=stand_in, files=sorted({m.file for m in members}))

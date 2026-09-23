@@ -325,3 +325,51 @@ def test_a_rejected_key_stops_the_run_after_one_call(tmp_path):
     assert evs[-1]["type"] == "error" and evs[-1]["fatal"] and "rejected the key" in evs[-1]["message"]
     assert len(calls) == 1  # the SDK does not retry a 401, and the run sends nothing more
     assert not any(e["type"] == "done" for e in evs)
+
+
+def test_fixes_from_the_first_real_run():
+    asks = all_asks()
+    role = next(a for a in asks if a.phase == "role")
+    options = set(role.wire_questions()["role"]["criteria"])
+    assert {"ENTRY_POINT", "ENGINE", "DATA_MODEL", "SERIALIZER", "EXTERNAL_CLIENT"} <= options  # not only web-app roles
+    relation = next(a for a in asks if a.phase == "relation").wire_questions()
+    assert set(relation) == {"essential", "persists", "serializes", "publishes"}
+    assert "database" in relation["persists"]["criteria"]["true"] and "file" in relation["persists"]["criteria"]["false"]
+    community = next(a for a in asks if a.phase == "community")
+    assert "other_groups" in community.state and "context" in community.wire_questions()["business_capability"]["instructions"]["inspect"]
+
+
+def test_fixture_folders_are_test_data_and_frameworks_say_how_much_code_uses_them(tmp_path):
+    (tmp_path / "src/main/java").mkdir(parents=True)
+    (tmp_path / "fixtures/shop/src").mkdir(parents=True)
+    (tmp_path / "src/main/java/Tool.java").write_text("class Tool {}")
+    (tmp_path / "fixtures/shop/src/Web.java").write_text("import org.springframework.web.bind.annotation.GetMapping; class Web {}")
+    files = extract.java_files(tmp_path)
+    assert [p.name for p in files] == ["Tool.java"]
+    parses = [extract.parse_file(tmp_path, f, extract.new_parser()) for f in extract.java_files(tmp_path, include_tests=True)]
+    assert extract.frameworks(parses) == ["Spring Web: HTTP controllers and routes (imported by 1 of 2 files)"]
+
+
+def test_two_communities_never_share_a_label(tmp_path):
+    fake = FakeJev()
+
+    def prefer_payment(request):  # every label question picks "payment(s)" when offered: a real collision
+        body = json.loads(request.content)
+        label = body["questions"].get("label")
+        response = fake(request)
+        if label:
+            wanted = next((k for k in label["criteria"] if k.rstrip("s") == "payment"), None)
+            if wanted:
+                data = json.loads(response.content)
+                data["answers"]["label"].update(choice=wanted, probabilities={k: (0.9 if k == wanted else 0.1 / (len(label["criteria"]) - 1))
+                                                                             for k in label["criteria"]})
+                return httpx2.Response(200, json=data)
+        return response
+
+    judge = JevJudge(AnswerCache(tmp_path / "c.jsonl"), "k", "jev-test", base_url="https://api.typesafe.ai",
+                     transport=httpx2.MockTransport(prefer_payment))
+    events(tmp_path, judge=judge)
+    communities = json.loads((tmp_path / "sample-commerce" / "graphrag.json").read_text())["communities"]
+    labels = [c["label"].rstrip("s") for c in communities if c.get("label")]
+    assert len(labels) == len(set(labels)), labels
+    assert any(c.get("label_was", "").rstrip("s") == "payment" for c in communities)  # a collision really happened
